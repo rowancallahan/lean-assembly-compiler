@@ -103,10 +103,12 @@ structure Laws : Prop where
     K.lo = call.workAddress.toNat → K.hi ≤ call.workAddress.toNat + call.workLength →
     K.ib = call.inputAddress.toNat → K.il = x.length → K.ob = call.outputAddress.toNat → K.ol ≤ call.outputLength →
     T.inv K C I s
-  /-- the entry is an anchor at offset 0 -/
-  entry : ∀ (C : List J) (I : Img), T.valid C I → I.vis 0 ∧ I.off 0 = 0
-  /-- every anchor's offset lies in the code (a non-anchor pc may have an offset outside it) -/
-  off_le : ∀ (C : List J) (I : Img), T.valid C I → ∀ n, n ≤ C.length → I.vis n → I.off n ≤ I.code.length
+  /-- the entry is an anchor at offset 0 (as a machine address: modulo 2^64) -/
+  entry : ∀ (C : List J) (I : Img), T.valid C I → I.vis 0 ∧ I.off 0 % 2 ^ 64 = 0
+  /-- a return point's offset lies in the code (any other pc may have an offset outside it: only return points need
+  a link value, and a target may keep the others out of `jalr`'s reach by offsets ≥ 2^64) -/
+  off_le : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) →
+    I.off (n + 1) ≤ I.code.length
   /-- every return point is an anchor (with `off_le`: return addresses do not wrap, `LinkOK`) -/
   vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   /-- every `jalr x0, 0(x1)` (return to the host, function return) is an anchor -/
@@ -124,9 +126,9 @@ structure Laws : Prop where
     ∃ m c s', m ≤ n ∧ SRunN K C (n - m) c z ∧ I.vis c.1 ∧ Runs T.M s s' ∧ T.Rel K C I s0 c s'
   /-- addi with the machine's (wrapping) sum, between anchors (the stubs' a0 = −1 / −2) -/
   addi_ok : ∀ {K : LayW} {C : List J} {I : Img} {s0 : T.M.State} {pc : Nat} {st : CallProbe.St} {s : T.M.State}
-    {rd rs : Nat} {imm : Int}, T.lay K C I → T.Rel K C I s0 (pc, st) s → I.vis pc → I.vis (pc + 1) →
-    C[pc]? = some (.addi rd rs imm) → rd < 32 → rs < 32 → -2048 ≤ imm → imm < 2048 →
-    ∃ s', Runs T.M s s' ∧ T.Rel K C I s0 (pc + 1, CallProbe.wr st rd (st.x rs + UInt64.ofInt imm)) s'
+    {rd : Nat} {imm : Int}, T.lay K C I → T.Rel K C I s0 (pc, st) s → I.vis pc → I.vis (pc + 1) →
+    C[pc]? = some (.addi rd 0 imm) → rd = 10 ∨ rd = 11 → -2048 ≤ imm → imm < 2048 →
+    ∃ s', Runs T.M s s' ∧ T.Rel K C I s0 (pc + 1, CallProbe.wr st rd (st.x 0 + UInt64.ofInt imm)) s'
   /-- the return to the host, from an anchor -/
   ret_ok : ∀ {K : LayW} {C : List J} {I : Img} {s0 : T.M.State} {pc : Nat} {st : CallProbe.St} {s : T.M.State},
     T.lay K C I → T.Rel K C I s0 (pc, st) s → I.vis pc → C[pc]? = some (.jalr 0 1) → (st.x 1).toNat % 4 = 0 →

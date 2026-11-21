@@ -53,7 +53,7 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s : T.M.State}
     (hinv : T.inv K C I s) :
     T.Rel K C I s (0, jOfG T s K.base I.ly) s where
   cfg := hc
-  pc := by show _ = UInt64.ofNat (K.base + I.off 0); rw [hpc, (L.entry C I hv).2, Nat.add_zero]
+  pc := by show _ = UInt64.ofNat (K.base + I.off 0); rw [hpc]; apply UInt64.toNat_inj.1; rw [UInt64.toNat_ofNat', UInt64.toNat_ofNat', Nat.add_mod, (L.entry C I hv).2]; simp
   code := hcode
   x0 := by simp [jOfG]
   bb := rfl

@@ -30,7 +30,7 @@ theorem asim_bnez (S : A64SemN M X W) {r : Nat} {off : Int} (hok : (NTm.bnez r o
   · rw [if_pos e] at N
     rw [hag.x0, if_neg (fun hne => hne e)] at hrest
     exact ⟨0, (q + 1, st), v, s', Nat.zero_le _, hrest, rn,
-      by show NMid X W K A s0 v (π (q + 1)) s'; rw [hft1]; exact N, hag', rfl, rfl, Or.inl rfl⟩
+      by show NMid X W K A s0 v (π (q + 1)) s'; rw [hft1]; exact N, hag', rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
   · rw [if_neg e] at N
     rw [hag.x0, if_pos e] at hrest
     exact ⟨0, (((q : Int) + off).toNat, st), v, s', Nat.zero_le _, hrest, rn, N, hag', rfl, rfl,
@@ -64,7 +64,7 @@ theorem asim_beqz (S : A64SemN M X W) {r : Nat} {off : Int} (hok : (NTm.beqz r o
   · rw [if_neg e] at N
     rw [hag.x0, if_neg e] at hrest
     exact ⟨0, (q + 1, st), v, s', Nat.zero_le _, hrest, rn,
-      by show NMid X W K A s0 v (π (q + 1)) s'; rw [hft1]; exact N, hag', rfl, rfl, Or.inl rfl⟩
+      by show NMid X W K A s0 v (π (q + 1)) s'; rw [hft1]; exact N, hag', rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
 
 /-- **`lpz r off`** = `beq r 0 2; jal 0 off` ↔ `cbnz xr, target` (1 or 2 J steps) -/
 theorem asim_lpz (S : A64SemN M X W) {r : Nat} {off : Int} (hok : (NTm.lpz r off).ok = true) :
@@ -92,7 +92,7 @@ theorem asim_lpz (S : A64SemN M X W) {r : Nat} {off : Int} (hok : (NTm.lpz r off
     have h2 : ((q : Int) + 2).toNat = q + 2 := by omega
     rw [hag.x0, if_pos e, h2] at hrest
     exact ⟨0, (q + 2, st), v, s', Nat.zero_le _, hrest, rn,
-      by show NMid X W K A s0 v (π (q + 2)) s'; rw [hft2]; exact N, hag', rfl, rfl, Or.inl rfl⟩
+      by show NMid X W K A s0 v (π (q + 2)) s'; rw [hft2]; exact N, hag', rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
   · rw [if_neg e] at N
     rw [hag.x0, if_neg e] at hrest
     cases hrest with

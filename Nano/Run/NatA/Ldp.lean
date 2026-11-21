@@ -87,7 +87,7 @@ theorem asim_ldp (S : A64SemN M X W) {a b n : Nat} {sw : Bool} (hok : (NTm.ldp a
   refine ⟨1, (q + 2, CallProbe.wr (CallProbe.wr st a (st.m (st.x n).toNat)) b (st.m ((st.x n).toNat + 8))), _, s',
     Nat.le_add_left _ _, by rw [Nat.add_sub_cancel]; exact hr, r, by rw [hft]; simpa [hal] using N, ?_,
     (CallProbe.wr_b _ _ _).trans (CallProbe.wr_b _ _ _), (CallProbe.wr_w _ _ _).trans (CallProbe.wr_w _ _ _),
-    Or.inl (by rw [hjl])⟩
+    Or.inl ⟨by rw [hjl], rfl⟩⟩
   refine (agree_wr (agree_wr hag a _) b _).mono (fun r hr => Or.inl ⟨hr.1.1, ?_⟩)
   simp only [NTm.writes, Bool.or_eq_false_iff, beq_eq_false_iff_ne]
   exact ⟨fun e => hr.1.2 e.symm, fun e => hr.2 e.symm⟩

@@ -108,7 +108,7 @@ theorem asim_li (S : A64SemN M X W) {d : Nat} {val : UInt64} (hok : (NTm.li d va
     have hW : LiWords A h (armReg d) val (NTm.li d val).alen :=
       ⟨by simp [NTm.alen, NTm.a], fun i hi => by simpa [NTm.a] using hA i hi⟩
     obtain ⟨s', R, N⟩ := n_li S hM hB hW hd (by omega)
-    refine ⟨(liT d val).length - 1, (q + (liT d val).length, s1), CallProbe.wr v d val, s', by omega, ?_, R, ?_, ?_, ?_, ?_, Or.inl rfl⟩
+    refine ⟨(liT d val).length - 1, (q + (liT d val).length, s1), CallProbe.wr v d val, s', by omega, ?_, R, ?_, ?_, ?_, ?_, Or.inl ⟨rfl, rfl⟩⟩
     · rw [show n - ((liT d val).length - 1) = n + 1 - (liT d val).length by omega]; exact h2
     · have : π (q + (liT d val).length) = h + (NTm.li d val).alen := hft
       show NMid X W K A s0 _ (π (q + (liT d val).length)) s'
@@ -139,7 +139,7 @@ theorem asim_addi_z (S : A64SemN M X W) {d : Nat} {imm : Int} (hok : (NTm.addi d
   have hW : LiWords A h (armReg d) (UInt64.ofInt imm) (NTm.addi d 0 imm).alen :=
     ⟨by simp [NTm.alen, NTm.a], fun i hi => by simpa [NTm.a] using hA i hi⟩
   obtain ⟨s', R, N⟩ := n_li S hM hB hW hd (by omega)
-  refine ⟨0, _, CallProbe.wr v d (UInt64.ofInt imm), s', Nat.zero_le _, by simpa using hrest, R, ?_, ?_, ?_, ?_, Or.inl rfl⟩
+  refine ⟨0, _, CallProbe.wr v d (UInt64.ofInt imm), s', Nat.zero_le _, by simpa using hrest, R, ?_, ?_, ?_, ?_, Or.inl ⟨rfl, rfl⟩⟩
   · have : π (q + 1) = h + (NTm.addi d 0 imm).alen := hft
     show NMid X W K A s0 _ (π (q + 1)) s'
     rw [this]; exact N

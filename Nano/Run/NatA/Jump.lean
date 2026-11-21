@@ -28,7 +28,7 @@ theorem asim_jal (S : A64SemN M X W) {rd : Nat} {off : Int} (hok : (NTm.jal rd o
   · have a0 : A[h]? = some (ArmEnc.blB ((π (NTm.jt q off) : Int) - (h : Int))) := by
       simpa [NTm.a] using hA 0 (by simp [NTm.alen, NTm.a])
     obtain ⟨s', r, N⟩ := n_bl S hM hB a0 ht hL25
-    have hlo' : st.lo (q + 1) = 4 * (h + 1) := by simpa [NTm.j, NTm.alen, NTm.a] using hlo
+    have hlo' : st.lo (q + 1) = 4 * (h + 1) := by simpa [NTm.j, NTm.alen, NTm.a] using hlo rfl
     have el : UInt64.ofNat (st.b + st.lo (q + 1)) = UInt64.ofNat (K.base + 4 * (h + 1)) := by rw [hb, hlo']
     rw [el] at hrest
     exact ⟨0, _, _, s', Nat.zero_le _, hrest, r, N,

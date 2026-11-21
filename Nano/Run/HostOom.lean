@@ -18,8 +18,8 @@ theorem stub_run (L : T.Laws) {K : LayW} {Cj : List J} {I : Img} {s0 s : T.M.Sta
     ∃ s' st', Runs T.M s s' ∧ T.Rel K Cj I s0 (b + 4, st') s' ∧ st'.x 1 = st.m (st.x 12).toNat ∧
       st'.x 8 = st.m ((st.x 12).toNat + 8) ∧ st'.x 10 = UInt64.ofInt imm ∧ st'.x 11 = 0 ∧
       ∀ j, j ≠ 1 → j ≠ 8 → j ≠ 10 → j ≠ 11 → st'.x j = st.x j := by
-  obtain ⟨s1, r1, R1⟩ := L.addi_ok hl hR v0 v1 c0 (by omega) (by omega) hi1 hi2
-  obtain ⟨s2, r2, R2⟩ := L.addi_ok hl R1 v1 v2 c1 (by omega) (by omega) (by omega) (by omega)
+  obtain ⟨s1, r1, R1⟩ := L.addi_ok hl hR v0 v1 c0 (.inl rfl) hi1 hi2
+  obtain ⟨s2, r2, R2⟩ := L.addi_ok hl R1 v1 v2 c1 (.inr rfl) (by omega) (by omega)
   generalize e2 : CallProbe.wr (CallProbe.wr st 10 (st.x 0 + UInt64.ofInt imm)) 11
     ((CallProbe.wr st 10 (st.x 0 + UInt64.ofInt imm)).x 0 + UInt64.ofInt 0) = st2 at R2
   have q12 : st2.x 12 = st.x 12 := by rw [← e2]; simp [CallProbe.wr, CallProbe.upd]
@@ -100,7 +100,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
   obtain ⟨s2, h2, m12, m8, z2, k2, -⟩ := (hrun KL E0 hE0 j0 (by rw [x12]; exact sc.workAligned) (by rw [x12]; omega)
     (by rw [x12]; omega) (by omega) (fun n off h => by
       have hn := (List.getElem?_eq_some_iff.1 h).1
-      have := L.off_le Cj I hv (n + 1) (by omega) (L.vis_link Cj I n off hv h)
+      have := L.off_le Cj I n off hv h
       have e : s0.lo (n + 1) = I.off (n + 1) := rfl
       rw [jb, e]; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb
@@ -208,8 +208,8 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     all_goals omega)
   obtain ⟨v4, v5, v6⟩ := L.vis_err Cj I (S0 + 4) (-1) hv c4 c5
   obtain ⟨s1, r1, R1⟩ := gsim L hl hsx (L.entry Cj I hv).1 v4 hR0
-  obtain ⟨s2, r2, R2⟩ := L.addi_ok hl R1 v4 v5 c4 (by omega) (by omega) (by omega) (by omega)
-  obtain ⟨s3, r3, R3⟩ := L.addi_ok hl R2 v5 v6 c5 (by omega) (by omega) (by omega) (by omega)
+  obtain ⟨s2, r2, R2⟩ := L.addi_ok hl R1 v4 v5 c4 (.inl rfl) (by omega) (by omega)
+  obtain ⟨s3, r3, R3⟩ := L.addi_ok hl R2 v5 v6 c5 (.inr rfl) (by omega) (by omega)
   generalize hs2 : CallProbe.wr (CallProbe.wr sc' 10 (sc'.x 0 + UInt64.ofInt (-1))) 11
     ((CallProbe.wr sc' 10 (sc'.x 0 + UInt64.ofInt (-1))).x 0 + UInt64.ofInt 0) = st2 at R3
   have x2 : ∀ j, j ≠ 10 → j ≠ 11 → j ≠ 30 → j ≠ 31 → st2.x j = s0.x j := by

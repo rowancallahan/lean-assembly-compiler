@@ -31,13 +31,16 @@ theorem wordBytes_get (A : List Nat) (i : Nat) (hi : i < A.length) (k : Nat) (hk
   rw [flat_get _ 4 (fun _ => rfl) A i k hi hk]
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> rfl
 
+theorem ofNat_offmod (b o : Nat) : UInt64.ofNat (b + o) = UInt64.ofNat (b + o % 2 ^ 64) := by
+  apply UInt64.toNat_inj.1; rw [UInt64.toNat_ofNat', UInt64.toNat_ofNat']; omega
+
 /-- **from the relation to the view**: at an anchor at word `q` of the image's words `A` -/
 theorem nmid_of_rel {K : LayW} {C : List J} {I : Img} {s0 s : M.State} {p : Nat × CallProbe.St} {A : List Nat} {q : Nat}
     (hl : JTarget.LayOK M I.code.length K) (hR : (natTarget M X W V).Rel K C I s0 p s) (hI : I.code = wordBytes A)
-    (hq : I.off p.1 = 4 * q) :
+    (hq : I.off p.1 % 2 ^ 64 = 4 * q) :
     NMid X W K A s0 (mview s p.2) q s ∧ Agree (I.dead p.1) (mview s p.2) p.2 := by
   have hlen : I.code.length = 4 * A.length := by rw [hI, wordBytes_len]
-  refine ⟨⟨hR.cfg, by rw [← hq]; exact hR.pc, ?_, by simp [mview], fun j h0 h32 => by simp [mview, h0, h32],
+  refine ⟨⟨hR.cfg, by rw [← hq, ← ofNat_offmod]; exact hR.pc, ?_, by simp [mview], fun j h0 h32 => by simp [mview, h0, h32],
     hR.keep, hR.w, hR.bw, hR.fr, hlen ▸ hl, (show PermOK X W K (4 * A.length) s by rw [← hlen]; exact hR.inv)⟩, ⟨fun j h0 h32 hd => ?_, rfl, hR.x0⟩⟩
   · intro i hi k hk
     have hlt : 4 * i + k < I.code.length := by omega
@@ -51,10 +54,10 @@ theorem nmid_of_rel {K : LayW} {C : List J} {I : Img} {s0 s : M.State} {p : Nat 
 /-- **from the view to the relation**: at an anchor `pc` at word `q` -/
 theorem rel_of_nmid {K : LayW} {C : List J} {I : Img} {s0 s : M.State} {A : List Nat} {q pc : Nat}
     {v st : CallProbe.St} (hM : NMid X W K A s0 v q s) (hag : Agree (I.dead pc) v st) (hI : I.code = wordBytes A)
-    (hq : I.off pc = 4 * q) (hb : st.b = K.base) (hly : st.ly = I.ly) :
+    (hq : I.off pc % 2 ^ 64 = 4 * q) (hb : st.b = K.base) (hly : st.ly = I.ly) :
     (natTarget M X W V).Rel K C I s0 (pc, st) s := by
   have hlen : I.code.length = 4 * A.length := by rw [hI, wordBytes_len]
-  refine ⟨hM.cfg, by show (M.observe s).programCounter = _; rw [hq]; exact hM.pc, ?_, hag.x0, hb, hly,
+  refine ⟨hM.cfg, by show (M.observe s).programCounter = UInt64.ofNat (K.base + I.off pc); rw [ofNat_offmod, hq]; exact hM.pc, ?_, hag.x0, hb, hly,
     fun j h0 h32 hd => (hM.x j h0 h32).trans (hag.x j h0 h32 hd), hM.keep, fun a ha k hk => by rw [← hag.m]; exact hM.w a ha k hk,
     fun a ha => by rw [← hag.m]; exact hM.bw a ha, hM.fr, (show PermOK X W K I.code.length s by rw [hlen]; exact hM.pm)⟩
   intro a ha
@@ -81,13 +84,14 @@ def ASim (M : Machine) (X W : M.State → Nat → Prop) (t : NTm) : Prop :=
     (∀ i, i < t.j.length → C[q + i]? = t.j[i]?) → (∀ i, i < t.alen → A[h + i]? = (t.a π q h)[i]?) →
     K.base + 4 * A.length ≤ 2 ^ 32 → A.length < 2 ^ 18 →
     NMid X W K A s0 v h s → Agree D v st → (∀ r, D r → t.reads r = false) → st.b = K.base →
-    -- the layout: the fall-through boundary, the targets, and link values (an offset below 2^64 is an anchor's)
-    π (q + t.j.length) = h + t.alen → st.lo (q + t.j.length) = 4 * (h + t.alen) →
+    -- the layout: the fall-through boundary, a call's link value, the targets, and link values (an offset below 2^64
+    -- is a return point's)
+    π (q + t.j.length) = h + t.alen → (t.isCall = true → st.lo (q + t.j.length) = 4 * (h + t.alen)) →
     (∀ p ∈ t.tg q, π p ≤ A.length) → (∀ p, st.lo p < 2 ^ 64 → st.lo p = 4 * π p ∧ π p ≤ A.length) →
     SRunN K C (n + 1) (q, st) z → (∀ i, 0 < i → i < t.j.length → z.1 ≠ q + i) →
     ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
       Agree (outD t D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
-      (c.1 = q + t.j.length ∨ c.1 ∈ t.tg q ∨ c.2.lo c.1 < 2 ^ 64)
+      ((c.1 = q + t.j.length ∧ t.ft = true) ∨ c.1 ∈ t.tg q ∨ c.2.lo c.1 < 2 ^ 64)
 
 /-- a register write on both sides keeps the agreement (the written register is live afterwards) -/
 theorem agree_wr {D : Nat → Prop} {v st : CallProbe.St} (h : Agree D v st) (d : Nat) (x : UInt64) :
@@ -126,10 +130,10 @@ theorem asim_alu (S : A64SemN M X W) {op d x y : Nat} (hok : (NTm.alu op d x y).
       NMid X W K A s0 (CallProbe.wr v d (CallProbe.aluf op (v.x x) (v.x y))) (h + (NTm.alu op d x y).alen) s' → _ :=
     fun {s'} r N => (⟨0, _, _, s', Nat.zero_le _, hrest, r, by rw [show π (q + 1) = _ from hft]; exact N,
       (by rw [vx, vy]; exact (agree_wr hag d _).mono (fun r hr => Or.inl ⟨hr.1, by simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr.2 e.symm⟩)),
-      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩ :
+      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩ :
       ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
         Agree (outD (NTm.alu op d x y) D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
-        (c.1 = q + (NTm.alu op d x y).j.length ∨ c.1 ∈ (NTm.alu op d x y).tg q ∨ c.2.lo c.1 < 2 ^ 64))
+        ((c.1 = q + (NTm.alu op d x y).j.length ∧ (NTm.alu op d x y).ft = true) ∨ c.1 ∈ (NTm.alu op d x y).tg q ∨ c.2.lo c.1 < 2 ^ 64))
   by_cases h3 : op = 3
   · subst h3
     have a0 : A[h]? = some (ArmEnc.movz 17 0) := by simpa [NTm.a] using hA 0 (by simp [NTm.alen, NTm.a])

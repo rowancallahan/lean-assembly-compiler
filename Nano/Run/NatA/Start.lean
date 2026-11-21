@@ -151,7 +151,7 @@ theorem asim_align8 (S : A64SemN M X W) {d x : Nat} (hok : (NTm.align8 d x).ok =
   exact ⟨1, _, _, s3, by omega, hrest2, Runs.trans (Runs.trans r1 r2) r3,
     by rw [show π (q + 1 + 1) = _ from hft]; simpa [NTm.alen, NTm.a] using N3,
     ag2.mono (fun r hr => Or.inl ⟨hr.1.1, by simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr.2 e.symm⟩),
-    (CallProbe.wr_b _ _ _).trans (CallProbe.wr_b _ _ _), (CallProbe.wr_w _ _ _).trans (CallProbe.wr_w _ _ _), Or.inl rfl⟩
+    (CallProbe.wr_b _ _ _).trans (CallProbe.wr_b _ _ _), (CallProbe.wr_w _ _ _).trans (CallProbe.wr_w _ _ _), Or.inl ⟨rfl, rfl⟩⟩
 
 theorem asim_sb (S : A64SemN M X W) {x y : Nat} (hok : (NTm.sb x y).ok = true) : ASim M X W (NTm.sb x y) := by
   intro K C A s0 s v st z n π q h D hJ hA hB hL hM hag hrd hb hft hlo htg hlk hrun hz
@@ -174,6 +174,6 @@ theorem asim_sb (S : A64SemN M X W) {x y : Nat} (hok : (NTm.sb x y).ok = true) :
     by rw [show π (q + 1) = _ from hft]; simpa [NTm.alen, NTm.a] using N,
     ⟨fun j h0 h32 hd => hag.x j h0 h32 (fun hD => hd (Or.inl ⟨hD, by simp [NTm.writes]⟩)),
      by show CallProbe.sbm v.m _ _ = CallProbe.sbm st.m _ _; rw [hag.m, vx, vy]; simp [CallProbe.ea], hag.x0⟩,
-    rfl, rfl, Or.inl rfl⟩
+    rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
 
 end JT

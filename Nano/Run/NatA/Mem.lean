@@ -115,7 +115,7 @@ theorem asim_ld (S : A64SemN M X W) {d r : Nat} {off : Int} (hok : (NTm.ld d r o
   exact ⟨0, _, _, s', Nat.zero_le _, hrest, rn, by rw [show π (q + 1) = _ from hft]; exact N,
     (agree_wr hag d _).mono (fun r' hr' => Or.inl ⟨hr'.1, by
       simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr'.2 e.symm⟩),
-    CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩
+    CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩
 
 theorem asim_sd (S : A64SemN M X W) {u r : Nat} {off : Int} (hok : (NTm.sd u r off).ok = true) :
     ASim M X W (NTm.sd u r off) := by
@@ -157,7 +157,7 @@ theorem asim_sd (S : A64SemN M X W) {u r : Nat} {off : Int} (hok : (NTm.sd u r o
     have hh : π (q + 1) = h + 1 + (NTm.memW true 17 (armReg r) off).length := by
       rw [show π (q + 1) = _ from hft]; show h + ((NTm.memW true 17 (armReg r) off).length + 1) = _; omega
     exact ⟨0, _, _, s2, Nat.zero_le _, hrest, Runs.trans r1 r2, by rw [hh]; exact N,
-      hagS.mono (fun r' hr' => Or.inl ⟨hr', by simp [NTm.writes]⟩), rfl, rfl, Or.inl rfl⟩
+      hagS.mono (fun r' hr' => Or.inl ⟨hr', by simp [NTm.writes]⟩), rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
   · have hu' : mapped u = true := hu
     have vu : v.x u = st.x u := hag.x u (by omega) (mapped_lt hu') (fun hD => by simpa [NTm.reads] using hrd u hD)
     have ea1 : NTm.a π q h (NTm.sd u r off) = NTm.memW true (armReg u) (armReg r) off := by simp [NTm.a, hu0]
@@ -175,6 +175,6 @@ theorem asim_sd (S : A64SemN M X W) {u r : Nat} {off : Int} (hok : (NTm.sd u r o
       ⟨fun j h0 h32 hd => hag.x j h0 h32 hd, by
         show CallProbe.upd v.m _ (st.x u) = CallProbe.upd st.m _ (st.x u); rw [hag.m], hag.x0⟩
     exact ⟨0, _, _, s', Nat.zero_le _, hrest, rn, by rw [show π (q + 1) = _ from hft]; rw [hlen]; exact N,
-      hagS.mono (fun r' hr' => Or.inl ⟨hr', by simp [NTm.writes]⟩), rfl, rfl, Or.inl rfl⟩
+      hagS.mono (fun r' hr' => Or.inl ⟨hr', by simp [NTm.writes]⟩), rfl, rfl, Or.inl ⟨rfl, rfl⟩⟩
 
 end JT

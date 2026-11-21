@@ -35,6 +35,6 @@ theorem asim_bgeu (S : A64SemN M X W) {a b : Nat} {off : Int} (hok : (NTm.bgeu a
   · rw [if_neg hc] at hs; subst hs
     rw [if_neg (by simpa using hc)] at N
     exact ⟨0, _, v, s', Nat.zero_le _, by simpa using hrest, r, by rw [hft']; exact N, hag', rfl, rfl,
-      Or.inl (by simp [NTm.j])⟩
+      Or.inl ⟨by simp [NTm.j], rfl⟩⟩
 
 end JT

@@ -278,15 +278,25 @@ theorem vis_le {tl : List NAt} {p : Nat} (h : nVis tl p) : widx (bnd tl 0 0) p �
   have := bnd_le tl 0 0 _ _ (vis_widx h)
   rw [wordsOf_len]; omega
 
-/-- the byte offset of an anchor -/
+/-- the byte offset of an anchor, as a machine address -/
 theorem vis_off {tl : List NAt} {p : Nat} (h : nVis tl p) (hs : (wordsOf tl).length < 2 ^ 18) :
+    (imgOf tl).off p % 2 ^ 64 = 4 * widx (bnd tl 0 0) p := by
+  have hle := vis_le h
+  show nOff (bnd tl 0 0) (rets tl 0) p % 2 ^ 64 = _
+  unfold nOff
+  split
+  · omega
+  · rw [if_pos (by omega)]; omega
+
+/-- the byte offset of a return point (a link value) -/
+theorem ret_off {tl : List NAt} {p : Nat} (h : nVis tl p) (hr : p ∈ rets tl 0) (hs : (wordsOf tl).length < 2 ^ 18) :
     (imgOf tl).off p = 4 * widx (bnd tl 0 0) p := by
   have hm := vis_widx h
   have hle := vis_le h
-  show nOff (bnd tl 0 0) p = _
+  show nOff (bnd tl 0 0) (rets tl 0) p = _
   unfold nOff
   rw [if_pos]
-  refine ⟨by omega, ?_⟩
+  refine ⟨hr, by omega, ?_⟩
   cases hf : (bnd tl 0 0).find? (fun y => 4 * y.2 == 4 * widx (bnd tl 0 0) p) with
   | none => exact absurd (by simp) (List.find?_eq_none.1 hf _ hm)
   | some y =>
@@ -299,7 +309,58 @@ theorem vis_off {tl : List NAt} {p : Nat} (h : nVis tl p) (hs : (wordsOf tl).len
     subst e
     simp [bnd_inj _ _ _ _ _ _ h2 hm]
 
-/-! ## dead flags -/
+/-- only return points have link values -/
+theorem off_low {tl : List NAt} {p : Nat} (h : (imgOf tl).off p < 2 ^ 64) : p ∈ rets tl 0 := by
+  have h' : nOff (bnd tl 0 0) (rets tl 0) p < 2 ^ 64 := h
+  unfold nOff at h'
+  split at h'
+  · rename_i hc; exact hc.1
+  · omega
+
+theorem isCall_eq {t : NTm} (h : t.isCall = true) : ∃ off, t = .jal 1 off := by
+  cases t <;> simp [NTm.isCall] at h
+  subst h; exact ⟨_, rfl⟩
+
+theorem rets_ge : ∀ (l : List NAt) (q p : Nat), p ∈ rets l q → q + 1 ≤ p
+  | [], _, _, h => by simp [rets] at h
+  | x :: l, q, p, h => by
+    have hp := x.t.j_pos
+    unfold rets at h
+    split at h
+    · rcases List.mem_cons.1 h with rfl | h
+      · omega
+      · have := rets_ge l _ p h; omega
+    · have := rets_ge l _ p h; omega
+
+/-- a return point is the J pc after a call atom -/
+theorem rets_mem : ∀ (l : List NAt) (q p : Nat), p ∈ rets l q →
+    ∃ pre x suf off, l = pre ++ x :: suf ∧ x.t = .jal 1 off ∧ p = q + (jOf pre).length + 1
+  | [], _, _, h => by simp [rets] at h
+  | x :: l, q, p, h => by
+    have rc : p ∈ rets l (q + x.t.j.length) →
+        ∃ pre y suf off, x :: l = pre ++ y :: suf ∧ y.t = .jal 1 off ∧ p = q + (jOf pre).length + 1 := fun h => by
+      obtain ⟨pre, y, suf, off, e, ey, ep⟩ := rets_mem l _ p h
+      exact ⟨x :: pre, y, suf, off, by rw [e]; rfl, ey, by rw [jOf_cons, List.length_append]; omega⟩
+    unfold rets at h
+    split at h
+    · rename_i hc
+      rcases List.mem_cons.1 h with rfl | h
+      · obtain ⟨off, e⟩ := isCall_eq hc
+        exact ⟨[], x, l, off, rfl, e, by simp [jOf]⟩
+      · exact rc h
+    · exact rc h
+
+theorem mem_rets : ∀ (pre : List NAt) (x : NAt) (suf : List NAt) (q : Nat), x.t.isCall = true →
+    q + (jOf pre).length + 1 ∈ rets (pre ++ x :: suf) q
+  | [], x, suf, q, h => by simp [rets, h, jOf]
+  | y :: pre, x, suf, q, h => by
+    have := mem_rets pre x suf (q + y.t.j.length) h
+    rw [jOf_cons, List.length_append, ← Nat.add_assoc]
+    show _ ∈ rets (y :: (pre ++ x :: suf)) q
+    unfold rets
+    split
+    · exact List.mem_cons_of_mem _ this
+    · exact this
 
 theorem dl_ge : ∀ (l : List NAt) (q p : Nat) (y : NAt), (p, y) ∈ dl l q → q ≤ p
   | [], _, _, _, hm => by simp [dl] at hm
@@ -407,18 +468,11 @@ theorem NTm.j_addi0 {t : NTm} {a : Nat} {imm : Int} (hok : t.ok = true) (ha : a 
     | (split at h <;> simp at h)
     | simp_all
 
-theorem natV_entry (C : List J) (I : Img) (h : NatV C I) : I.vis 0 ∧ I.off 0 = 0 := by
+theorem natV_entry (C : List J) (I : Img) (h : NatV C I) : I.vis 0 ∧ I.off 0 % 2 ^ 64 = 0 := by
   obtain ⟨tl, rfl, rfl, W⟩ := h
   have hv : nVis tl 0 := ⟨0, bnd_head tl 0 0⟩
   refine ⟨hv, ?_⟩
   rw [vis_off hv W.size, widx_eq (bnd_head tl 0 0) fun _ h => bnd_fun _ _ _ _ _ _ h (bnd_head tl 0 0)]
-
-theorem natV_off_le (C : List J) (I : Img) (h : NatV C I) (n : Nat) (_ : n ≤ C.length) (hv : I.vis n) :
-    I.off n ≤ I.code.length := by
-  obtain ⟨tl, rfl, rfl, W⟩ := h
-  have hv' : nVis tl n := hv
-  have := vis_le hv'
-  rw [vis_off hv' W.size, imgOf_code_len]; omega
 
 /-- a single-instruction atom at J pc `n`: `n` and `n + 1` are anchors -/
 theorem single_vis {tl : List NAt} {n : Nat} {jj : J} (h : (jOf tl)[n]? = some jj)
@@ -438,6 +492,30 @@ theorem natV_vis_link (C : List J) (I : Img) (n : Nat) (off : Int) (h : NatV C I
     (hC : C[n]? = some (.jal 1 off)) : I.vis (n + 1) := by
   obtain ⟨tl, rfl, rfl, W⟩ := h
   exact (single_vis hC fun t ht => NTm.j_single ht (.inl ⟨1, off, by decide, rfl⟩)).2
+
+/-- the atom of a `jal 1`: a call atom -/
+theorem jal1_atom {t : NTm} {off : Int} (h : J.jal 1 off ∈ t.j) : t = .jal 1 off := by
+  cases t <;> simp only [NTm.j] at h <;>
+    first
+    | (rcases liT_mem h with ⟨_, e⟩ | ⟨_, _, e⟩ <;> cases e)
+    | (cases ‹NCmp› <;> simp_all)
+    | (split at h <;> simp_all)
+    | simp_all
+
+theorem natV_off_le (C : List J) (I : Img) (n : Nat) (off : Int) (h : NatV C I) (hC : C[n]? = some (.jal 1 off)) :
+    I.off (n + 1) ≤ I.code.length := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  have hv : nVis tl (n + 1) := (single_vis hC fun t ht => NTm.j_single ht (.inl ⟨1, off, by decide, rfl⟩)).2
+  obtain ⟨pre, x, suf, i, e, en, hi⟩ := jOf_at tl n (List.getElem?_eq_some_iff.1 hC).1
+  have hx := at_j e hi
+  rw [← en, hC] at hx
+  have ex := jal1_atom (List.mem_of_getElem? hx.symm)
+  have i0 : i = 0 := by rw [ex] at hi; simpa [NTm.j] using hi
+  have hr : n + 1 ∈ rets tl 0 := by
+    have := mem_rets pre x suf 0 (by rw [ex]; rfl)
+    rw [e, en, i0]; simpa using this
+  have := vis_le hv
+  rw [ret_off hv hr W.size, imgOf_code_len]; omega
 
 theorem natV_vis_ret (C : List J) (I : Img) (pc : Nat) (h : NatV C I) (hC : C[pc]? = some (.jalr 0 1)) :
     I.vis pc := by

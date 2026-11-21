@@ -157,17 +157,18 @@ theorem laws_toG (L : T.Laws) : T.toG.Laws where
       obtain ⟨s', r, R⟩ := L.step_ok hl (rel_ofG L hR) hS hs
       exact ⟨0, _, s', Nat.zero_le _, hrest, trivial, r, rel_toG L R⟩
   addi_ok := by
-    intro K C I s0 pc st s rd rs imm hl hR _ _ hc h1 h2 h3 h4
+    intro K C I s0 pc st s rd imm hl hR _ _ hc h1 h3 h4
     obtain ⟨rfl, hl⟩ := hl
-    obtain ⟨s', r, R⟩ := L.addi_ok hl (rel_ofG L hR) hc h1 h2 h3 h4
+    obtain ⟨s', r, R⟩ := L.addi_ok hl (rel_ofG L hR) hc (by omega) (by omega) h3 h4
     exact ⟨s', r, rel_toG L R⟩
   ret_ok := by
     intro K C I s0 pc st s hl hR _ hc h4
     obtain ⟨rfl, hl⟩ := hl
     exact L.ret_ok hl (rel_ofG L hR) hc h4
   vis_link C I n off hv _ := by obtain ⟨rfl, -⟩ := hv; exact trivial
-  off_le C I hv n hn _ := by
+  off_le C I n off hv hc := by
     obtain ⟨rfl, -⟩ := hv
+    have hn := (List.getElem?_eq_some_iff.1 hc).1
     rw [uoff L]; show _ ≤ (tbytes T C).length
     rw [tbytes_len L]; exact Nat.mul_le_mul_left _ hn
   live_ret C I pc hv _ j := by obtain ⟨rfl, -⟩ := hv; exact fun h => False.elim h

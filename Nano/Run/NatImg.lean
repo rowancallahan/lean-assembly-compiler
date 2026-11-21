@@ -255,23 +255,35 @@ def wordBytes (A : List Nat) : List UInt8 :=
   A.flatMap fun w => [wbyte (BitVec.ofNat 32 w) 0, wbyte (BitVec.ofNat 32 w) 1, wbyte (BitVec.ofNat 32 w) 2,
     wbyte (BitVec.ofNat 32 w) 3]
 
-/-- the byte offset of J pc `pc`: `4 · word index` at a boundary (the first one with that word index), else
-`2^64 + pc` (never a code address) -/
-def nOff (B : List (Nat × Nat)) (pc : Nat) : Nat :=
-  if 4 * widx B pc < 2 ^ 64 ∧ ((B.find? fun p => 4 * p.2 == 4 * widx B pc).map Prod.fst) = some pc then 4 * widx B pc
-  else 2 ^ 64 + pc
+/-- a call: `jal 1 _` (the J pc after it is a RETURN POINT) -/
+def NTm.isCall : NTm → Bool
+  | .jal rd _ => rd == 1
+  | _ => false
+
+/-- the return points from J pc `q`: the J pcs after the calls -/
+def rets : List NAt → Nat → List Nat
+  | [], _ => []
+  | x :: l, q => if x.t.isCall then (q + 1) :: rets l (q + x.t.j.length) else rets l (q + x.t.j.length)
+
+/-- the byte offset of J pc `pc`: `4 · word index` at a RETURN POINT (`R`); at any other pc `2^64·(1 + pc)` plus
+`4 · word index`: the same machine address (modulo 2^64), but not a link value, so J's `jalr` (whose target has an
+offset below 2^64, `SafeX`) only reaches return points -/
+def nOff (B : List (Nat × Nat)) (R : List Nat) (pc : Nat) : Nat :=
+  if pc ∈ R ∧ 4 * widx B pc < 2 ^ 64 ∧ ((B.find? fun p => 4 * p.2 == 4 * widx B pc).map Prod.fst) = some pc then
+    4 * widx B pc
+  else 2 ^ 64 * (1 + pc) + (if 4 * widx B pc < 2 ^ 64 then 4 * widx B pc else 0)
 
 def nUn (B : List (Nat × Nat)) (a : Nat) : Nat :=
-  if a < 2 ^ 64 then ((B.find? fun p => 4 * p.2 == a).map Prod.fst).getD 0 else a - 2 ^ 64
+  if a < 2 ^ 64 then ((B.find? fun p => 4 * p.2 == a).map Prod.fst).getD 0 else a / 2 ^ 64 - 1
 
-theorem nInv (B : List (Nat × Nat)) (pc : Nat) : nUn B (nOff B pc) = pc := by
+theorem nInv (B : List (Nat × Nat)) (R : List Nat) (pc : Nat) : nUn B (nOff B R pc) = pc := by
   unfold nOff
   split
   · rename_i h
     unfold nUn
-    rw [if_pos h.1, h.2]; rfl
+    rw [if_pos h.2.1, h.2.2]; rfl
   · unfold nUn
-    rw [if_neg (by omega)]; omega
+    split <;> (rw [if_neg (by omega)]; omega)
 
 /-- the dead flags at the atom starts, from J pc `q` -/
 def dl : List NAt → Nat → List (Nat × NAt)
@@ -287,7 +299,7 @@ def nDead (tl : List NAt) (pc r : Nat) : Prop := ∃ x, (pc, x) ∈ dl tl 0 ∧ 
 /-- **the image of an atom list** -/
 def imgOf (tl : List NAt) : Img where
   code := wordBytes (wordsOf tl)
-  ly := ⟨nOff (bnd tl 0 0), nUn (bnd tl 0 0), nInv (bnd tl 0 0)⟩
+  ly := ⟨nOff (bnd tl 0 0) (rets tl 0), nUn (bnd tl 0 0), nInv (bnd tl 0 0) (rets tl 0)⟩
   vis := nVis tl
   dead := nDead tl
 
@@ -305,8 +317,8 @@ structure NWf (tl : List NAt) : Prop where
   /-- jump targets are anchors, flagged with what is dead after the atom -/
   tgt : ∀ (pre : List NAt) (x : NAt) (suf : List NAt), tl = pre ++ x :: suf → ∀ p ∈ x.t.tg (jOf pre).length,
     nVis tl p ∧ ∀ r, x.out r = true → nDead tl p r
-  /-- function return (`jalr 0 14`): what is dead there is flagged at every return point (after a `jal 1`) -/
-  ret : ∀ (pre : List NAt) (x : NAt) (suf : List NAt), tl = pre ++ x :: suf → x.t = .jalr 14 →
+  /-- a return (`jalr`): what is dead there is flagged at every return point (after a `jal 1`) -/
+  ret : ∀ (pre : List NAt) (x : NAt) (suf : List NAt) (rs : Nat), tl = pre ++ x :: suf → x.t = .jalr rs →
     ∀ (pre' : List NAt) (off : Int) (d5 d6 : Bool) (suf' : List NAt), tl = pre' ++ ⟨.jal 1 off, d5, d6⟩ :: suf' →
     ∀ r, x.dead r = true → nDead tl ((jOf pre').length + 1) r
 

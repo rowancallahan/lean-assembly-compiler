@@ -26,8 +26,9 @@ def natTarget (M : Machine) (X W : M.State → Nat → Prop) (V : List J → Img
 
 /-- **what M3 proves about the native target**: the image facts and the machine facts of `GTarget.Laws` -/
 structure NatLawsOK (M : Machine) (X W : M.State → Nat → Prop) (V : List J → Img → Prop) : Prop where
-  entry : ∀ (C : List J) (I : Img), V C I → I.vis 0 ∧ I.off 0 = 0
-  off_le : ∀ (C : List J) (I : Img), V C I → ∀ n, n ≤ C.length → I.vis n → I.off n ≤ I.code.length
+  entry : ∀ (C : List J) (I : Img), V C I → I.vis 0 ∧ I.off 0 % 2 ^ 64 = 0
+  off_le : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), V C I → C[n]? = some (.jal 1 off) →
+    I.off (n + 1) ≤ I.code.length
   vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), V C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), V C I → C[pc]? = some (.jalr 0 1) → I.vis pc
   live_ret : ∀ (C : List J) (I : Img) (pc : Nat), V C I → C[pc]? = some (.jalr 0 1) →
@@ -39,10 +40,10 @@ structure NatLawsOK (M : Machine) (X W : M.State → Nat → Prop) (V : List J �
     I.vis z.1 →
     ∃ m c s', m ≤ n ∧ SRunN K C (n - m) c z ∧ I.vis c.1 ∧ Runs M s s' ∧ (natTarget M X W V).Rel K C I s0 c s'
   addi_ok : ∀ {K : LayW} {C : List J} {I : Img} {s0 : M.State} {pc : Nat} {st : CallProbe.St} {s : M.State}
-    {rd rs : Nat} {imm : Int}, (natTarget M X W V).lay K C I → (natTarget M X W V).Rel K C I s0 (pc, st) s →
-    I.vis pc → I.vis (pc + 1) → C[pc]? = some (.addi rd rs imm) → rd < 32 → rs < 32 → -2048 ≤ imm → imm < 2048 →
+    {rd : Nat} {imm : Int}, (natTarget M X W V).lay K C I → (natTarget M X W V).Rel K C I s0 (pc, st) s →
+    I.vis pc → I.vis (pc + 1) → C[pc]? = some (.addi rd 0 imm) → rd = 10 ∨ rd = 11 → -2048 ≤ imm → imm < 2048 →
     ∃ s', Runs M s s' ∧
-      (natTarget M X W V).Rel K C I s0 (pc + 1, CallProbe.wr st rd (st.x rs + UInt64.ofInt imm)) s'
+      (natTarget M X W V).Rel K C I s0 (pc + 1, CallProbe.wr st rd (st.x 0 + UInt64.ofInt imm)) s'
   ret_ok : ∀ {K : LayW} {C : List J} {I : Img} {s0 : M.State} {pc : Nat} {st : CallProbe.St} {s : M.State},
     (natTarget M X W V).lay K C I → (natTarget M X W V).Rel K C I s0 (pc, st) s → I.vis pc →
     C[pc]? = some (.jalr 0 1) → (st.x 1).toNat % 4 = 0 →

@@ -62,7 +62,7 @@ theorem asim_cj (S : A64SemN M X W) {c : NCmp} {x y : Nat} {off : Int} (hok : (N
       simp [NTm.tg]
   · rw [if_neg hcv] at hs; subst hs
     rw [if_neg hcv] at N
-    refine ⟨0, _, v, s', Nat.zero_le _, hrest, r, ?_, hag', rfl, rfl, Or.inl (by simp [cj_j])⟩
+    refine ⟨0, _, v, s', Nat.zero_le _, hrest, r, ?_, hag', rfl, rfl, Or.inl ⟨by simp [cj_j], rfl⟩⟩
     rw [hft2]; exact N
 
 end JT

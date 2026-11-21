@@ -57,7 +57,7 @@ theorem asim_bsetI (S : A64SemN M X W) (hok : (NTm.bsetI).ok = true) : ASim M X 
   refine ⟨2, (q + 1 + 1 + 1, { st2 with m := CallProbe.upd st.m ((st.x 5 + (st.x 6 <<< 3)).toNat + 16) (st.x 14) }),
     { v with m := CallProbe.upd v.m ((st.x 5 + (st.x 6 <<< 3)).toNat + 16) (st.x 14) }, s2, by omega,
     (by have e : ∀ k, k + 1 + 1 - 2 = k := fun k => by omega
-        rw [e]; exact hrest3), Runs.trans r1 r2, ?_, ⟨?_, ?_, ?_⟩, ?_, ?_, Or.inl (by simp [NTm.j])⟩
+        rw [e]; exact hrest3), Runs.trans r1 r2, ?_, ⟨?_, ?_, ?_⟩, ?_, ?_, Or.inl ⟨by simp [NTm.j], rfl⟩⟩
   · show NMid X W K A s0 _ (π (q + 1 + 1 + 1)) s2
     rw [hft']; exact N2
   · intro j h0 h32 hn

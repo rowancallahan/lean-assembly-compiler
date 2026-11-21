@@ -47,6 +47,6 @@ theorem asim_ldrbx (S : A64SemN M X W) {d n m : Nat} (hok : (NTm.ldrbx d n m).ok
       simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr.2 e.symm⟩)
   refine ⟨1, (q + 1 + 1, CallProbe.wr st d (CallProbe.lbm st.m (st.x n + st.x m).toNat)),
     CallProbe.wr v d (CallProbe.lbm st.m (st.x n + st.x m).toNat), s', by omega, by simpa using hrest2, r,
-    by rw [hπ]; exact N', hagr, CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩
+    by rw [hπ]; exact N', hagr, CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩
 
 end JT

@@ -52,7 +52,7 @@ theorem asim_bpushI (S : A64SemN M X W) (hok : (NTm.bpushI).ok = true) : ASim M 
   have s3 : ((3 : Nat).toUInt64) = (3 : UInt64) := rfl
   rw [e, s3] at hrest2
   rw [vx, vy] at N
-  refine ⟨1, (q + 1 + 1, CallProbe.wr st 15 (st.x 5 + (st.x 7 <<< 3))), CallProbe.wr v 15 (st.x 5 + (st.x 7 <<< 3)), s', by omega, by simpa using hrest2, r, ?_, ?_, CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩
+  refine ⟨1, (q + 1 + 1, CallProbe.wr st 15 (st.x 5 + (st.x 7 <<< 3))), CallProbe.wr v 15 (st.x 5 + (st.x 7 <<< 3)), s', by omega, by simpa using hrest2, r, ?_, ?_, CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩
   · rw [show π (q + 1 + 1) = _ from hft]; simpa [NTm.alen, NTm.a] using N
   · exact (agree_wr hag 15 _).mono (fun r hr => Or.inl ⟨hr.1, by simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr.2 e⟩)
 

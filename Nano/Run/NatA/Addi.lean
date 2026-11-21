@@ -35,7 +35,7 @@ theorem asim_addi_nz (S : A64SemN M X W) {d n : Nat} {imm : Int} (hok : (NTm.add
       unfold CallProbe.ea; omega
     rw [vn, e] at N
     exact ⟨0, _, _, s', Nat.zero_le _, hrest, r, by rw [show π (q + 1) = _ from hft, hl]; exact N, hagr,
-      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩
+      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩
   · have a0 : A[h]? = some (ArmEnc.addi (armReg d) (armReg n) imm.toNat) := by
       have := hA 0 (by rw [hl]; omega); simpa [NTm.a, hn0, him] using this
     obtain ⟨s', r, N⟩ := n_addi S hM hB a0 hd hd0 hn hn0 (by omega)
@@ -45,6 +45,6 @@ theorem asim_addi_nz (S : A64SemN M X W) {d n : Nat} {imm : Int} (hok : (NTm.add
       unfold CallProbe.ea; omega
     rw [vn, e] at N
     exact ⟨0, _, _, s', Nat.zero_le _, hrest, r, by rw [show π (q + 1) = _ from hft, hl]; exact N, hagr,
-      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩
+      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩
 
 end JT
