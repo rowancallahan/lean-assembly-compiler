@@ -21,32 +21,34 @@ variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb 
 theorem u46_6 {l : UInt64} (hg : bget x c = 6) :
     u46 x d b bt t tt c s st gb l y y1 y2 =
       (b, (bt, (u27 t tt 9 l (bget x (c + 1)), (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
-  unfold u46; rw [hg, if_pos (keq (show ((6 : UInt64) == 6) = true from rfl))]
+  unfold u46; unfold u65; zeta_only; rw [hg, if_pos (keq (show ((6 : UInt64) == 6) = true from rfl))]
 
 theorem u46_n {l : UInt64} (hg : (bget x c == 6) = false) (R : R12) (hR : u46 x d b bt t tt c s st gb l y y1 y2 = R) :
     ((let (b1, z) := u32 x d b bt y y1 c;
       let (r, z1) := z;
       let (y3, y4) := z1;
-      if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
+      if r == 2 then u64 b1 t s y3 y4 y2
       else if r == 1 then
         (b1, (bt, (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0,
           (tt + 2, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
       else (b1, (bt, (u27 t tt 0 0 0, (tt + 1, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
-  rw [← hR]; unfold u46; rw [if_neg (kne hg)]
+  rw [← hR]; unfold u46 u66; unfold u65; zeta_only; rw [if_neg (kne hg)]
 
 theorem u39_0 {l : UInt64} : u39 x d b bt t tt c s st gb l 0 y y1 y2 = (b, (bt, (t, (tt, (c, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
-  unfold u39; rw [if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))]
+  unfold u39; unfold u65; zeta_only; rw [if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))]
 
 theorem u39_s {l k : UInt64} (hk : (k == 0) = false) (R : R12) (hR : u39 x d b bt t tt c s st gb l k y y1 y2 = R) :
     ((let (b1, z) := u32 x d b bt y y1 c;
       let (r, z1) := z;
       let (y3, y4) := z1;
-      if r == 2 then (b1, (bt, (u27 t tt 9 (l + 1) (k - 1), (tt + 1, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
+      if r == 2 then u64 b1 (u27 t tt 9 (l + 1) (k - 1)) s y3 y4 y2
       else if r == 1 then
         (b1, (bt, (u27 (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 4 0 gb) (tt + 2) 1 0 0,
           (tt + 3, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
       else (b1, (bt, (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
-  rw [← hR]; unfold u39; rw [if_neg (kne hk)]
+  have e1 : tt + 1 + 1 = tt + 2 := by rw [UInt64.add_assoc]; rfl
+  have e2 : tt + 1 + 2 = tt + 3 := by rw [UInt64.add_assoc]; rfl
+  rw [← hR]; unfold u39 u66; unfold u65; zeta_only; rw [if_neg (kne hk), e1, e2]
 
 end
 

@@ -11,7 +11,7 @@ theorem M40_4 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) 
     M40 N n x d b bt t tt c g s st gb 4 a a2 y y1 y2 =
       if (u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).2 == 1 then
         u40 n x d b bt t (tt - 1) c (u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1 s gb a2 y y1 y2
-      else ((u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1, (c, (0, (b, (t, (s, (y, (y1, y2)))))))) := by
+      else (((u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1), (c, (0, (b, (t, (s, (y, (y1, y2)))))))) := by
   unfold M40; rw [if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
 theorem M40_5 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
     M40 N n x d b bt t tt c g s st gb 5 a a2 y y1 y2 = u40 n x d b a t (tt - 1) c g s st gb y y1 y2 := by
@@ -30,7 +30,7 @@ theorem M40_6 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) 
   obtain ⟨b1, v, vt, e, ok, w1⟩ := R
   replace hR2 : u26 b1 bt v 0 vt a = R2 := hR2
   show (if ok == 1 then (if (u26 b1 bt v 0 vt a).2.2 == 1 then u40 n x d (u26 b1 bt v 0 vt a).1 (u26 b1 bt v 0 vt a).2.1 t
-    (tt - 1) c g s st gb v w1 y2 else (g, (c, (0, ((u26 b1 bt v 0 vt a).1, (t, (s, (v, (w1, y2))))))))) else
+    (tt - 1) c g s st gb v w1 y2 else (g, (c, (0, (((u26 b1 bt v 0 vt a).1), (t, (s, (v, (w1, y2))))))))) else
     (g, (c, (0, (b1, (t, (s, (v, (w1, y2))))))))) = _
   rw [hR2]
 theorem M40_7 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
@@ -49,8 +49,7 @@ theorem M40_r (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) 
     M40 N n x d b bt t tt c g s st gb k a a2 y y1 y2 =
       if R.2.2.2.2.2.2.2.2.1 == 1 then u40 n x d R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1
         R.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2
-      else (g, (R.2.2.2.2.1, (0, (R.1, (R.2.2.1, (R.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.2.1,
-        R.2.2.2.2.2.2.2.2.2.2.2)))))))) := by
+      else (g, (R.2.2.2.2.1, (0, (R.1, (R.2.2.1, (R.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.2.1, R.2.2.2.2.2.2.2.2.2.2.2)))))))) := by
   unfold M40
   rw [if_neg (by simp [h4]), if_neg (by simp [h5]), if_neg (by simp [h6]), if_neg (by simp [h7]), if_neg (by simp [h8]), hR]
 

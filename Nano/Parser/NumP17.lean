@@ -11,7 +11,7 @@ theorem u49_2 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (s
 
 theorem u45_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64} {y y1 y2 : Buf}
     (R : R12) (hR : u45 x d b bt t tt c s st gb y y1 y2 = R) :
-    ((if u15 x c == 0 then (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y1, y2)))))))))))
+    ((if u15 x c == 0 then u64 b t s y y1 y2
      else
       (let (p1, z) := u16 x y2 0 y1 c;
        let (pt1, z1) := z;
@@ -31,16 +31,16 @@ theorem u45_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {
                let (b3, z8) := u32 x d b2 bt y7 y8 (u15 x c);
                let (lb, z9) := z8;
                let (y9, y10) := z9;
-               if la == 2 then (b3, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y9, (y10, p2)))))))))))
-               else if lb == 2 then (b3, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y9, (y10, p2)))))))))))
+               if la == 2 then u64 b3 t s y9 y10 p2
+               else if lb == 2 then u64 b3 t s y9 y10 p2
                else if (la &&& lb) == 1 then
                  (b3, (bt, (u27 (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) 1 0 0,
                    (tt + 3, (c, (u20 s st 0, (st + 1, (st, (1, (y9, (y10, p2)))))))))))
                else (b3, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y9, (y10, p2))))))))))))
-            else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y6, p2))))))))))))
-          else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p2))))))))))))
-       else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p2))))))))))))) : R12) = R := by
-  rw [← hR]; unfold u45; zeta_only
+            else u64 b1 t s y5 y6 p2)
+          else u64 b t s y y4 p2)
+       else u64 b t s y y4 p2)) : R12) = R := by
+  rw [← hR]; unfold u45; zeta_only; unfold u65; zeta_only
 
 theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hCOL : MCOL x d np ks ws f)
     (hLIT : MLIT x d np ks ws f) : MCMP x d np ks ws (f + 1) := by
@@ -52,15 +52,14 @@ theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   generalize hR : u45 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb y y1 y2 = R
   intro hok
   have hR' := u45_eq R hR
-  have rej : ∀ b' y' y'' y''' : Buf, ((b', (u (encB bs).length, (t, (u ts.length, (u c, (s, (u S.length, (gb,
-      (0, (y', (y'', y'''))))))))))) : R12) = R → False := by
-    intro b' y' y'' y''' h; subst h; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+  have rej : ∀ b' t' s' y' y'' y''' : Buf, u64 b' t' s' y' y'' y''' = R → False := by
+    intro b' t' s' y' y'' y''' h; subst h; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
   have hx23 := hK.lc.xl
   have hxl : x.length < 2 ^ 62 := by omega
   have hxe := drop_shift hx
   have hcl := drop_len hxe (ser_pos _)
   rcases u15_ok (by omega) hx na with h1 | ⟨h1, -⟩
-  · rw [h1, if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))] at hR'; exact (rej _ _ _ _ hR').elim
+  · rw [h1, if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   have hpb : (u (c + a.ser.length) == 0) = false := by
     rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
   rw [h1, if_neg (kne hpb)] at hR'
@@ -79,7 +78,7 @@ theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   dsimp only at hV2l
   by_cases ho1 : o1 = 1
   rotate_left
-  · rw [if_neg (by simpa using ho1)] at hR'; exact (rej _ _ _ _ hR').elim
+  · rw [if_neg (by simpa using ho1)] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   subst ho1
   rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at hR'
   obtain ⟨hp1, hpt1⟩ := hV1 rfl
@@ -91,7 +90,7 @@ theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   dsimp only at hV2
   by_cases ho2 : o2 = 1
   rotate_left
-  · rw [if_neg (by simpa using ho2)] at hR'; exact (rej _ _ _ _ hR').elim
+  · rw [if_neg (by simpa using ho2)] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   subst ho2
   rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at hR'
   obtain ⟨hp2, hpt2⟩ := hV2 rfl
@@ -117,7 +116,7 @@ theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   iota_only at hR'
   by_cases hh : h = 1
   rotate_left
-  · rw [if_neg (by simpa using hh)] at hR'; exact (rej _ _ _ _ hR').elim
+  · rw [if_neg (by simpa using hh)] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   subst hh
   rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at hR'
   obtain ⟨hshp, hb1, hbl1, hy5, hy6⟩ := h33 rfl
@@ -131,13 +130,13 @@ theorem m_cmp_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   obtain ⟨b3, lb, y9, y10⟩ := U2
   iota_only at hR'
   by_cases hla : la = 2
-  · subst hla; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ hR').elim
+  · subst hla; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   obtain ⟨ela, hb2, hbl2, hy7, hy8⟩ := hU1 hla
   have hU2 := u32_ok hK.lc (f := f) (by omega) ne hxe (by omega) hb2 hbl2 hI.sb (v := y7) (w := y8) (by omega) (by omega)
   rw [hU2e] at hU2; simp only at hU2
   rw [if_neg (kne (by rw [ela]; exact w2_eq2 _))] at hR'
   by_cases hlb : lb = 2
-  · subst hlb; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ hR').elim
+  · subst hlb; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
   obtain ⟨elb, hb3, hbl3, hy9, hy10⟩ := hU2 hlb
   rw [if_neg (kne (by rw [elb]; exact w2_eq2 _)), ela, elb, w2_and, w2_eq1] at hR'
   -- the spec

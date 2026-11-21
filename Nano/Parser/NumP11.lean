@@ -18,12 +18,14 @@ theorem u42_2 (hg : bget x c = 2) : u42 x d b bt t tt c s st gb e y y1 y2 = (b, 
     if_neg (kne (show ((2 : UInt64) == 8) = false from rfl)), if_neg (kne (show ((2 : UInt64) == 9) = false from rfl)),
     if_neg (kne (show ((2 : UInt64) == 10) = false from rfl)), if_neg (kne (show ((2 : UInt64) == 11) = false from rfl)),
     if_neg (kne (show ((2 : UInt64) == 1) = false from rfl)), if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_6 (hg : bget x c = 6) :
     u42 x d b bt t tt c s st gb e y y1 y2 = (b, (bt, (u27 t tt 7 (bget x (c + 1)) 0, (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u42; rw [hg]; zeta_only
   rw [if_neg (kne (show ((6 : UInt64) == 3) = false from rfl)), if_neg (kne (show ((6 : UInt64) == 4) = false from rfl)),
     if_neg (kne (show ((6 : UInt64) == 5) = false from rfl)), if_pos (keq (show ((6 : UInt64) == 6) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_9 (hg : bget x c = 9) :
     u42 x d b bt t tt c s st gb e y y1 y2 = (b, (bt, (u27 t tt 7 (g33 (bget x (c + 1))) 0, (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
@@ -31,6 +33,7 @@ theorem u42_9 (hg : bget x c = 9) :
   rw [if_neg (kne (show ((9 : UInt64) == 3) = false from rfl)), if_neg (kne (show ((9 : UInt64) == 4) = false from rfl)),
     if_neg (kne (show ((9 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((9 : UInt64) == 6) = false from rfl)),
     if_neg (kne (show ((9 : UInt64) == 8) = false from rfl)), if_pos (keq (show ((9 : UInt64) == 9) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_10 (hg : bget x c = 10) :
     u42 x d b bt t tt c s st gb e y y1 y2 = (b, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 1, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
@@ -39,6 +42,7 @@ theorem u42_10 (hg : bget x c = 10) :
     if_neg (kne (show ((10 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((10 : UInt64) == 6) = false from rfl)),
     if_neg (kne (show ((10 : UInt64) == 8) = false from rfl)), if_neg (kne (show ((10 : UInt64) == 9) = false from rfl)),
     if_pos (keq (show ((10 : UInt64) == 10) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_11 (hg : bget x c = 11) :
     u42 x d b bt t tt c s st gb e y y1 y2 = (b, (bt, (u27 t tt 0 1 0, (tt + 1, (c + 1, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
@@ -47,6 +51,7 @@ theorem u42_11 (hg : bget x c = 11) :
     if_neg (kne (show ((11 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((11 : UInt64) == 6) = false from rfl)),
     if_neg (kne (show ((11 : UInt64) == 8) = false from rfl)), if_neg (kne (show ((11 : UInt64) == 9) = false from rfl)),
     if_neg (kne (show ((11 : UInt64) == 10) = false from rfl)), if_pos (keq (show ((11 : UInt64) == 11) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_5 (hg : bget x c = 5) :
     u42 x d b bt t tt c s st gb e y y1 y2 = (b, (bt, (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 0 e 0) (tt + 2) 6 (bget x (c + 1)) (c + 3))
@@ -54,6 +59,7 @@ theorem u42_5 (hg : bget x c = 5) :
   unfold u42; rw [hg]; zeta_only
   rw [if_neg (kne (show ((5 : UInt64) == 3) = false from rfl)), if_neg (kne (show ((5 : UInt64) == 4) = false from rfl)),
     if_pos (keq (show ((5 : UInt64) == 5) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u42_8 (hg : bget x c = 8) :
     u42 x d b bt t tt c s st gb e y y1 y2 = if bget x (c + 2) == 0 then (b, (bt, (t, (tt, (c + 3, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
@@ -64,6 +70,7 @@ theorem u42_8 (hg : bget x c = 8) :
   rw [if_neg (kne (show ((8 : UInt64) == 3) = false from rfl)), if_neg (kne (show ((8 : UInt64) == 4) = false from rfl)),
     if_neg (kne (show ((8 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((8 : UInt64) == 6) = false from rfl)),
     if_pos (keq (show ((8 : UInt64) == 8) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 end
 

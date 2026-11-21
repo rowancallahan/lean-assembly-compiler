@@ -14,11 +14,13 @@ variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb 
 theorem u44_2 (hg : bget x c = 2) :
     u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u44_3 (hg : bget x c = 3) :
     u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((3 : UInt64) == 2) = false from rfl)), if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u44_4 (hg : bget x c = 4) :
     u44 x b bt t tt c s st gb y y1 y2 =
@@ -26,6 +28,7 @@ theorem u44_4 (hg : bget x c = 4) :
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((4 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((4 : UInt64) == 3) = false from rfl)),
     if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u44_5 (hg : bget x c = 5) :
     u44 x b bt t tt c s st gb y y1 y2 =
@@ -34,15 +37,17 @@ theorem u44_5 (hg : bget x c = 5) :
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((5 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((5 : UInt64) == 3) = false from rfl)),
     if_neg (kne (show ((5 : UInt64) == 4) = false from rfl)), if_pos (keq (show ((5 : UInt64) == 5) = true from rfl))]
+  all_goals (try (unfold u65; rfl))
 
 theorem u44_skip {k : UInt64} (hg : bget x c = k) (h2 : (k == 2) = false) (h3 : (k == 3) = false) (h4 : (k == 4) = false)
     (h5 : (k == 5) = false) :
     u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (t, (tt, (u15 x c, (s, (st, (gb, ((if u15 x c == 0 then 0 else 1), (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
-  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5)]; simp only [u62_id]
+  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5)]
+  all_goals (try (unfold u65; rfl))
 
 theorem u44_sc (h : SC y y1 y2) : SCR (u44 x b bt t tt c s st gb y y1 y2) := by
-  unfold u44; simp only [u62_id]
+  unfold u44 u65; zeta_only
   repeat' split
   all_goals exact h
 

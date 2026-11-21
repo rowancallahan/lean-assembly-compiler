@@ -31,10 +31,11 @@ theorem u41_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {
     {b1 : Buf} {r : UInt64} {y3 y4 : Buf}
     (h : u32 x d b bt y y1 c = (b1, (r, (y3, y4)))) :
     u41 x d b bt t tt c s st gb e y y1 y2 =
-      if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2)))))))))))
+      if r == 2 then u64 b1 t s y3 y4 y2
       else if r == 1 then (b1, (bt, (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0, (tt + 2, (c, (u20 s st 0, (st + 1, (st, (1, (y3, (y4, y2)))))))))))
       else u42 x d b1 bt t tt c s st gb e y3 y4 y2 := by
   unfold u41; rw [h]
+  all_goals (try (unfold u65; rfl))
 
 /-- the scratch buffers of a tree task's result -/
 abbrev SCR (R : R12) : Prop := SC R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2

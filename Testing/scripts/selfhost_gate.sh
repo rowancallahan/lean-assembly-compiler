@@ -9,7 +9,7 @@
 #         B2_na compiles C's source to B2.bin (native_arm/test_native.sh, also examples + edge programs)
 #   cross 3-host matrix: RISC-V / rv2arm / native builds of both compilers agree on 14 sources (native_arm/cross_native.sh)
 #   subset  Testing/scripts/subset_check.sh, when present (else SKIP)
-#   ast   AST-size budget (no FAIL): the whole AST is one buffer of κ = 2^19 words; WARNING above 90% of κ (C, self_A)
+#   ast   code-size budget (no FAIL): compiled code is one output buffer of κ = 2^19 bytes; WARNING above 90% (C, self_A)
 # Needs: Lean (elan, toolchain of this checkout), leanc, python3, riscv64-linux-gnu-gcc, aarch64-linux-gnu-gcc,
 # qemu-riscv64, qemu-aarch64. Generators run through Testing/scripts/lean_run.sh (lake env, or the import closure).
 set -uo pipefail
@@ -49,10 +49,10 @@ s_arm() {
   clean
   echo "GA_arm rebuilt = committed, GA_arm(own source) = GA_arm, B2_na(C) = B2.bin, examples + edge OK"
 }
-s_ast() {  # B1 (from s_fix) parses a source to its AST, one byte per word
-  local k=524288 c a; c=$("$W/fp/B1" own < $V/self_S_input.txt | wc -c); a=$("$W/fp/B1" own < $N/self_A_input.txt | wc -c)
-  [ $((10 * a)) -le $((9 * k)) ] && [ $((10 * c)) -le $((9 * k)) ] || echo "WARNING: AST above 90% of κ = $k words"
-  echo "AST words: C $c, self_A $a, limit κ = $k"
+s_ast() {  # code-size budget: a compiler's output (List UInt8) is one buffer, one word per byte, capacity κ = 2^19
+  local k=524288 c a; c=$(stat -c%s $V/B2.bin); a=$("$W/fp/B1" < $N/self_A_input.txt | wc -c)
+  [ $((10 * a)) -le $((9 * k)) ] && [ $((10 * c)) -le $((9 * k)) ] || echo "WARNING: compiled code above 90% of κ = $k bytes"
+  echo "code bytes: C (B2.bin) $c, self_A $a, limit κ = $k"
 }
 s_cross() { $N/cross_native.sh "$W/na"; }
 s_subset() {

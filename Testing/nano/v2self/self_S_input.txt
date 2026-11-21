@@ -2712,7 +2712,15 @@ def g41 (c : List UInt8) (x : Buf) : List UInt8 := g42 c x g_999
 
 def u20 (b : Buf) (j v : UInt64) : Buf := if j < bsize b then bset b j v else bpush b v
 
-def u62 (b : Buf) : Buf := if bsize b == 0 then b else b
+def u64 (b t s y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let z := bsize b + bsize t + bsize s + bsize y + bsize y1 + bsize y2;
+  (b, (0, (t, (0, (0, (s, (0, (0, (0, (y, (y1, y2)))))))))))
+
+def u65 (b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb ok : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let z := bsize b + bsize t + bsize s + bsize y + bsize y1 + bsize y2;
+  (b, (bt, (t, (tt, (c, (s, (st, (gb, (ok, (y, (y1, y2)))))))))))
 
 def u12 : Nat → Buf → UInt64 → UInt64 → UInt64
   | 0, x, i, k => 0
@@ -2826,17 +2834,18 @@ def u36 (b t g s : Buf) : UInt64 :=
 def u29 (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UInt64) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64)))) :=
   let g := bget x c;
-  if g == 1 then (u20 v vt 1, (vt + 1, (t, (tt, (c + 2, 1)))))
+  let w := (if g == 9 then 1 else if g == 10 then 1 else if g == 11 then 1 else if g == 3 then u34 x c else 0);
+  if w == 1 then
+    (let e := u15 x c;
+     (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
+  else if g == 1 then (u20 v vt 1, (vt + 1, (t, (tt, (c + 2, 1)))))
   else if g == 2 then
     (let (v1, z) := u22 16777216 b bt v vt (bget x (c + 1)) (bget x (c + 2));
      let (vt1, ok) := z;
      (v1, (vt1, (t, (tt, (c + 3, ok))))))
   else if g == 3 then
-    (if u34 x c == 1 then
-      (let e := u15 x c;
-       (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
-     else (v, (vt, (u27 (u27 (u27 (u27 (u27 t tt 2 vt 0) (tt + 1) 1 (vt + 1) 0) (tt + 2) 0 0 0) (tt + 3) 1 vt 0) (tt + 4) 0 0 0,
-       (tt + 5, (c + 2, 1))))))
+    (v, (vt, (u27 (u27 (u27 (u27 (u27 t tt 2 vt 0) (tt + 1) 1 (vt + 1) 0) (tt + 2) 0 0 0) (tt + 3) 1 vt 0) (tt + 4) 0 0 0,
+      (tt + 5, (c + 2, 1)))))
   else if g == 4 then
     (let p := u15 x (u15 x (c + 2));
      (u20 v vt 0, (vt + 1, (u27 (u27 (u27 (u27 t tt 4 vt 0) (tt + 1) 0 0 0) (tt + 2) 3 vt 0) (tt + 3) 0 0 0,
@@ -2851,15 +2860,6 @@ def u29 (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UI
      let (v1, z) := u23 16777216 v vt (if 2 * i < bsize d then bget d (2 * i + 1) else 1);
      let (vt1, ok) := z;
      (v1, (vt1, (t, (tt, (e, (if e == 0 then 0 else ok)))))))
-  else if g == 9 then
-    (let e := u15 x c;
-     (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
-  else if g == 10 then
-    (let e := u15 x c;
-     (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
-  else if g == 11 then
-    (let e := u15 x c;
-     (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
   else (v, (vt, (t, (tt, (c, 0)))))
 
 def u28 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → Buf → UInt64 → UInt64 →
@@ -2942,9 +2942,9 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
        if r == 0 then
          (let (y5, h) := u17 x y4 (c + 2);
           if h == 0 then
-           (b1, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, (1, (y3, (y5, y2)))))))))))
-          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, y2))))))))))))
-       else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2))))))))))))
+           u65 b1 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y3 y5 y2
+          else u64 b1 t s y3 y5 y2)
+       else u64 b1 t s y3 y4 y2)
      else
       (let (p, z) := u16 x y2 0 y1 c;
        let (pt, z1) := z;
@@ -2956,13 +2956,13 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
           if h == 1 then
             (let (t1, z4) := u43 16777216 t tt p pt;
              let (tt1, ok1) := z4;
-             (b1, (bt, (t1, (tt1, (c, (s, (st, (gb, (ok1, (y3, (y5, p))))))))))))
-          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, p))))))))))))
-       else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p)))))))))))))
+             u65 b1 bt t1 tt1 c s st gb ok1 y3 y5 p)
+          else u64 b1 t s y3 y5 p)
+       else u64 b t s y y4 p))
   else if g == 4 then
     (let tp := u15 x (u15 x (c + 2));
      let ep := u15 x tp;
-     if ep == 0 then (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y1, y2)))))))))))
+     if ep == 0 then u64 b t s y y1 y2
      else
        (let (b1, z) := u32 x d b bt y y1 tp;
         let (lt, z1) := z;
@@ -2972,62 +2972,59 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
         let (y5, y6) := z3;
         let (y7, pt) := u17 x y6 tp;
         let (y8, pe) := u17 x y7 ep;
-        if lt == 2 then (b2, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y8, y2)))))))))))
-        else if le == 2 then (b2, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y8, y2)))))))))))
-        else if pt == 2 then (b2, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y8, y2)))))))))))
-        else if pe == 2 then (b2, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y8, y2)))))))))))
+        if lt == 2 then u64 b2 t s y5 y8 y2
+        else if le == 2 then u64 b2 t s y5 y8 y2
+        else if pt == 2 then u64 b2 t s y5 y8 y2
+        else if pe == 2 then u64 b2 t s y5 y8 y2
         else if e == 0 then
-          (if ((lt &&& pe) ||| (le &&& pt)) == 1 then (b2, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y8, y2)))))))))))
-           else (b2, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y5, (y8, y2))))))))))))
-        else (b2, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y5, (y8, y2)))))))))))))
+          (if ((lt &&& pe) ||| (le &&& pt)) == 1 then u64 b2 t s y5 y8 y2
+           else u65 b2 bt (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y5 y8 y2)
+        else u65 b2 bt (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y5 y8 y2))
   else if g == 5 then
     (let l := bget x (c + 1);
-     (b, (bt, (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 0 e 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0,
-       (tt + 4, (c + 3, (s, (st, (gb, (1, (y, (y1, y2))))))))))))
-  else if g == 6 then (b, (bt, (u27 t tt 7 (bget x (c + 1)) 0, (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
+     u65 b bt (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 0 e 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0) (tt + 4) (c + 3) s st gb 1 y y1 y2)
+  else if g == 6 then u65 b bt (u27 t tt 7 (bget x (c + 1)) 0) (tt + 1) (c + 2) s st gb 1 y y1 y2
   else if g == 8 then
     (let i := bget x (c + 1);
      let k := bget x (c + 2);
-     if k == 0 then (b, (bt, (t, (tt, (c + 3, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-     else (b, (bt, (u27 (u27 t tt 7 (k - 1) 0) (tt + 1) 0 (if 2 * i < bsize d then (if bget d (2 * i) == 1 then 2 else 1) else 1) 0,
-       (tt + 2, (c + 3, (s, (st, (gb, (1, (y, (y1, y2))))))))))))
-  else if g == 9 then (b, (bt, (u27 t tt 7 (g33 (bget x (c + 1))) 0, (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else if g == 10 then (b, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 1, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else if g == 11 then (b, (bt, (u27 t tt 0 1 0, (tt + 1, (c + 1, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else if g == 1 then (b, (bt, (t, (tt, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else if g == 2 then (b, (bt, (t, (tt, (c + 3, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else (b, (bt, (t, (tt, (c, (u62 s, (st, (gb, (0, (y, (y1, y2)))))))))))
+     if k == 0 then u65 b bt t tt (c + 3) s st gb 1 y y1 y2
+     else u65 b bt (u27 (u27 t tt 7 (k - 1) 0) (tt + 1) 0 (if 2 * i < bsize d then (if bget d (2 * i) == 1 then 2 else 1) else 1) 0) (tt + 2) (c + 3) s st gb 1 y y1 y2)
+  else if g == 9 then u65 b bt (u27 t tt 7 (g33 (bget x (c + 1))) 0) (tt + 1) (c + 2) s st gb 1 y y1 y2
+  else if g == 10 then u65 b bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 1) s st gb 1 y y1 y2
+  else if g == 11 then u65 b bt (u27 t tt 0 1 0) (tt + 1) (c + 1) s st gb 1 y y1 y2
+  else if g == 1 then u65 b bt t tt (c + 2) s st gb 1 y y1 y2
+  else if g == 2 then u65 b bt t tt (c + 3) s st gb 1 y y1 y2
+  else u64 b t s y y1 y2
 
 def u41 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
   let (b1, z) := u32 x d b bt y y1 c;
   let (r, z1) := z;
   let (y3, y4) := z1;
-  if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2)))))))))))
+  if r == 2 then u64 b1 t s y3 y4 y2
   else if r == 1 then
-    (b1, (bt, (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0, (tt + 2, (c, (u20 s st 0, (st + 1, (st, (1, (y3, (y4, y2)))))))))))
+    u65 b1 bt (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0) (tt + 2) c (u20 s st 0) (st + 1) st 1 y3 y4 y2
   else u42 x d b1 bt t tt c s st gb e y3 y4 y2
 
 def u44 (x b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
   let g := bget x c;
-  if g == 2 then (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, (1, (y, (y1, y2)))))))))))
+  if g == 2 then u65 b bt t tt (c + 3) (u20 s st (bget x (c + 1))) (st + 1) gb 1 y y1 y2
   else if g == 3 then
-    (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, (1, (y, (y1, y2)))))))))))
+    u65 b bt (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) (c + 2) (bset s gb 1) st gb 1 y y1 y2
   else if g == 4 then
-    (b, (bt, (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
+    u65 b bt (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y y1 y2
   else if g == 5 then
     (let l := bget x (c + 1);
-     (b, (bt, (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 1 0 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0,
-       (tt + 4, (c + 3, (s, (st, (gb, (1, (y, (y1, y2))))))))))))
+     u65 b bt (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 1 0 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0) (tt + 4) (c + 3) s st gb 1 y y1 y2)
   else
     (let e := u15 x c;
-     (u62 b, (bt, (t, (tt, (e, (s, (st, (gb, ((if e == 0 then 0 else 1), (u62 y, (u62 y1, u62 y2))))))))))))
+     u65 b bt t tt e s st gb (if e == 0 then 0 else 1) y y1 y2)
 
 def u45 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
   let bp := u15 x c;
-  if bp == 0 then (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y1, y2)))))))))))
+  if bp == 0 then u64 b t s y y1 y2
   else
     (let (p1, z) := u16 x y2 0 y1 c;
      let (pt1, z1) := z;
@@ -3047,42 +3044,34 @@ def u45 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb :
              let (b3, z8) := u32 x d b2 bt y7 y8 bp;
              let (lb, z9) := z8;
              let (y9, y10) := z9;
-             if la == 2 then (b3, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y9, (y10, p2)))))))))))
-             else if lb == 2 then (b3, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y9, (y10, p2)))))))))))
+             if la == 2 then u64 b3 t s y9 y10 p2
+             else if lb == 2 then u64 b3 t s y9 y10 p2
              else if (la &&& lb) == 1 then
-               (b3, (bt, (u27 (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) 1 0 0,
-                 (tt + 3, (c, (u20 s st 0, (st + 1, (st, (1, (y9, (y10, p2)))))))))))
-             else (b3, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y9, (y10, p2))))))))))))
-          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y5, (y6, p2))))))))))))
-        else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p2))))))))))))
-     else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p2))))))))))))
+               u65 b3 bt (u27 (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) 1 0 0) (tt + 3) c (u20 s st 0) (st + 1) st 1 y9 y10 p2
+             else u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) c s st gb 1 y9 y10 p2)
+          else u64 b1 t s y5 y6 p2)
+        else u64 b t s y y4 p2)
+     else u64 b t s y y4 p2)
+
+def u66 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l m : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let (b1, z) := u32 x d b bt y y1 c;
+  let (r, z1) := z;
+  let (y3, y4) := z1;
+  if r == 2 then u64 b1 t s y3 y4 y2
+  else if r == 1 then
+    u65 b1 bt (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) c (u20 (u20 s st 0) (st + 1) l) (st + 2) st 1 y3 y4 y2
+  else u65 b1 bt (u27 t tt 0 m 0) (tt + 1) c s st gb 1 y3 y4 y2
 
 def u46 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
-  if bget x c == 6 then (b, (bt, (u27 t tt 9 l (bget x (c + 1)), (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else
-    (let (b1, z) := u32 x d b bt y y1 c;
-     let (r, z1) := z;
-     let (y3, y4) := z1;
-     if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
-     else if r == 1 then
-       (b1, (bt, (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0,
-         (tt + 2, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
-     else (b1, (bt, (u27 t tt 0 0 0, (tt + 1, (c, (s, (st, (gb, (1, (y3, (y4, y2))))))))))))
+  if bget x c == 6 then u65 b bt (u27 t tt 9 l (bget x (c + 1))) (tt + 1) (c + 2) s st gb 1 y y1 y2
+  else u66 x d b bt t tt c s st gb l 0 y y1 y2
 
 def u39 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l k : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
-  if k == 0 then (b, (bt, (t, (tt, (c, (s, (st, (gb, (1, (y, (y1, y2)))))))))))
-  else
-    (let t1 := u27 t tt 9 (l + 1) (k - 1);
-     let (b1, z) := u32 x d b bt y y1 c;
-     let (r, z1) := z;
-     let (y3, y4) := z1;
-     if r == 2 then (b1, (bt, (t1, (tt + 1, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
-     else if r == 1 then
-       (b1, (bt, (u27 (u27 t1 (tt + 1) 4 0 gb) (tt + 2) 1 0 0,
-         (tt + 3, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
-     else (b1, (bt, (u27 t1 (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y3, (y4, y2))))))))))))
+  if k == 0 then u65 b bt t tt c s st gb 1 y y1 y2
+  else u66 x d b bt (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) c s st gb l 1 y y1 y2
 
 def u49 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb k a a2 : UInt64) (y y1 y2 : Buf) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
@@ -3091,7 +3080,7 @@ def u49 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb k
   else if k == 2 then u45 x d b bt t tt c s st gb y y1 y2
   else if k == 3 then u46 x d b bt t tt c s st gb a y y1 y2
   else if k == 9 then u39 x d b bt t tt c s st gb a a2 y y1 y2
-  else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y1, y2)))))))))))
+  else u64 b t s y y1 y2
 
 def u47 : Nat → Buf → Buf → UInt64 → UInt64 → Buf × UInt64
   | 0, g, s, j, e => (g, 0)

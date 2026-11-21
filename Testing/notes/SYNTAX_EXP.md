@@ -14,14 +14,16 @@ model (as on `rv-regen-434`); that change is **not committed** (release-434 stil
   (std axioms).  `compiler_correctG` takes Gen's field bounds `DB` (from `parsed_DB`) for it.
 * Status: RISC-V fixpoint B3 == B2 holds; the native ARM self-compile exceeds the AST budget (below), NumC being shrunk.
 
-### AST-size budget (the parser's AST of a whole source is ONE buffer of κ = 2^19 = 524,288 words)
-| source | AST words | % of κ |
+### Code-size budget (a compiler's output `List UInt8` is ONE buffer, one word per byte: κ = 2^19 = 524,288 bytes)
+(Correction: the AST is NOT the limit; `B1 own` writes 8 bytes per word, so C's AST is ~58k words, self_A's ~65k.)
+| compiled code | bytes | % of κ |
 |---|---|---|
-| C (self_S), before NumC | 373,536 | 71% |
-| C (self_S), with NumC | 473,280 | 90% |
-| self_A (C + GenArm), with NumC | 532,304 | 102% (B2 stops: status −2) |
-selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  Raising κ to 2^20 is a separate structural item
-(lead / owner); 524288 is fixed in the Run proofs (`pcOf`, `κC`).
+| C (B2.bin), before NumC | 421,516 | 80% |
+| C (B2.bin), with NumC | 516,824 | 98.6% |
+| self_A (C + GenArm), with NumC | 586,224 | 112% (B2 on self_A stops: status −2) |
+NumC is ~95k bytes of code; the shrink pass (result-tuple helpers u64/u65/u66, merged u29 branches) saved 2,960 bytes.
+selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  Raising κ to 2^20 (or a larger output buffer)
+is a structural item (lead / owner); 524288 is fixed in the Run proofs (`pcOf`, `κC`).
 
 ## syntax-1 (2026-11-21): exp-syntax + exp-syntax-match combined, on combined-2 (stage rename), fuzzed
 

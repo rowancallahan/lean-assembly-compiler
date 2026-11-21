@@ -18,8 +18,8 @@ theorem u42_3 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {s
          (let (y5, h) := u17 x y4 (c + 2);
           if h == 0 then
            (b1, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, (1, (y3, (y5, y2)))))))))))
-          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, y2))))))))))))
-       else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2))))))))))))
+          else u64 b1 t s y3 y5 y2)
+       else u64 b1 t s y3 y4 y2)
      else
       (let (p, z) := u16 x y2 0 y1 c;
        let (pt, z1) := z;
@@ -32,9 +32,9 @@ theorem u42_3 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {s
             (let (t1, z4) := u43 16777216 t tt p pt;
              let (tt1, ok1) := z4;
              (b1, (bt, (t1, (tt1, (c, (s, (st, (gb, (ok1, (y3, (y5, p))))))))))))
-          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, p))))))))))))
-       else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p))))))))))))) : R12) = R := by
-  rw [← hR]; unfold u42; rw [hg]; zeta_only
+          else u64 b1 t s y3 y5 p)
+       else u64 b t s y y4 p)) : R12) = R := by
+  rw [← hR]; unfold u42; rw [hg]; zeta_only; unfold u65; zeta_only
   rw [if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
 
 /-- a SHIFT: the left operand must be neither literal-only nor a spine let; COL 1 on both operands -/
