@@ -25,6 +25,40 @@ NumC is ~95k bytes of code; the shrink pass (result-tuple helpers u64/u65/u66, m
 selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  Raising κ to 2^20 (or a larger output buffer)
 is a structural item (lead / owner); 524288 is fixed in the Run proofs (`pcOf`, `κC`).
 
+## Design note: raising the buffer capacity κ (owner: output ≤ 2^24 bytes; 2026-11-21)
+### (1) Constants and where they are fixed
+* `C.g_999 := 524288` (Nano/Codegen/Gen.lean:34): κ as a literal in C's OWN source (so also self_S/self_A, PC.all `b222`,
+  Cert, B2.bin). Gen passes it on: `g41 c x := g42 c x g_999` (Gen.lean:485), `a31` (GenArm.lean:404), `e70 x g_999`
+  (JArmTop.lean:25).  The bnew template `bnewT 1 q κ` (Run/Heap.lean:7-11) allocates 8(κ+2) bytes of bump heap, never freed.
+* `NanoMain.κC := 524288` (Main/Sem.lean:138); literal `pcOf 524288` in Run/{GenMain:66, GenMainN:24, GenRunS:20/57/93,
+  HostOk:46, HostOom:61, NdTop2:186-228, GenRun:19-53, SemCases:15-19}; RunsDef:95 (`524288 = κC`).  Proofs are ∀ κ with
+  `κ < 2^40` (Heap.lean:23, RoomRun.lean:266, MainConvG.lean:23), so a new literal is mechanical.
+* Output: `Sem`'s `push κ` returns `.cap` at κ elements (Sem.lean:51-65), so output ≤ κ bytes; start code copies one
+  byte per word (StartCode.lean:64-70).  Test runners: shim OUT 2 MiB / WORK 1 GiB (shim_rv.c:5, shim_arm.c:13),
+  nanorun OUT_CAP 2 MiB, default work 80 MiB (nanorun.c:20, 75).
+* Source / input bound 2^20: `StartCorrect.inputSmall : input.length ≤ 2^20` is in **Spec/Top.lean:76** (frozen); C's
+  input IS its source, so raising the source bound needs a **Spec change** (owner approval).  compileC's `≤ 2^20`
+  (Compile.lean:66) is in Nano/ but cannot exceed the Spec bound usefully.  Proposal: keep 2^20 (C's source is 132 KB).
+* Unchanged, unrelated: `262143 < bsize o` (Gen.lean:480 etc.) bounds the CODE word count for jal reach ±2^18 words.
+* Spec/ never mentions κ (memoryNeeded = cellSize × peak alloc events, Spec/Alloc.lean:47-54).  Machine RAM in Spec/:
+  RISC-V 2 GiB (RiscvMachine.lean:42-43), ARM 1 GiB (ARM/DeepMind.lean:33-34, Sail.lean:91-92).
+### (2) Memory (measured: C's self-compile needs 110 MiB work at κ = 2^19, i.e. ~27 bnews; every bnew is κ words)
+| κ | output cap | C self-compile work | ARM (1 GiB RAM) | RISC-V (2 GiB) |
+|---|---|---|---|---|
+| 2^19 (now) | 512 KiB | 110 MiB | ok | ok |
+| 2^20 | 1 MiB | ~216 MiB | ok | ok |
+| 2^21 | 2 MiB | ~432 MiB | ok | ok |
+| 2^22 | 4 MiB | ~864 MiB | at the limit (code, input, output also in RAM) | ok |
+| 2^24 (asked) | 16 MiB | ~3.4 GiB | no | no |
+So output ≤ 2^24 with one shared κ is infeasible on both machines without a Spec RAM change.  Every compiled program
+also pays 8(κ+2) bytes per bnew.  Proposal: κ = 2^21 now (2 MiB output, 4× C's current code size; C needs ~432 MiB).
+Larger output (2^24 … 2^28) needs per-buffer capacity or a packed / direct-written output region: the LATER project
+"packed output" (also in ROADMAP).
+### (3) Proof impact (estimate)
+Mechanical: g_999 and κC literals, `pcOf 524288` sites (~14 files), `524288 < 2^40` side conditions, AuditSpace's
+concrete bound (4194416 → recomputed), Cert / SrcLink / PC regenerated (C's source changes), test runners' OUT / work
+defaults.  No Spec/ change for κ.  Estimate: ~half a day including regeneration and the gate.
+
 ## syntax-1 (2026-11-21): exp-syntax + exp-syntax-match combined, on combined-2 (stage rename), fuzzed
 
 ### Owner decisions (2026-11-21)
