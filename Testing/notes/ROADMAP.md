@@ -710,3 +710,8 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
   updates, unboxing; Testing/notes/lean_tour/{lcnf,ir}.md) as the reference when J becomes an explicit IR and when
   optimizing; compare our IR choices against it. Note: Lean emits C (then clang), its whole compile path (LCNF → IR →
   C → clang → runtime, plus implemented_by/extern) is unverified; nano proves source → machine code.
+- Proven equivalence with Lean where possible (owner, 2026-11-21): Lean parser/lexer pieces that are total (not
+  partial; e.g. char classes, numeral decoding, escapes, keyword lists) get theorems that nano's trusted definitions
+  equal Lean's own functions (or are a subset with equal values); nano's trusted defs may be rewritten to mirror them.
+  Partial/stateful parser code: differential fuzz only; elaborator-dependent meaning: conservative rejection + fuzz.
+  Work: Nano/LeanEquiv/, Testing/notes/LEAN_EQUIV.md.
