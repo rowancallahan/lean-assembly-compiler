@@ -150,6 +150,41 @@ def s12 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64
   | 0, x, i, b => i
   | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
 
+def s13 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 10 then 1
+      else if rd x i == 32 then
+        if rd x (i + 1) == 105 then if rd x (i + 2) == 110 then
+          if i + 3 < len x then if rd x (i + 3) == 32 then 0 else if rd x (i + 3) == 10 then 0 else s13 n x (i + 1) else 0
+        else s13 n x (i + 1) else s13 n x (i + 1)
+      else if rd x i == 46 then s13 n x (i + 1)
+      else if s0 (rd x i) == 1 then s13 n x (i + 1)
+      else 0
+    else 1
+
+def s14 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 93 then i + 1
+      else if rd x i == 32 then s14 n x (i + 1)
+      else if rd x i == 44 then s14 n x (i + 1)
+      else if s0 (rd x i) == 1 then s14 n x (i + 1)
+      else 0
+    else 0
+
+def s15 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 32 then s15 n x (i + 1)
+      else if rd x i == 10 then s15 n x (i + 1)
+      else if rd x i == 13 then if rd x (i + 1) == 10 then s15 n x (i + 1) else i
+      else if rd x i == 45 then if rd x (i + 1) == 45 then s15 n x (s12 (len' x) x (i + 1) 10) else i
+      else if rd x i == 47 then if rd x (i + 1) == 45 then if rd x (i + 2) == 45 then i else if rd x (i + 2) == 33 then i
+        else if s11 (len' x) x (i + 2) 0 == 0 then 0 else s15 n x (s11 (len' x) x (i + 2) 0) else i
+      else i
+    else i
+
 def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -160,10 +195,12 @@ def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
-    else if k == 92 then s9 n x (s12 (len' x) x (s5 x p k) 10) o
+    else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
     else if k == 93 then s9 n x (s5 x p k) o
-    else if k == 95 then if s11 (len' x) x (p + 2) 0 == 0 then bnew else s9 n x (s11 (len' x) x (p + 2) 0) o
-    else if k == 96 then if s12 (len' x) x (p + 2) 93 < len x then s9 n x (s12 (len' x) x (p + 2) 93 + 1) o else bnew
+    else if k == 95 then
+      let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 2;
+      if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew else s9 n x (s11 (len' x) x b 0) o
+    else if k == 96 then if s14 (len' x) x (p + 2) == 0 then bnew else s9 n x (s14 (len' x) x (p + 2)) o
     else s9 n x (s5 x p k) (q0 o k)
 
 def s10 (x : Array UInt8) : Buf := s9 16777216 x 0 bnew

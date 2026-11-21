@@ -146,7 +146,10 @@ def render_new(rng, prog, ns, rate):
     if sec: lines.append("section S")
     for name, ps, body in prog:
         mods = []
-        if rng.random() < 0.3: mods.append("/-- " + rng.choice(WORDS) + " -/")
+        if rng.random() < 0.3:   # docstrings; Lean skips whitespace, `--` lines and plain block comments after the opener
+            w = rng.choice([x for x in WORDS if "-" not in x and "/" not in x])
+            mods.append(rng.choice(["/-- " + w + " -/", "/-- -- " + w + " -/\n " + w + " -/", "/-- /- " + w + " -/ -- -/\n -/",
+                                    "/--\n -- " + w + "\n " + w + " /- " + w + " -/ -/", "/---/", "/-- " + w + " -- -/"]))
         if rng.random() < 0.3: mods.append(rng.choice(["@[inline]", "@[reducible]", "@[inline, reducible]"]))
         if rng.random() < 0.3: mods.append("private")
         toks = deftoks(name, ps, body, True)
@@ -224,6 +227,18 @@ def mutate(rng, prog, ns):
     k = rng.random()
     if k < 0.15:
         return render_new(rng, prog, ns, 0.1) + rng.choice(["/- unterminated", "/- a /- b -/", "@[inline", "-/"]), "nolean"
+    if k < 0.27:   # Lean-quirk trivia (doc openers, `open … in`, attribute contents) before a def or inside a body
+        text = render_new(rng, prog, ns, 0.1).split("\n")
+        idx = [j for j, l in enumerate(text) if l.startswith(("def g", "def h", "/--", "@[", "private"))]
+        if idx:
+            j = rng.choice(idx)
+            if rng.random() < 0.3 and ":=" in text[j]:
+                text[j] = text[j].replace(":=", rng.choice([":= open Nat in", ":= open Nat in\n", ":= open Nat\n in"]), 1)
+            else:
+                text.insert(j, rng.choice(["/-- -- x -/", "/-- -- x -/\n y -/", "/-- --/", "/--/ x -/", "/-! /- a -/ -- b -/\n c -/",
+                    "/-- /--/ -/ -/", "/-- /-! q -/ -/", "/- /-- x -/ -/", "open Nat in", "open Nat -- c", "open Nat.Foo",
+                    "namespace A.B", "@[inline -- ]\n]", "@[x.y]", "@[simp, inline]", "@[ inline ]", "/-- \r\n-- x -/\n y -/"]))
+        return "\n".join(text), "lean"
     if k < 0.35:   # break a match: drop the catch-all arm or add an arm after it (re-render from the AST)
         def walk(e):
             if e[0] == "match":

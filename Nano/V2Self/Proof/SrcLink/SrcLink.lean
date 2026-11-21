@@ -97,6 +97,114 @@ theorem blockEnd_app : ∀ (d : Nat) (l m t : List UInt8), blockEnd d l = some t
         obtain ⟨a, b⟩ := blockEnd_app _ (c' :: r) m t h
         simp only [List.cons_append] at a; exact ⟨a, b.trans s2⟩
 
+theorem attrEnd_app : ∀ (l m t : List UInt8), attrEnd l = some t → attrEnd (l ++ m) = some (t ++ m) ∧ t <:+ l
+  | [], _, _, h => by simp [attrEnd] at h
+  | b :: r, m, t, h => by
+    simp only [List.cons_append, attrEnd] at h ⊢
+    split at h
+    · rename_i h1; rw [if_pos h1]; cases h; exact ⟨rfl, List.suffix_cons _ _⟩
+    · rename_i h1; rw [if_neg h1]
+      split at h
+      · rename_i h2; rw [if_pos h2]; obtain ⟨a, b⟩ := attrEnd_app r m t h; exact ⟨a, b.trans (List.suffix_cons _ _)⟩
+      · cases h
+
+theorem inWord_app : ∀ (r m : List UInt8), (10 : UInt8) ∈ r → inWord (r ++ m) = inWord r
+  | [], _, h => by simp at h
+  | [a], _, h => by
+    simp at h; subst h; simp [inWord]
+  | [a, b], _, h => by
+    simp at h; rcases h with rfl | rfl <;> simp [inWord]
+  | a :: b :: c :: t, m, _ => by
+    by_cases hab : a = 105 ∧ b = 110
+    · obtain ⟨rfl, rfl⟩ := hab; simp [inWord]
+    · have : ∀ l : List UInt8, inWord (a :: b :: l) = false := fun l => by
+        unfold inWord; split
+        · next e => simp at e; exact absurd ⟨e.1, e.2.1⟩ hab
+        · rfl
+      rw [List.cons_append, List.cons_append, this, this]
+
+theorem lineOk_app : ∀ (l m : List UInt8), (10 : UInt8) ∈ l → lineOk l = true → lineOk (l ++ m) = true
+  | [], _, h, _ => by simp at h
+  | b :: r, m, h, hk => by
+    simp only [List.cons_append, lineOk] at hk ⊢
+    by_cases hb : b = 10
+    · simp [hb]
+    have hr : (10 : UInt8) ∈ r := by rcases List.mem_cons.1 h with e | e; exact absurd e.symm hb; exact e
+    have hb' : (b == 10) = false := by simpa using hb
+    simp only [hb', Bool.false_or, Bool.and_eq_true] at hk ⊢
+    rw [inWord_app r m hr]
+    exact ⟨⟨hk.1.1, hk.1.2⟩, lineOk_app r m hr hk.2⟩
+
+theorem last_cons {c : UInt8} {r : List UInt8} (hl : (c :: r).getLast? = some 10) (hr : r ≠ []) : r.getLast? = some 10 := by
+  rw [← hl, last_of_suffix (List.suffix_cons c r) hr]
+
+theorem docWs_nil (f : Nat) (t : List UInt8) (h : docWs f [] = some t) : t = [] := by
+  cases f with
+  | zero => simp [docWs] at h
+  | succ f => simp [docWs] at h; exact h
+
+theorem docWs_app : ∀ (F F' : Nat) (l m t : List UInt8), F ≤ F' → l.getLast? = some 10 → docWs F l = some t →
+    t ≠ [] → docWs F' (l ++ m) = some (t ++ m) ∧ t <:+ l
+  | 0, _, _, _, _, _, _, h, _ => by simp [docWs] at h
+  | _ + 1, _, [], _, _, _, hl, _, _ => by simp at hl
+  | f + 1, F', c :: r, m, t, hF, hl, h, ht => by
+    obtain ⟨f', rfl⟩ : ∃ f', F' = f' + 1 := ⟨F' - 1, by omega⟩
+    by_cases hr0 : r = []
+    · subst hr0
+      simp at hl; subst hl
+      simp only [docWs] at h
+      rw [if_pos (by simp)] at h; exact absurd (docWs_nil f t h) ht
+    have hlr := last_cons hl hr0
+    have hh : (r ++ m).head? = r.head? := by
+      cases r with
+      | nil => exact absurd rfl hr0
+      | cons a r => rfl
+    have htl : (r ++ m).tail = r.tail ++ m := List.tail_append_of_ne_nil hr0
+    have sr : r <:+ c :: r := List.suffix_cons _ _
+    have t45 : r.head? = some 45 → r.tail ≠ [] := fun e e2 => by
+      obtain ⟨a, rfl⟩ : ∃ a, r = [a] := by
+        cases r with
+        | nil => exact absurd rfl hr0
+        | cons a r' => simp at e2; exact ⟨a, by rw [e2]⟩
+      simp at e hlr; rw [e] at hlr; cases hlr
+    have hh2 : r.head? = some 45 → (r.tail ++ m).head? = r.tail.head? := fun e => by
+      have := t45 e
+      cases hq : r.tail with
+      | nil => exact absurd hq this
+      | cons a r => rfl
+    simp only [List.cons_append, docWs] at h ⊢
+    rw [hh, htl]
+    split at h
+    · rename_i h1; rw [if_pos h1]
+      obtain ⟨a, b⟩ := docWs_app f f' r m t (by omega) hlr h ht
+      exact ⟨a, b.trans sr⟩
+    rename_i h1; rw [if_neg h1]
+    split at h
+    · rename_i h2; rw [if_pos h2]
+      have h10 : (10 : UInt8) ∈ r := List.mem_of_getLast? hlr
+      obtain ⟨-, d2⟩ := takeWhile_app (p := (· != 10)) r m ⟨10, h10, by decide⟩
+      rw [d2]
+      have sd : r.dropWhile (· != 10) <:+ r := List.dropWhile_suffix _
+      have hne : r.dropWhile (· != 10) ≠ [] := fun e => by
+        rw [e] at h; exact ht (docWs_nil f t h)
+      obtain ⟨a, b⟩ := docWs_app f f' _ m t (by omega) (by rw [← hlr]; exact last_of_suffix sd hne) h ht
+      exact ⟨a, b.trans (sd.trans sr)⟩
+    rename_i h2; rw [if_neg h2]
+    split at h
+    · rename_i h3
+      rw [hh2 h3.2.1, if_pos h3]
+      obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 h
+      obtain ⟨b1, b2⟩ := blockEnd_app 0 r.tail m u hu
+      rw [b1, Option.bind_some]
+      have hne : u ≠ [] := fun e => by rw [e] at hd; exact ht (docWs_nil f t hd)
+      have su : u <:+ c :: r := b2.trans ((List.tail_suffix r).trans sr)
+      obtain ⟨a, b⟩ := docWs_app f f' u m t (by omega) (by rw [← hl]; exact last_of_suffix su hne) hd ht
+      exact ⟨a, b.trans su⟩
+    · rename_i h3
+      have h3' : ¬ (c = 47 ∧ r.head? = some 45 ∧ (r.tail ++ m).head? ≠ some 45 ∧ (r.tail ++ m).head? ≠ some 33) := by
+        intro e; rw [hh2 e.2.1] at e; exact h3 e
+      rw [if_neg h3']; cases h; exact ⟨rfl, List.suffix_refl _⟩
+
 theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.getLast? = some 10)
     (h : step l = some (e, r)) : step (l ++ m) = some (e, r ++ m) ∧ (r = [] ∨ r.getLast? = some 10) := by
   match l, hl, h with
@@ -139,20 +247,38 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
     · rename_i h47; rw [if_pos h47]
       obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
       simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
-      obtain ⟨b1, b2⟩ := blockEnd_app 0 r1 m t hb
-      rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
+      have ha0 : a0 = 45 := by simp at h47; exact h47.2
+      have hr1 : r1 ≠ [] := by rintro rfl; simp at hl; rw [ha0] at hl; cases hl
+      have hh : (r1 ++ m).head? = r1.head? := by
+        cases r1 with
+        | nil => exact absurd rfl hr1
+        | cons a r => rfl
+      simp only [hh]
+      by_cases hc : (r1.head? == some 45 || r1.head? == some 33) = true
+      · rw [if_pos hc]; simp only [hc, ite_true] at hb
+        obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 hb
+        have hune : u ≠ [] := fun e => by rw [e] at hd; simp [blockEnd] at hd
+        have hr1t : r1.tail ≠ [] := fun e => by rw [e] at hu; exact hune (docWs_nil _ _ hu)
+        have sl : r1.tail <:+ c :: a0 :: r1 := (List.tail_suffix _).trans sr1
+        obtain ⟨a1, a2⟩ := docWs_app _ (a0 :: (r1 ++ m)).length r1.tail m u
+          (by simp only [List.length_cons, List.length_append]; omega)
+          (by rw [← hl]; exact last_of_suffix sl hr1t) hu hune
+        have htl : (r1 ++ m).tail = r1.tail ++ m := List.tail_append_of_ne_nil hr1
+        rw [htl, a1, Option.bind_some]
+        obtain ⟨b1, b2⟩ := blockEnd_app 0 u m t hd
+        rw [b1]; exact ⟨rfl, suf _ (b2.trans (a2.trans sl))⟩
+      · rw [if_neg hc]
+        have hc' : (r1.head? == some 45 || r1.head? == some 33) = false := by simpa using hc
+        simp only [hc', Bool.false_eq_true, ite_false] at hb
+        obtain ⟨b1, b2⟩ := blockEnd_app 0 r1 m t hb
+        rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
     rename_i h47; rw [if_neg h47]
     split at h
     · rename_i h64; rw [if_pos h64]
-      split at h
-      · cases h
-      rename_i a t hdw
-      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
-      have ha := dw_head r1 a t hdw
-      have hsa : a :: t <:+ r1 := by rw [← hdw]; exact List.dropWhile_suffix _
-      obtain ⟨-, t2⟩ := takeWhile_app (p := (· != 93)) r1 m ⟨a, hsa.subset (by simp), ha⟩
-      rw [t2, hdw]
-      exact ⟨rfl, suf _ ((List.suffix_cons _ _).trans (hsa.trans sr1))⟩
+      obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      obtain ⟨b1, b2⟩ := attrEnd_app r1 m t hb
+      rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
     rename_i h64; rw [if_neg h64]
     have hf : opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: (r1 ++ m))) =
         opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: r1)) :=
@@ -181,10 +307,14 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
         · rename_i hd hwc
           rw [if_neg hd, if_pos hwc]
           split at h
-          · rename_i hlk; cases h; rw [if_pos hlk]
+          · rename_i hlk; rw [if_pos hlk]
             have hm := mem_dropWhile (p := isW) _ h10 (by decide)
-            obtain ⟨-, t3⟩ := takeWhile_app (p := (· != 10)) _ m ⟨10, hm, by decide⟩
-            rw [t3]; exact ⟨rfl, suf _ ((List.dropWhile_suffix _).trans sd)⟩
+            split at h
+            · rename_i hok; cases h
+              rw [if_pos (lineOk_app _ m hm hok)]
+              obtain ⟨-, t3⟩ := takeWhile_app (p := (· != 10)) _ m ⟨10, hm, by decide⟩
+              rw [t3]; exact ⟨rfl, suf _ ((List.dropWhile_suffix _).trans sd)⟩
+            · cases h
           · rename_i hlk; rw [if_neg hlk]
             split at h
             · cases h; rw [if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩

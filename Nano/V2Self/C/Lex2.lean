@@ -3,7 +3,8 @@ Output Buf: tag bytes; tags: def 1, let 2, UInt64 3, Int64 4, number 5 (+ 8 LE v
 ident 14 (+ (1,byte)* + 0), `,` 15, × 16, → 17, | 18, => 19, < 20, == 23, &&& 26, ||| 27, <<< 28, >>> 29 (restricted set: no ≤ ≠ && || Int64; the source itself uses only == and < in conditions, so build_self_S.py needs no desugaring),
 [ 30, ] 31, if 32, then 33, else 34, Nat 35, Buf 36, List 37, UInt8 38.  Whitespace = space, newline.  Any other character: output empty.
 Internal kinds: 0 reject, 90 skip, 91 end; trivia (SYNTAX_EXP.md): 92 namespace/open/section/end (skip the line), 93 private,
-94 dash-dash, 95 slash-dash (nested, to the matching dash-slash), 96 `@[` (to the first `]`). Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
+94 dash-dash, 95 slash-dash (nested, to the matching dash-slash; after a doc opener s15 first skips Lean's whitespace),
+96 `@[` (names, spaces, commas to the `]`: s14); a 92 line must pass s13 (names, dots, spaces; no word `in`). Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
 import Nano.V2Self.C.Base
 namespace C
 
@@ -134,6 +135,41 @@ def s12 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
   | 0, x, i, b => i
   | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
 
+def s13 : Nat → List UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 10 then 1
+      else if rd x i == 32 then
+        if rd x (i + 1) == 105 then if rd x (i + 2) == 110 then
+          if i + 3 < len x then if rd x (i + 3) == 32 then 0 else if rd x (i + 3) == 10 then 0 else s13 n x (i + 1) else 0
+        else s13 n x (i + 1) else s13 n x (i + 1)
+      else if rd x i == 46 then s13 n x (i + 1)
+      else if s0 (rd x i) == 1 then s13 n x (i + 1)
+      else 0
+    else 1
+
+def s14 : Nat → List UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 93 then i + 1
+      else if rd x i == 32 then s14 n x (i + 1)
+      else if rd x i == 44 then s14 n x (i + 1)
+      else if s0 (rd x i) == 1 then s14 n x (i + 1)
+      else 0
+    else 0
+
+def s15 : Nat → List UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 32 then s15 n x (i + 1)
+      else if rd x i == 10 then s15 n x (i + 1)
+      else if rd x i == 13 then if rd x (i + 1) == 10 then s15 n x (i + 1) else i
+      else if rd x i == 45 then if rd x (i + 1) == 45 then s15 n x (s12 (len' x) x (i + 1) 10) else i
+      else if rd x i == 47 then if rd x (i + 1) == 45 then if rd x (i + 2) == 45 then i else if rd x (i + 2) == 33 then i
+        else if s11 (len' x) x (i + 2) 0 == 0 then 0 else s15 n x (s11 (len' x) x (i + 2) 0) else i
+      else i
+    else i
+
 def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -144,10 +180,12 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
-    else if k == 92 then s9 n x (s12 (len' x) x (s5 x p k) 10) o
+    else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
     else if k == 93 then s9 n x (s5 x p k) o
-    else if k == 95 then if s11 (len' x) x (p + 2) 0 == 0 then bnew else s9 n x (s11 (len' x) x (p + 2) 0) o
-    else if k == 96 then if s12 (len' x) x (p + 2) 93 < len x then s9 n x (s12 (len' x) x (p + 2) 93 + 1) o else bnew
+    else if k == 95 then
+      let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 2;
+      if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew else s9 n x (s11 (len' x) x b 0) o
+    else if k == 96 then if s14 (len' x) x (p + 2) == 0 then bnew else s9 n x (s14 (len' x) x (p + 2)) o
     else s9 n x (s5 x p k) (q0 o k)
 
 def s10 (x : List UInt8) : Buf := s9 16777216 x 0 bnew

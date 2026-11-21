@@ -17,6 +17,35 @@ def lean(fn):
 PARSE = ("unexpected", "unterminated", "expected ", "missing end", "invalid 'end'")
 def parse_errors(out): return [l for l in out.split("\n") if "error:" in l and any(k in l.split("error:", 1)[1] for k in PARSE)]
 
+def strip(s):
+    """blank out comments as the S lexer sees them (LexSpec: nested block comments, dash-dash lines), keeping columns"""
+    o, i = [], 0
+    while i < len(s):
+        if s.startswith("--", i):
+            j = s.find("\n", i); j = len(s) if j < 0 else j; o.append(" " * (j - i)); i = j
+        elif s.startswith("/-", i):
+            d, j = 0, i + 2
+            while j < len(s):
+                if s.startswith("-/", j):
+                    j += 2
+                    if d == 0: break
+                    d -= 1
+                elif s.startswith("/-", j): d += 1; j += 2
+                else: j += 1
+            o.append("".join(c if c == "\n" else " " for c in s[i:j])); i = j
+        else: o.append(s[i]); i += 1
+    return "".join(o)
+
+def layout_only(r, tag):
+    """a Lean parse error in a valid program's exact text that the comment-blanked text has too: Lean's offside rule
+    (S has no layout rule), not a comment divergence"""
+    fn = f"{D}/lean_{SEED}_{tag}_{r['i']}"
+    hdr = "import Nano.V2Self.Prelude\nset_option maxRecDepth 10000\n\n"
+    open(fn + ".x.lean", "w").write(hdr + r["src"] + "\n"); open(fn + ".s.lean", "w").write(hdr + strip(r["src"]) + "\n")
+    ex, st = parse_errors(lean(fn + ".x.lean")), parse_errors(lean(fn + ".s.lean"))
+    pos = lambda es: [e.split(".lean:", 1)[1].split(" error")[0] for e in es]
+    return bool(ex) and pos(ex) == pos(st)
+
 def batch(items, tag):
     """(b1) the exact NEW texts must have no Lean parse error; (b2) the Lean copies (`lsrc`, or the text itself for
     mutants) evaluate to the QEMU outputs"""
@@ -40,7 +69,15 @@ def batch(items, tag):
         for k, (inp, st, out) in enumerate(r["outs"]):
             if not okstat(st): continue          # out of memory / capacity: Lean has no such stop
             if got.get((r["i"], k)) != out: bad.append((r["kind"], r["i"], k, got.get((r["i"], k)), out))
+    if perr and tag.startswith("v"):     # find the programs with a parse error of their own (batches can cascade)
+        own = [r for r in items if parse_errors(lean_one(r, tag))]
+        return bad + [("LAYOUT" if layout_only(r, tag) else "PARSE", tag, r["i"]) for r in own]
     return bad + [("PARSE", tag, e) for e in perr]
+
+def lean_one(r, tag):
+    fn = f"{D}/lean_{SEED}_{tag}_{r['i']}.x.lean"
+    open(fn, "w").write("import Nano.V2Self.Prelude\nset_option maxRecDepth 10000\n\n" + r["src"] + "\n")
+    return lean(fn)
 
 if __name__ == "__main__":
     valid = [r for r in res if r["kind"] == "valid" and r["res"] == "ok"]
@@ -52,6 +89,14 @@ if __name__ == "__main__":
     bad = [b for o in out for b in o]
     nchk = sum(1 for r in valid + muts for o in r["outs"] if okstat(o[1]))
     skipped = sum(1 for r in valid + muts for o in r["outs"] if not okstat(o[1]))
+    # a mutant Lean does not accept at all (parse or elaboration error: no #eval value) is a superset acceptance, not a
+    # miscompile; everything else (a valid program Lean rejects, or any differing value) is a mismatch
+    parse_m = {b[1] for b in bad if b[0] == "PARSE" and b[1].startswith("m")}
+    sup = {b[1] for b in bad if b[0] == "mut" and b[3] is None}
+    lay = [b for b in bad if b[0] == "LAYOUT"]
+    real = [b for b in bad if not (b[0] == "PARSE" and b[1].startswith("m")) and not (b[0] == "mut" and b[3] is None)
+            and b[0] != "LAYOUT"]
     print(f"lean: {len(valid)} valid + {len(muts)} accepted mutants, {nchk} runs compared, {skipped} capacity/OOM runs "
-          f"skipped, {len(bad)} mismatches")
-    for b in bad: print("MISMATCH", str(b)[:300])
+          f"skipped; {len(sup | {int(m[1:]) for m in parse_m})} accepted mutants Lean rejects (superset); {len(lay)} valid texts Lean rejects by layout only; {len(real)} mismatches")
+    for b in real: print("MISMATCH", str(b)[:300])
+    for m in sorted(sup | {int(m[1:]) for m in parse_m}): print("SUPERSET", m)

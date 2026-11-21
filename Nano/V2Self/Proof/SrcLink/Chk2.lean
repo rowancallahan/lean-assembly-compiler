@@ -29,9 +29,5 @@ theorem lex18 : lexAll (x18.length + 1) x18 = some w18 := by decide +kernel
 theorem tok18 : tokens w18 = some S18 := by decide +kernel
 theorem nl18 : x18.getLast? = some 10 := by decide +kernel
 theorem chk18 : chkDef (pDef F D18 T18) di18 d18 T19 = true := by decide +kernel
-theorem lex19 : lexAll (x19.length + 1) x19 = some w19 := by decide +kernel
-theorem tok19 : tokens w19 = some S19 := by decide +kernel
-theorem nl19 : x19.getLast? = some 10 := by decide +kernel
-theorem chk19 : chkDef (pDef F D19 T19) di19 d19 T20 = true := by decide +kernel
 
 end SrcGen

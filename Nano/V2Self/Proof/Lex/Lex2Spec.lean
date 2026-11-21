@@ -4,8 +4,11 @@ whitespace (space, newline) is skipped; the operator table is searched longest-f
 [A-Za-z0-9_'] (a keyword/prim, an identifier `14 (1,b)* 0`, or, when it starts with a digit, a decimal number
 `5` + 8 little-endian bytes of the value mod 2^64, all characters of the word must then be digits).
 Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
-(slash-dash ... dash-slash, docstrings included; unterminated: rejected); an attribute `@[ … ]` up to the first `]` (none: rejected); the
-words `namespace`, `open`, `section`, `end` up to the newline; the word `private`.
+(slash-dash ... dash-slash; unterminated: rejected); a doc comment (slash-dash-dash or slash-dash-bang): as Lean, the
+whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
+attribute `@[ … ]` of names, spaces and commas; the words `namespace`, `open`, `section`, `end` with the rest of their
+line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the word
+`private`.
 Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
 import Nano.V2Self.Prelude
 namespace LexSpec
@@ -58,6 +61,33 @@ def blockEnd : Nat → List UInt8 → Option (List UInt8)
     else if c = 47 ∧ c' = 45 then blockEnd (d + 1) r
     else blockEnd d (c' :: r)
 
+/-- Lean's whitespace after a doc-comment opener (fuel `f`): spaces, newlines (CR LF too), dash-dash lines and plain
+nested block comments; the rest from the comment body's first byte -/
+def docWs : Nat → List UInt8 → Option (List UInt8)
+  | 0, _ => none
+  | _ + 1, [] => some []
+  | f + 1, c :: r =>
+    if c = 32 ∨ c = 10 ∨ (c = 13 ∧ r.head? = some 10) then docWs f r
+    else if c = 45 ∧ r.head? = some 45 then docWs f (r.dropWhile (· != 10))
+    else if c = 47 ∧ r.head? = some 45 ∧ r.tail.head? ≠ some 45 ∧ r.tail.head? ≠ some 33 then
+      (blockEnd 0 r.tail).bind (docWs f)
+    else some (c :: r)
+
+/-- `in` as a word: after a space, followed by the end, a space or a newline -/
+def inWord : List UInt8 → Bool
+  | 105 :: 110 :: t => t.head? == none || t.head? == some 32 || t.head? == some 10
+  | _ => false
+
+/-- the rest of a `namespace`/`open`/`section`/`end` line: names, dots, spaces up to the newline, no word `in` -/
+def lineOk : List UInt8 → Bool
+  | [] => true
+  | b :: r => b == 10 || ((isW b || b == 46 || b == 32) && !(b == 32 && inWord r) && lineOk r)
+
+/-- the rest after the `]` of an attribute whose bytes are names, spaces and commas -/
+def attrEnd : List UInt8 → Option (List UInt8)
+  | [] => none
+  | b :: r => if b == 93 then some r else if isW b || b == 32 || b == 44 then attrEnd r else none
+
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
 /-- 8 little-endian bytes -/
@@ -69,11 +99,10 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
   | c :: r =>
     if c == 32 || c == 10 then some ([], r)
     else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
-    else if c == 47 && r.head? == some 45 then (blockEnd 0 r.tail).map fun t => ([], t)
-    else if c == 64 && r.head? == some 91 then
-      (match r.tail.dropWhile (· != 93) with
-       | [] => none
-       | _ :: t => some ([], t))
+    else if c == 47 && r.head? == some 45 then
+      (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
+       else blockEnd 0 r.tail).map fun t => ([], t)
+    else if c == 64 && r.head? == some 91 then (attrEnd r.tail).map fun t => ([], t)
     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
       | some (s, k) => some ([k], (c :: r).drop s.length)
       | none =>
@@ -81,7 +110,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
         let rest := (c :: r).dropWhile isW
         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
         else if isW c then
-          if lineKw.contains w then some ([], rest.dropWhile (· != 10))
+          if lineKw.contains w then (if lineOk rest then some ([], rest.dropWhile (· != 10)) else none)
           else if dropKw.contains w then some ([], rest)
           else some ((match kwTable.lookup w with
                  | some k => [k]

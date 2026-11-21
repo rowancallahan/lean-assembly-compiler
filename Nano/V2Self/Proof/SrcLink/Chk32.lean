@@ -17,8 +17,5 @@ theorem lex248 : lexAll (x248.length + 1) x248 = some w248 := by decide +kernel
 theorem tok248 : tokens w248 = some S248 := by decide +kernel
 theorem nl248 : x248.getLast? = some 10 := by decide +kernel
 theorem chk248 : chkDef (pDef F D248 T248) di248 d248 T249 = true := by decide +kernel
-theorem lex249 : lexAll (x249.length + 1) x249 = some w249 := by decide +kernel
-theorem tok249 : tokens w249 = some S249 := by decide +kernel
-theorem chk249 : chkDef (pDef F D249 T249) di249 d249 T250 = true := by decide +kernel
 
 end SrcGen

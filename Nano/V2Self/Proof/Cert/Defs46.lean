@@ -10,23 +10,38 @@ open NanoMain ParSpec
 
 theorem ok_247 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 247) :
     Spec247 inp (defMean inp κC ms PC.d247) := by
-  intro a1 a2
-  refine defMean_den (Sh.g42 inp a1 a2) PC.b247 ([.b a1, .w a2] ++ List.replicate 5 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2
+  refine defMean_den (C.g51 a0 a1 a2) PC.b247 ([.b a0, .b a1, .b a2] ++ List.replicate 9 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b247
   den_unfold
   den
 
 theorem ok_248 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 248) :
     Spec248 inp (defMean inp κC ms PC.d248) := by
-  intro a1
-  refine defMean_den (Sh.g41 inp a1) PC.b248 ([.b a1]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b248
-  den_unfold
-  den
+  have L : ∀ (n : Nat), n < 18446744073709551616 → ∀ (w0 : UInt64) (a1 : (Buf × (Buf × Buf))),
+      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z248 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s248 e) n ([.w w0, .b a1.1, .b a1.2.1, .b a1.2.2] ++ List.replicate 12 (.w 0))) (enc (C.g52 n a1)) := by
+    intro n
+    induction n with
+    | zero => intro _ w0 a1; rw [C.g52.eq_def]; den_match 0; unfold PC.z248; exact loop_zero (by den)
+    | succ n ih =>
+      intro hn w0 a1
+      rw [C.g52.eq_def]
+      den_match 1
+      refine loop_succ (env1 := [.w (UInt64.ofNat n), .b a1.1, .b a1.2.1, .b a1.2.2] ++ List.replicate 12 (.w 0)) rfl ?_
+      have hc : ∀ (a1' : (Buf × (Buf × Buf))) {e : Nd} {env : List W}, DenT ⟨inp, κC, ms⟩ e env a1' →
+          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z248 e) PC.s248 n ([.w (UInt64.ofNat n), .b a1.1, .b a1.2.1, .b a1.2.2] ++ List.replicate 12 (.w 0))) (.cont e) env (C.g52 n a1') :=
+        fun a1' _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ a1'⟩
+      unfold PC.s248
+      den [hc]
+  intro a0 a1 hn
+  refine defMean_loop (C.g52 a0 a1) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  have h := L a0 hn (UInt64.ofNat a0) a1
+  rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
 theorem ok_249 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 249) :
     Spec249 inp (defMean inp κC ms PC.d249) := by
-  refine defMean_den (Sh.m inp) PC.b249 ([]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0
+  refine defMean_den (C.g53 a0) PC.b249 ([.b a0] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b249
   den_unfold
   den

@@ -17,13 +17,5 @@ theorem lex131 : lexAll (x131.length + 1) x131 = some w131 := by decide +kernel
 theorem tok131 : tokens w131 = some S131 := by decide +kernel
 theorem nl131 : x131.getLast? = some 10 := by decide +kernel
 theorem chk131 : chkDef (pDef F D131 T131) di131 d131 T132 = true := by decide +kernel
-theorem lex132 : lexAll (x132.length + 1) x132 = some w132 := by decide +kernel
-theorem tok132 : tokens w132 = some S132 := by decide +kernel
-theorem nl132 : x132.getLast? = some 10 := by decide +kernel
-theorem chk132 : chkDef (pDef F D132 T132) di132 d132 T133 = true := by decide +kernel
-theorem lex133 : lexAll (x133.length + 1) x133 = some w133 := by decide +kernel
-theorem tok133 : tokens w133 = some S133 := by decide +kernel
-theorem nl133 : x133.getLast? = some 10 := by decide +kernel
-theorem chk133 : chkDef (pDef F D133 T133) di133 d133 T134 = true := by decide +kernel
 
 end SrcGen
