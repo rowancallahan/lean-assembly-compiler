@@ -70,7 +70,12 @@ def batch(items, tag):
             if not okstat(st): continue          # out of memory / capacity: Lean has no such stop
             if got.get((r["i"], k)) != out: bad.append((r["kind"], r["i"], k, got.get((r["i"], k)), out))
     if perr and tag.startswith("v"):     # find the programs with a parse error of their own (batches can cascade)
-        own = [r for r in items if parse_errors(lean_one(r, tag))]
+        lines, ln = [], 4             # exact file: 3 header lines, then the items joined by newlines
+        for r in items:
+            n = r["src"].count("\n") + 1; lines.append((ln, ln + n, r)); ln += n
+        errl = {int(e.split(".lean:", 1)[1].split(":")[0]) for e in perr}
+        cand = [r for a, b, r in lines if any(a <= l < b for l in errl)]
+        own = [r for r in cand if parse_errors(lean_one(r, tag))]
         return bad + [("LAYOUT" if layout_only(r, tag) else "PARSE", tag, r["i"]) for r in own]
     return bad + [("PARSE", tag, e) for e in perr]
 
