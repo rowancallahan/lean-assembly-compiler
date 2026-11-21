@@ -696,7 +696,8 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
 - Why nano exists next to Lean (note for readers): Lean 4 self-hosts but its code generator (Lean → IR → C → clang)
   is unverified; nano proves source-to-machine-code correctness against Sail/DeepMind ISA models with no C compiler in
   the trust base, and proves its own binary is its compiled source.
-- OPEN (owner thinking, 2026-11-21): reaching big Lean programs. (1) grow nano itself (strict, self-hosting); (2) add a
+- DECIDED (owner, 2026-11-21): stay fully self-hosting, nano style; grow nano itself; no second Lean-hosted mode
+  for now (option (2) below is shelved). Was open: reaching big Lean programs. (1) grow nano itself (strict, self-hosting); (2) add a
   second mode next to nano: Lean elaborates, nano's proven back end compiles the kernel-checked definition and emits a
   per-program proof that the machine code computes that definition (trusts Lean's kernel only, not its compiler/IR/C;
   not self-hosting; like Legacy/'s compile%). Rejected for now: compiling Lean's IR/LCNF (would trust Lean's unverified
