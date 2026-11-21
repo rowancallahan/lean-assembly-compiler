@@ -61,3 +61,9 @@ Only the `Nano` surface Par1 accepts is covered (no error recovery claims: a rej
 error). No dead declarations remain in this part (swept: every name is
 referenced from elsewhere); the per-frame lemma families in `ParRunWF*` are the main repetition left and are not
 mergeable without changing statements used by the dispatch.
+
+## `ParInv*` (L3)
+Per-handler proofs that each step of the parser's machine code preserves the representation `Rep` between the real
+machine memory and the L2 state (one file per handler: `ParInvAtom`, `ParInvCall`, `ParInvIte`, …; shared helpers in
+`ParInvOps`, `ParInvStep`, `ParInvTop`). Swept: no dead declarations; same-statement copies merged
+(`status_bset0`, `ite0`, `shRow0`, `drop_bset0`, `nt_code`).
