@@ -6,9 +6,10 @@ whitespace (space, newline) is skipped; the operator table is searched longest-f
 Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
 (slash-dash ... dash-slash; unterminated: rejected); a doc comment (slash-dash-dash or slash-dash-bang): as Lean, the
 whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
-attribute `@[ … ]` of names, spaces and commas; the words `namespace`, `open`, `section`, `end` with the rest of their
-line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the word
-`private`.
+attribute `@[ name, … ]` (names `inline`, `reducible`); the words `namespace`, `open`, `section`, `end` with the rest of
+their line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the
+word `private`.  A slash-dash-dash doc comment, an attribute and `private` must be followed (after whitespace and
+comments) by what Lean allows after them: `@[`, `private` or `def` (`declNext`), so nano accepts no modifier Lean rejects.
 Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
 import Nano.Main.Prelude
 namespace LexSpec
@@ -83,10 +84,36 @@ def lineOk : List UInt8 → Bool
   | [] => true
   | b :: r => b == 10 || ((isW b || b == 46 || b == 32) && !(b == 32 && inWord r) && lineOk r)
 
-/-- the rest after the `]` of an attribute whose bytes are names, spaces and commas -/
-def attrEnd : List UInt8 → Option (List UInt8)
-  | [] => none
-  | b :: r => if b == 93 then some r else if isW b || b == 32 || b == 44 then attrEnd r else none
+/-- the attribute names accepted: `inline`, `reducible` -/
+def attrNames : List (List UInt8) := [[105, 110, 108, 105, 110, 101], [114, 101, 100, 117, 99, 105, 98, 108, 101]]
+
+/-- the contents of `@[` … `]` as Lean's grammar, names from `attrNames`: `name (, name)*`, spaces around; the rest after
+the `]`.  `w`: the name being read (reversed); `d`: a name has been read since the start or the last comma -/
+def attrEnd : List UInt8 → List UInt8 → Bool → Option (List UInt8)
+  | [], _, _ => none
+  | b :: r, w, d =>
+    if isW b then (if d then none else attrEnd r (b :: w) false)
+    else if w ≠ [] ∧ !attrNames.contains w.reverse then none
+    else
+      let d' := d || w ≠ []
+      if b == 32 then attrEnd r [] d'
+      else if b == 44 then (if d' then attrEnd r [] false else none)
+      else if b == 93 then (if d' then some r else none)
+      else none
+
+/-- `w` followed by a non-name byte (or the end) starts `l` -/
+def startsWord (w l : List UInt8) : Bool := w.isPrefixOf l && !(((l.drop w.length).head?.map isW).getD false)
+
+/-- the words `def`, `private` -/
+def DEF : List UInt8 := [100, 101, 102]
+def PRIV : List UInt8 := [112, 114, 105, 118, 97, 116, 101]
+
+/-- what may follow a declaration modifier, after Lean's whitespace and comments (`docWs`): `@[` (`k = 2`: after a doc
+comment), `private` (`k ≥ 1`: after a doc comment or an attribute) or `def` (Lean: docComment? attributes? private? def) -/
+def declNext (k : Nat) (l : List UInt8) : Bool :=
+  match docWs (l.length + 1) l with
+  | some u => (k == 2 && [64, 91].isPrefixOf u) || (1 ≤ k && startsWord PRIV u) || startsWord DEF u
+  | none => false
 
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
@@ -101,8 +128,10 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
     else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
     else if c == 47 && r.head? == some 45 then
       (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
-       else blockEnd 0 r.tail).map fun t => ([], t)
-    else if c == 64 && r.head? == some 91 then (attrEnd r.tail).map fun t => ([], t)
+       else blockEnd 0 r.tail).bind fun t =>
+        if r.tail.head? == some 45 && !declNext 2 t then none else some ([], t)
+    else if c == 64 && r.head? == some 91 then
+      (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none
     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
       | some (s, k) => some ([k], (c :: r).drop s.length)
       | none =>
@@ -111,7 +140,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
         else if isW c then
           if lineKw.contains w then (if lineOk rest then some ([], rest.dropWhile (· != 10)) else none)
-          else if dropKw.contains w then some ([], rest)
+          else if dropKw.contains w then (if declNext 0 rest then some ([], rest) else none)
           else some ((match kwTable.lookup w with
                  | some k => [k]
                  | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)

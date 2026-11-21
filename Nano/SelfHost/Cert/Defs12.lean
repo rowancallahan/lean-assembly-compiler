@@ -8,11 +8,11 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_89 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 89) :
-    Spec89 inp (defMean inp κC ms PC.d89) := by
+theorem ok_93 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 93) :
+    Spec93 inp (defMean inp κC ms PC.d93) := by
   intro a0 a1 a2
-  refine defMean_den (C.v103 a0 a1 a2) PC.b89 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b89
+  refine defMean_den (C.v103 a0 a1 a2) PC.b93 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b93
   den_unfold
   den
 

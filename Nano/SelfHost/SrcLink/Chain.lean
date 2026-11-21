@@ -33,16 +33,33 @@ import Nano.SelfHost.SrcLink.Data30
 import Nano.SelfHost.SrcLink.Data31
 import Nano.SelfHost.SrcLink.Data32
 import Nano.SelfHost.SrcLink.Data33
+import Nano.SelfHost.SrcLink.Data34
 namespace SrcGen
 open ParSpec SrcLink
 
-def F : Nat := 270312
-def T253 : List Tok := []
-def X252 : List UInt8 := x252
-def W252 : List UInt64 := w252
-def Ls253 : List DefA := []
+def F : Nat := 275768
+def T257 : List Tok := []
+def X256 : List UInt8 := x256
+def W256 : List UInt64 := w256
+def Ls257 : List DefA := []
+def T256 : List Tok := S256 ++ T257
+def Ls256 : List DefA := d256 :: Ls257
+def T255 : List Tok := S255 ++ T256
+def Ls255 : List DefA := d255 :: Ls256
+def X255 : List UInt8 := x255 ++ X256
+def W255 : List UInt64 := w255 ++ W256
+def T254 : List Tok := S254 ++ T255
+def Ls254 : List DefA := d254 :: Ls255
+def X254 : List UInt8 := x254 ++ X255
+def W254 : List UInt64 := w254 ++ W255
+def T253 : List Tok := S253 ++ T254
+def Ls253 : List DefA := d253 :: Ls254
+def X253 : List UInt8 := x253 ++ X254
+def W253 : List UInt64 := w253 ++ W254
 def T252 : List Tok := S252 ++ T253
 def Ls252 : List DefA := d252 :: Ls253
+def X252 : List UInt8 := x252 ++ X253
+def W252 : List UInt64 := w252 ++ W253
 def T251 : List Tok := S251 ++ T252
 def Ls251 : List DefA := d251 :: Ls252
 def X251 : List UInt8 := x251 ++ X252
@@ -1305,5 +1322,9 @@ def D250 : List DefI := D249 ++ [di249]
 def D251 : List DefI := D250 ++ [di250]
 def D252 : List DefI := D251 ++ [di251]
 def D253 : List DefI := D252 ++ [di252]
+def D254 : List DefI := D253 ++ [di253]
+def D255 : List DefI := D254 ++ [di254]
+def D256 : List DefI := D255 ++ [di255]
+def D257 : List DefI := D256 ++ [di256]
 
 end SrcGen

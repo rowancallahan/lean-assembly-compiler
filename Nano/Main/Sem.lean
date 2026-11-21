@@ -210,15 +210,27 @@ theorem docWs_len : ∀ (f : Nat) (l t : List UInt8), LexSpec.docWs f l = some t
       simp; omega
     · cases h; simp
 
-theorem attrEnd_len : ∀ (l t : List UInt8), LexSpec.attrEnd l = some t → t.length < l.length
-  | [], _, h => by simp [LexSpec.attrEnd] at h
-  | b :: r, t, h => by
+theorem attrEnd_len : ∀ (l w : List UInt8) (d : Bool) (t : List UInt8), LexSpec.attrEnd l w d = some t → t.length < l.length
+  | [], _, _, _, h => by simp [LexSpec.attrEnd] at h
+  | b :: r, w, d, t, h => by
     simp only [LexSpec.attrEnd] at h
     split at h
-    · cases h; simp
     · split at h
-      · have := attrEnd_len r t h; simp; omega
       · cases h
+      · have := attrEnd_len r _ _ t h; simp; omega
+    · split at h
+      · cases h
+      · split at h
+        · have := attrEnd_len r _ _ t h; simp; omega
+        · split at h
+          · split at h
+            · have := attrEnd_len r _ _ t h; simp; omega
+            · cases h
+          · split at h
+            · split at h
+              · cases h; simp
+              · cases h
+            · cases h
 
 theorem dw_len {p : UInt8 → Bool} (l : List UInt8) : (l.dropWhile p).length ≤ l.length :=
   (List.dropWhile_suffix p).length_le
@@ -234,17 +246,19 @@ theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpe
     split at h
     · cases h; have := dw_len (p := (· != 10)) rr.tail; simp; omega
     split at h
-    · obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
-      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+    · obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      have he' : e = [] ∧ r = t := by split at he <;> simp_all
+      obtain ⟨rfl, rfl⟩ := he'
       have htt : rr.tail.tail.length ≤ rr.tail.length := by cases rr.tail <;> simp
       split at hb
       · obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 hb
         have := docWs_len _ _ _ hu; have := blockEnd_len 0 _ _ hd; simp; omega
       · have := blockEnd_len 0 _ _ hb; simp; omega
     split at h
-    · obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
-      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
-      have := attrEnd_len _ _ hb; simp; omega
+    · obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      have he' : e = [] ∧ r = t := by split at he <;> simp_all
+      obtain ⟨rfl, rfl⟩ := he'
+      have := attrEnd_len _ _ _ _ hb; simp; omega
     split at h
     · rename_i s k hf
       cases h
@@ -267,7 +281,9 @@ theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpe
             · cases h; have := dw_len (p := (· != 10)) ((c :: rr).dropWhile LexSpec.isW); simp; omega
             · cases h
           split at h
-          · cases h; simp; omega
+          · split at h
+            · cases h; simp; omega
+            · cases h
           cases h
           split
           · simp; omega

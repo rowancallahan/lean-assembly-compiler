@@ -149,14 +149,26 @@ def s13 : Nat → List UInt8 → UInt64 → UInt64
       else 0
     else 1
 
-def s14 : Nat → List UInt8 → UInt64 → UInt64
-  | 0, x, i => 0
-  | n + 1, x, i => if i < len x then
-      if rd x i == 93 then i + 1
-      else if rd x i == 32 then s14 n x (i + 1)
-      else if rd x i == 44 then s14 n x (i + 1)
-      else if s0 (rd x i) == 1 then s14 n x (i + 1)
-      else 0
+def s16 (x : List UInt8) (p e : UInt64) : UInt64 :=
+  let d := e - p;
+  let c := rd x p;
+  if d == 6 then
+    if c == 105 then if rd x (p + 1) == 110 then if rd x (p + 2) == 108 then if rd x (p + 3) == 105 then if rd x (p + 4) == 110 then if rd x (p + 5) == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0
+  else if d == 9 then
+    if c == 114 then if rd x (p + 1) == 101 then if rd x (p + 2) == 100 then if rd x (p + 3) == 117 then if rd x (p + 4) == 99 then if rd x (p + 5) == 105 then if rd x (p + 6) == 98 then if rd x (p + 7) == 108 then if rd x (p + 8) == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+  else 0
+
+def s14 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, ws, d => 0
+  | n + 1, x, i, ws, d => if i < len x then
+      if s0 (rd x i) == 1 then if d == 1 then 0 else s14 n x (i + 1) (if ws == 0 then i else ws) 0
+      else
+        let d2 := if ws == 0 then d else if s16 x ws i == 1 then 1 else 2;
+        if d2 == 2 then 0
+        else if rd x i == 32 then s14 n x (i + 1) 0 d2
+        else if rd x i == 44 then if d2 == 1 then s14 n x (i + 1) 0 0 else 0
+        else if rd x i == 93 then if d2 == 1 then i + 1 else 0
+        else 0
     else 0
 
 def s15 : Nat → List UInt8 → UInt64 → UInt64
@@ -171,6 +183,20 @@ def s15 : Nat → List UInt8 → UInt64 → UInt64
       else i
     else i
 
+def s19 (x : List UInt8) (j : UInt64) : UInt64 :=
+  if rd x j == 100 then if rd x (j + 1) == 101 then if rd x (j + 2) == 102 then if s0 (rd x (j + 3)) == 0 then 1 else 0 else 0 else 0 else 0
+
+def s18 (x : List UInt8) (j k : UInt64) : UInt64 :=
+  if 0 < k then
+    if rd x j == 112 then if rd x (j + 1) == 114 then if rd x (j + 2) == 105 then if rd x (j + 3) == 118 then if rd x (j + 4) == 97 then if rd x (j + 5) == 116 then if rd x (j + 6) == 101 then if s0 (rd x (j + 7)) == 0 then 1 else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j
+  else s19 x j
+
+def s17 (x : List UInt8) (i k : UInt64) : UInt64 :=
+  let j := s15 (len' x) x i;
+  if j == 0 then 0
+  else if k == 2 then if rd x j == 64 then if rd x (j + 1) == 91 then 1 else s18 x j k else s18 x j k
+  else s18 x j k
+
 def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -182,11 +208,14 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
     else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
-    else if k == 93 then s9 n x (s5 x p k) o
+    else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
     else if k == 95 then
       let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 2;
-      if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew else s9 n x (s11 (len' x) x b 0) o
-    else if k == 96 then if s14 (len' x) x (p + 2) == 0 then bnew else s9 n x (s14 (len' x) x (p + 2)) o
+      if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew
+      else if rd x (p + 2) == 45 then if s17 x (s11 (len' x) x b 0) 2 == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
+      else s9 n x (s11 (len' x) x b 0) o
+    else if k == 96 then if s14 (len' x) x (p + 2) 0 0 == 0 then bnew
+      else if s17 x (s14 (len' x) x (p + 2) 0 0) 1 == 1 then s9 n x (s14 (len' x) x (p + 2) 0 0) o else bnew
     else s9 n x (s5 x p k) (q0 o k)
 
 def s10 (x : List UInt8) : Buf := s9 16777216 x 0 bnew

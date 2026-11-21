@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_227 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 227) :
-    Spec227 inp (defMean inp κC ms PC.d227) := by
+theorem ok_231 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 231) :
+    Spec231 inp (defMean inp κC ms PC.d231) := by
   intro a0 a1
-  refine defMean_den (C.g31 a0 a1) PC.b227 ([.b a0, .w a1] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b227
+  refine defMean_den (C.g31 a0 a1) PC.b231 ([.b a0, .w a1] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b231
   den_unfold
   den
 
-theorem ok_228 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 228) :
-    Spec228 inp (defMean inp κC ms PC.d228) := by
+theorem ok_232 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 232) :
+    Spec232 inp (defMean inp κC ms PC.d232) := by
   intro a0 a1 a2
-  refine defMean_den (C.g32 a0 a1 a2) PC.b228 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b228
+  refine defMean_den (C.g32 a0 a1 a2) PC.b232 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b232
   den_unfold
   den
 
-theorem ok_229 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 229) :
-    Spec229 inp (defMean inp κC ms PC.d229) := by
+theorem ok_233 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 233) :
+    Spec233 inp (defMean inp κC ms PC.d233) := by
   intro a0
-  refine defMean_den (C.g33 a0) PC.b229 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b229
+  refine defMean_den (C.g33 a0) PC.b233 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b233
   den_unfold
   den
 

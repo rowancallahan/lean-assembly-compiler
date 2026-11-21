@@ -13,5 +13,13 @@ theorem lex169 : lexAll (x169.length + 1) x169 = some w169 := by decide +kernel
 theorem tok169 : tokens w169 = some S169 := by decide +kernel
 theorem nl169 : x169.getLast? = some 10 := by decide +kernel
 theorem chk169 : chkDef (pDef F D169 T169) di169 d169 T170 = true := by decide +kernel
+theorem lex170 : lexAll (x170.length + 1) x170 = some w170 := by decide +kernel
+theorem tok170 : tokens w170 = some S170 := by decide +kernel
+theorem nl170 : x170.getLast? = some 10 := by decide +kernel
+theorem chk170 : chkDef (pDef F D170 T170) di170 d170 T171 = true := by decide +kernel
+theorem lex171 : lexAll (x171.length + 1) x171 = some w171 := by decide +kernel
+theorem tok171 : tokens w171 = some S171 := by decide +kernel
+theorem nl171 : x171.getLast? = some 10 := by decide +kernel
+theorem chk171 : chkDef (pDef F D171 T171) di171 d171 T172 = true := by decide +kernel
 
 end SrcGen

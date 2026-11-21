@@ -34,9 +34,13 @@ theorem step_tok {l : List UInt8} {e : List UInt64} {r : List UInt8} (h : LexSpe
     split at h
     · cases h; exact ⟨_, ht⟩
     split at h
-    · obtain ⟨_, -, he⟩ := Option.map_eq_some_iff.1 h; cases he; exact ⟨_, ht⟩
+    · obtain ⟨_, -, he⟩ := Option.bind_eq_some_iff.1 h
+      have : e = [] := by split at he <;> simp_all
+      subst this; exact ⟨_, ht⟩
     split at h
-    · obtain ⟨_, -, he⟩ := Option.map_eq_some_iff.1 h; cases he; exact ⟨_, ht⟩
+    · obtain ⟨_, -, he⟩ := Option.bind_eq_some_iff.1 h
+      have : e = [] := by split at he <;> simp_all
+      subst this; exact ⟨_, ht⟩
     split at h
     · rename_i s k hf
       cases h
@@ -55,7 +59,9 @@ theorem step_tok {l : List UInt8} {e : List UInt64} {r : List UInt8} (h : LexSpe
             · cases h; exact ⟨_, ht⟩
             · cases h
           split at h
-          · cases h; exact ⟨_, ht⟩
+          · split at h
+            · cases h; exact ⟨_, ht⟩
+            · cases h
           cases h
           split
           · rename_i k hk

@@ -97,16 +97,31 @@ theorem blockEnd_app : ∀ (d : Nat) (l m t : List UInt8), blockEnd d l = some t
         obtain ⟨a, b⟩ := blockEnd_app _ (c' :: r) m t h
         simp only [List.cons_append] at a; exact ⟨a, b.trans s2⟩
 
-theorem attrEnd_app : ∀ (l m t : List UInt8), attrEnd l = some t → attrEnd (l ++ m) = some (t ++ m) ∧ t <:+ l
-  | [], _, _, h => by simp [attrEnd] at h
-  | b :: r, m, t, h => by
+theorem attrEnd_app : ∀ (l w : List UInt8) (d : Bool) (m t : List UInt8), attrEnd l w d = some t →
+    attrEnd (l ++ m) w d = some (t ++ m) ∧ t <:+ l
+  | [], _, _, _, _, h => by simp [attrEnd] at h
+  | b :: r, w, d, m, t, h => by
     simp only [List.cons_append, attrEnd] at h ⊢
+    have IH := fun w d h => attrEnd_app r w d m t h
+    have sr := List.suffix_cons b r
     split at h
-    · rename_i h1; rw [if_pos h1]; cases h; exact ⟨rfl, List.suffix_cons _ _⟩
-    · rename_i h1; rw [if_neg h1]
-      split at h
-      · rename_i h2; rw [if_pos h2]; obtain ⟨a, b⟩ := attrEnd_app r m t h; exact ⟨a, b.trans (List.suffix_cons _ _)⟩
+    · rename_i h1; rw [if_pos h1]; split at h
       · cases h
+      · rename_i h2; rw [if_neg h2]; obtain ⟨a, b'⟩ := IH _ _ h; exact ⟨a, b'.trans sr⟩
+    · rename_i h1; rw [if_neg h1]; split at h
+      · cases h
+      · rename_i h2; rw [if_neg h2]
+        split at h
+        · rename_i h3; rw [if_pos h3]; obtain ⟨a, b'⟩ := IH _ _ h; exact ⟨a, b'.trans sr⟩
+        · rename_i h3; rw [if_neg h3]; split at h
+          · rename_i h4; rw [if_pos h4]; split at h
+            · rename_i h5; rw [if_pos h5]; obtain ⟨a, b'⟩ := IH _ _ h; exact ⟨a, b'.trans sr⟩
+            · cases h
+          · rename_i h4; rw [if_neg h4]; split at h
+            · rename_i h5; rw [if_pos h5]; split at h
+              · rename_i h6; rw [if_pos h6]; cases h; exact ⟨rfl, sr⟩
+              · cases h
+            · cases h
 
 theorem inWord_app : ∀ (r m : List UInt8), (10 : UInt8) ∈ r → inWord (r ++ m) = inWord r
   | [], _, h => by simp at h
@@ -205,6 +220,41 @@ theorem docWs_app : ∀ (F F' : Nat) (l m t : List UInt8), F ≤ F' → l.getLas
         intro e; rw [hh2 e.2.1] at e; exact h3 e
       rw [if_neg h3']; cases h; exact ⟨rfl, List.suffix_refl _⟩
 
+theorem startsWord_app (w u m : List UInt8) (hw : 10 ∉ w) (hu : u.getLast? = some 10) :
+    startsWord w (u ++ m) = startsWord w u := by
+  unfold startsWord
+  rw [isPrefixOf_app w u m hw hu]
+  cases hp : w.isPrefixOf u
+  · simp
+  · have hpre := List.isPrefixOf_iff_prefix.1 hp
+    have hlen : w.length < u.length := by
+      rcases Nat.lt_or_eq_of_le hpre.length_le with h | h
+      · exact h
+      · exfalso
+        have := hpre.eq_of_length h
+        subst this; exact hw (List.mem_of_getLast? hu)
+    rw [List.drop_append_of_le_length (by omega)]
+    obtain ⟨x0, xs, hx⟩ : ∃ x0 xs, u.drop w.length = x0 :: xs := by
+      cases e : u.drop w.length with
+      | nil => have := congrArg List.length e; simp at this; omega
+      | cons x0 xs => exact ⟨x0, xs, rfl⟩
+    rw [hx]; rfl
+
+theorem declNext_app (k : Nat) (t m : List UInt8) (ht : t.getLast? = some 10) (h : declNext k t = true) :
+    declNext k (t ++ m) = true := by
+  unfold declNext at h ⊢
+  cases hd : docWs (t.length + 1) t with
+  | none => rw [hd] at h; cases h
+  | some u =>
+    rw [hd] at h
+    have hu : u ≠ [] := by rintro rfl; simp [startsWord, PRIV, DEF, List.isPrefixOf] at h
+    obtain ⟨a1, a2⟩ := docWs_app _ ((t ++ m).length + 1) t m u (by simp) ht hd hu
+    rw [a1]
+    have hul : u.getLast? = some 10 := by rw [← ht]; exact last_of_suffix a2 hu
+    simp only
+    rw [isPrefixOf_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul]
+    exact h
+
 theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.getLast? = some 10)
     (h : step l = some (e, r)) : step (l ++ m) = some (e, r ++ m) ∧ (r = [] ∨ r.getLast? = some 10) := by
   match l, hl, h with
@@ -245,8 +295,12 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
     rename_i h45; rw [if_neg h45]
     split at h
     · rename_i h47; rw [if_pos h47]
-      obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
-      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      obtain ⟨hdn, rfl, rfl⟩ : (r1.head? = some 45 → declNext 2 t = true) ∧ e = [] ∧ t = r := by
+        cases hb2 : (r1.head? == some 45 && !declNext 2 t)
+        · simp only [hb2, Bool.false_eq_true, if_false, ite_false, Option.some.injEq, Prod.mk.injEq] at he
+          exact ⟨fun e => by simpa [e] using hb2, he.1.symm, he.2⟩
+        · simp [hb2] at he
       have ha0 : a0 = 45 := by simp at h47; exact h47.2
       have hr1 : r1 ≠ [] := by rintro rfl; simp at hl; rw [ha0] at hl; cases hl
       have hh : (r1 ++ m).head? = r1.head? := by
@@ -266,19 +320,40 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
         have htl : (r1 ++ m).tail = r1.tail ++ m := List.tail_append_of_ne_nil hr1
         rw [htl, a1, Option.bind_some]
         obtain ⟨b1, b2⟩ := blockEnd_app 0 u m t hd
-        rw [b1]; exact ⟨rfl, suf _ (b2.trans (a2.trans sl))⟩
+        have st : t <:+ c :: a0 :: r1 := b2.trans (a2.trans sl)
+        rw [b1, Option.bind_some]
+        have hdn' : (r1.head? == some 45 && !declNext 2 (t ++ m)) = false := by
+          by_cases e : r1.head? = some 45
+          · have d := hdn e
+            have htn : t ≠ [] := by rintro rfl; simp [declNext, docWs, startsWord, PRIV, DEF, List.isPrefixOf] at d
+            simp [declNext_app 2 t m (by rw [← hl]; exact last_of_suffix st htn) d]
+          · simp [e]
+        simp only [hdn', Bool.false_eq_true, if_false]; exact ⟨trivial, suf _ st⟩
       · rw [if_neg hc]
         have hc' : (r1.head? == some 45 || r1.head? == some 33) = false := by simpa using hc
         simp only [hc', Bool.false_eq_true, ite_false] at hb
         obtain ⟨b1, b2⟩ := blockEnd_app 0 r1 m t hb
-        rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
+        have n45 : (r1.head? == some 45) = false := by
+          cases e : r1.head? == some 45
+          · rfl
+          · exact absurd (by simp [e]) hc
+        rw [b1, Option.bind_some]; simp only [n45, Bool.false_and, Bool.false_eq_true, if_false]
+        exact ⟨trivial, suf _ (b2.trans sr1)⟩
     rename_i h47; rw [if_neg h47]
     split at h
     · rename_i h64; rw [if_pos h64]
-      obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
-      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
-      obtain ⟨b1, b2⟩ := attrEnd_app r1 m t hb
-      rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
+      obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      obtain ⟨hdn, rfl, rfl⟩ : declNext 1 t = true ∧ e = [] ∧ t = r := by
+        cases hb2 : declNext 1 t
+        · simp [hb2] at he
+        · simp only [hb2, if_true, ite_true, Option.some.injEq, Prod.mk.injEq] at he
+          exact ⟨rfl, he.1.symm, he.2⟩
+      obtain ⟨b1, b2⟩ := attrEnd_app r1 [] false m t hb
+      have st : t <:+ c :: a0 :: r1 := b2.trans sr1
+      have htn : t ≠ [] := by rintro rfl; simp [declNext, docWs, startsWord, PRIV, DEF, List.isPrefixOf] at hdn
+      rw [b1, Option.bind_some]
+      simp only [declNext_app 1 t m (by rw [← hl]; exact last_of_suffix st htn) hdn, if_true, ite_true]
+      exact ⟨trivial, suf _ st⟩
     rename_i h64; rw [if_neg h64]
     have hf : opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: (r1 ++ m))) =
         opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: r1)) :=
@@ -317,7 +392,15 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
             · cases h
           · rename_i hlk; rw [if_neg hlk]
             split at h
-            · cases h; rw [if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
+            · rename_i hdk
+              split at h
+              · rename_i hdn
+                cases h; rw [if_pos hdk]
+                have hm := mem_dropWhile (p := isW) _ h10 (by decide)
+                have hne : (c :: a0 :: r1).dropWhile isW ≠ [] := fun e => by rw [e] at hm; simp at hm
+                rw [if_pos (declNext_app 0 _ m (by rw [← hl]; exact last_of_suffix sd hne) hdn)]
+                exact ⟨rfl, suf _ sd⟩
+              · cases h
             · cases h; rw [if_neg ‹_›]; exact ⟨rfl, suf _ sd⟩
         · cases h
 

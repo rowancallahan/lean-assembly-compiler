@@ -406,6 +406,175 @@ theorem s3_eq (x : List UInt8) (p e : UInt64) (hx : x.length < 2 ^ 32) (he : e.t
   · simp; exact hrd (p + 7) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 8) (by simp [UInt64.toNat_add]; omega)
 
+
+/-! ### attribute names (s16), the same technique as s3 -/
+
+/-- s16 with its reads made parameters (definitionally the same body) -/
+def s16' (d c c1 c2 c3 c4 c5 c6 c7 c8 : UInt64) : UInt64 :=
+  if d == 6 then
+    if c == 105 then if c1 == 110 then if c2 == 108 then if c3 == 105 then if c4 == 110 then if c5 == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0
+  else if d == 9 then
+    if c == 114 then if c1 == 101 then if c2 == 100 then if c3 == 117 then if c4 == 99 then if c5 == 105 then if c6 == 98 then if c7 == 108 then if c8 == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+  else 0
+
+theorem s16_eq_s16' (x : List UInt8) (p e : UInt64) :
+    s16 x p e = s16' (e - p) (rd x p) (rd x (p + 1)) (rd x (p + 2)) (rd x (p + 3)) (rd x (p + 4)) (rd x (p + 5))
+      (rd x (p + 6)) (rd x (p + 7)) (rd x (p + 8)) := rfl
+
+set_option maxHeartbeats 4000000 in
+theorem s16'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 c6 c7 c8 : UInt64) (hl : w.length < 2 ^ 32)
+    (h : ∀ j, j < 9 → j < w.length → [c0, c1, c2, c3, c4, c5, c6, c7, c8].getD j 0 = (w.getD j 0).toUInt64) :
+    s16' w.length.toUInt64 c0 c1 c2 c3 c4 c5 c6 c7 c8 = if attrNames.contains w then 1 else 0 := by
+  rcases w with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, _ | ⟨f, _ | ⟨g, _ | ⟨i, _ | ⟨j, _ | ⟨k, r⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩
+  · clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    simp at h0
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    simp at h0 h1
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    simp at h0 h1 h2
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    simp at h0 h1 h2 h3
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    have h8 := h 8 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7 h8
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    try simp [attrNames, tu2]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    have h8 := h 8 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7 h8
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s16', nest]
+    have hd : (a :: b :: c :: d :: e :: f :: g :: i :: j :: k :: r).length = r.length + 10 := by simp
+    obtain ⟨N, hN⟩ : ∃ N, N = r.length + 10 := ⟨_, rfl⟩
+    rw [hd, ← hN]
+    rw [hd] at hl
+    have hl' : N < 2 ^ 32 := by omega
+    have n6 : N.toUInt64 ≠ 6 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n9 : N.toUInt64 ≠ 9 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    simp [attrNames, n6, n9]
+
+theorem s16_eq (x : List UInt8) (p e : UInt64) (hx : x.length < 2 ^ 32) (he : e.toNat ≤ x.length) (hp : p.toNat ≤ e.toNat) :
+    s16 x p e = if attrNames.contains ((x.drop p.toNat).take (e.toNat - p.toNat)) then 1 else 0 := by
+  rw [s16_eq_s16']
+  have hw : ((x.drop p.toNat).take (e.toNat - p.toNat)).length = e.toNat - p.toNat := by simp; omega
+  have hd : e - p = ((x.drop p.toNat).take (e.toNat - p.toNat)).length.toUInt64 := by
+    apply UInt64.toNat.inj; rw [hw]; simp [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 hp)]
+    omega
+  rw [hd]
+  apply s16'_eq _ _ _ _ _ _ _ _ _ _ (by rw [hw]; omega)
+  intro j hj hjw
+  rw [hw] at hjw
+  have hrd : ∀ q : UInt64, q.toNat = p.toNat + j → rd x q = _ := fun q hq => rd_seg x p q _ j hjw hq
+  obtain rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 := by omega
+  · simp; exact hrd p (by omega)
+  · simp; exact hrd (p + 1) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 2) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 3) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 4) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 5) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 6) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 7) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 8) (by simp [UInt64.toNat_add]; omega)
+
+
 /-! ### the token kind (s4) -/
 
 /-- s4 with its reads/inner calls made parameters (definitionally the same body) -/
@@ -726,8 +895,9 @@ theorem kind_spec (c : UInt8) (r : List UInt8) :
     (kind (c :: r) = 94 ∧ c = 45 ∧ r.head? = some 45 ∧ step (c :: r) = some ([], r.tail.dropWhile (· != 10))) ∨
     (kind (c :: r) = 95 ∧ c = 47 ∧ r.head? = some 45 ∧ step (c :: r) =
       (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
-       else blockEnd 0 r.tail).map fun t => ([], t)) ∨
-    (kind (c :: r) = 96 ∧ c = 64 ∧ r.head? = some 91 ∧ step (c :: r) = (attrEnd r.tail).map fun t => ([], t)) ∨
+       else blockEnd 0 r.tail).bind fun t => if r.tail.head? == some 45 && !declNext 2 t then none else some ([], t)) ∨
+    (kind (c :: r) = 96 ∧ c = 64 ∧ r.head? = some 91 ∧
+      step (c :: r) = (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none) ∨
     (∃ e ∈ opTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).drop e.1.length) ∧
         e.1.isPrefixOf (c :: r) = true) ∨
     (kind (c :: r) = 5 ∧ ((c :: r).takeWhile isW).all isD = true ∧ step (c :: r) = some (5 :: le8 (numVal ((c :: r).takeWhile isW)), (c :: r).dropWhile isW)) ∨
@@ -737,7 +907,8 @@ theorem kind_spec (c : UInt8) (r : List UInt8) :
       (c :: r).dropWhile isW)) ∨
     (kind (c :: r) = 92 ∧ step (c :: r) = if lineOk ((c :: r).dropWhile isW) then
       some ([], ((c :: r).dropWhile isW).dropWhile (· != 10)) else none) ∨
-    (kind (c :: r) = 93 ∧ step (c :: r) = some ([], (c :: r).dropWhile isW)) := by
+    (kind (c :: r) = 93 ∧ step (c :: r) =
+      if declNext 0 ((c :: r).dropWhile isW) then some ([], (c :: r).dropWhile isW) else none) := by
   unfold kind step
   by_cases hws : c = 32 ∨ c = 10
   · have : (c == 32 || c == 10) = true := by simpa using hws
@@ -959,7 +1130,7 @@ theorem s11_sound : ∀ (n : Nat) (x : List UInt8) (i d : UInt64), x.length < 2 
 
 /-! ### trivia checks (s13: a skipped line; s14: an attribute; s15: Lean's whitespace after a doc opener) -/
 
-theorem rd_at (x : List UInt8) (i k : UInt64) (hx : x.length < 2 ^ 32) (hi : i.toNat ≤ x.length) (hk : k.toNat < 4) :
+theorem rd_at (x : List UInt8) (i k : UInt64) (hx : x.length < 2 ^ 32) (hi : i.toNat ≤ x.length) (hk : k.toNat < 16) :
     rd x (i + k) = ((x.drop i.toNat).getD k.toNat 0).toUInt64 := by
   rw [rd_eq]
   have : (i + k).toNat = i.toNat + k.toNat := by rw [UInt64.toNat_add]; omega
@@ -990,42 +1161,6 @@ theorem lt_or_end (x : List UInt8) (i : UInt64) (hx : x.length < 2 ^ 32) (hi : i
   by_cases h : i.toNat < x.length
   · exact .inl ⟨(lt_len hx).2 h, h⟩
   · exact .inr ⟨fun h' => h ((lt_len hx).1 h'), by simp; omega⟩
-
-/-- s14 (when it does not reject) ends an attribute -/
-theorem s14_sound : ∀ (n : Nat) (x : List UInt8) (i : UInt64), x.length < 2 ^ 32 → i.toNat ≤ x.length →
-    s14 n x i ≠ 0 → (s14 n x i).toNat ≤ x.length ∧ attrEnd (x.drop i.toNat) = some (x.drop (s14 n x i).toNat)
-  | 0, x, i, hx, hi, h => by simp [s14] at h
-  | n + 1, x, i, hx, hi, h => by
-    rcases lt_or_end x i hx hi with ⟨hlt, hl⟩ | ⟨hlt, _⟩
-    · have hi1 := inc_toNat hl hx
-      have IH : s14 n x (i + 1) ≠ 0 → (s14 n x (i + 1)).toNat ≤ x.length ∧
-          attrEnd (x.drop i.toNat).tail = some (x.drop (s14 n x (i + 1)).toNat) := fun h2 => by
-        have := s14_sound n x (i + 1) hx (by omega) h2; rwa [drop_tail x i hx hl] at this
-      simp only [s14, if_pos hlt, rd_at0] at h ⊢
-      have hd := drop_cons hl
-      rw [hd] at h IH ⊢
-      generalize x.getD i.toNat 0 = a at h IH ⊢
-      simp only [List.getD_cons_zero, List.tail_cons, attrEnd] at h IH ⊢
-      have l93 : (93 : UInt64) = (93 : UInt8).toUInt64 := rfl
-      have l32 : (32 : UInt64) = (32 : UInt8).toUInt64 := rfl
-      have l44 : (44 : UInt64) = (44 : UInt8).toUInt64 := rfl
-      rw [l93, l32, l44, s0_eq] at h ⊢
-      simp only [u64_lit] at h ⊢
-      by_cases c93 : a = 93
-      · subst c93; simp only [if_true, beq_self_eq_true] at h ⊢
-        exact ⟨by omega, by rw [hi1]⟩
-      by_cases c32 : a = 32
-      · subst c32; simp (config := {decide := true}) only [if_true, if_false, beq_self_eq_true] at h ⊢; exact IH h
-      by_cases c44 : a = 44
-      · subst c44; simp (config := {decide := true}) only [if_true, if_false, beq_self_eq_true] at h ⊢; exact IH h
-      have b1 : (a == 93) = false := by simpa using c93
-      have b2 : (a == 32) = false := by simpa using c32
-      have b3 : (a == 44) = false := by simpa using c44
-      simp only [c93, c32, c44, b1, b2, b3, if_false, Bool.or_false, Bool.false_eq_true] at h ⊢
-      by_cases cw : isW a = true
-      · simp only [cw, if_true] at h ⊢; exact IH (by simpa using h)
-      · simp [cw] at h
-    · simp [s14, hlt] at h
 
 theorem inWord_false (r : List UInt8) (h : r.getD 0 0 = 105 → r.getD 1 0 = 110 →
     2 < r.length ∧ r.getD 2 0 ≠ 32 ∧ r.getD 2 0 ≠ 10) : inWord r = false := by
@@ -1268,6 +1403,241 @@ theorem s15_sound : ∀ (n : Nat) (x : List UInt8) (i : UInt64), x.length < 2 ^ 
       | zero => omega
       | succ g => simp [docWs]
 
+theorem getD_drop (x : List UInt8) (j k : Nat) : (x.drop j).getD k 0 = x.getD (j + k) 0 := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_drop]
+
+/-- the name s14 is reading: the bytes from `ws` (0: none) up to `i`, reversed (as `attrEnd` keeps it) -/
+def nameAt (x : List UInt8) (ws i : UInt64) : List UInt8 :=
+  if ws = 0 then [] else ((x.drop ws.toNat).take (i.toNat - ws.toNat)).reverse
+
+theorem take_succ_rev (l : List UInt8) (k : Nat) (hk : k < l.length) :
+    (l.take (k + 1)).reverse = l.getD k 0 :: (l.take k).reverse := by
+  rw [List.take_succ, List.getElem?_eq_getElem hk]
+  simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hk]
+
+/-- s14 (when it does not reject) ends an attribute, as Lean's attribute grammar -/
+theorem s14_sound : ∀ (n : Nat) (x : List UInt8) (i ws d : UInt64), x.length < 2 ^ 32 → i.toNat ≤ x.length →
+    0 < i.toNat → ws.toNat ≤ i.toNat → (d = 0 ∨ d = 1) → s14 n x i ws d ≠ 0 →
+    (s14 n x i ws d).toNat ≤ x.length ∧
+      attrEnd (x.drop i.toNat) (nameAt x ws i) (d == 1) = some (x.drop (s14 n x i ws d).toNat)
+  | 0, x, i, ws, d, hx, hi, hi0, hws, hd, h => by simp [s14] at h
+  | n + 1, x, i, ws, d, hx, hi, hi0, hws, hd, h => by
+    rcases lt_or_end x i hx hi with ⟨hlt, hl⟩ | ⟨hlt, _⟩
+    · have hi1 := inc_toNat hl hx
+      have hdc := drop_cons hl
+      generalize hv : s14 (n + 1) x i ws d = v at h ⊢
+      simp only [s14, if_pos hlt, rd_eq] at hv
+      rw [hdc]
+      simp only [attrEnd]
+      obtain ⟨a, ha⟩ : ∃ a, x.getD i.toNat 0 = a := ⟨_, rfl⟩
+      simp only [ha] at hv ⊢
+      have IH := fun ws' d' h1 h2 h3 => s14_sound n x (i + 1) ws' d' hx (by omega) (by omega) h1 h2 h3
+      rw [hi1] at IH
+      by_cases cw : isW a = true
+      · rw [s0_eq, if_pos cw] at hv
+        simp only [if_pos cw, beq_self_eq_true, if_true] at hv ⊢
+        rcases hd with rfl | rfl
+        · simp only [show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false] at hv ⊢
+          subst hv
+          have hws' : (if ws == 0 then i else ws).toNat ≤ i.toNat + 1 := by split <;> omega
+          obtain ⟨a1, a2⟩ := IH _ 0 hws' (.inl rfl) h
+          refine ⟨a1, ?_⟩
+          have hname : nameAt x (if ws == 0 then i else ws) (i + 1) = a :: nameAt x ws i := by
+            subst ha
+            by_cases w0 : ws = 0
+            · subst w0
+              have hi0' : i ≠ 0 := fun e => by subst e; simp at hi0
+              simp [nameAt, hi0', hi1, List.take_one, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hl]
+            · have hw0 : (ws == 0) = false := by simpa using w0
+              simp only [nameAt, hw0, if_false, w0, Bool.false_eq_true, if_false, hi1]
+              rw [show i.toNat + 1 - ws.toNat = (i.toNat - ws.toNat) + 1 by omega]
+              rw [take_succ_rev _ _ (by simp; omega), getD_drop, show ws.toNat + (i.toNat - ws.toNat) = i.toNat by omega]
+          rw [hname] at a2; simpa using a2
+        · subst hv; simp at h
+      · rw [s0_eq, if_neg cw] at hv
+        simp only [if_neg cw, Bool.false_eq_true, if_false, show ((0 : UInt64) == 1) = false from rfl] at hv ⊢
+        have hs16 : ws ≠ 0 → s16 x ws i = 1 → attrNames.contains (nameAt x ws i).reverse = true := fun w0 e => by
+          rw [s16_eq x ws i hx hi hws] at e
+          simp only [nameAt, w0, if_false, List.reverse_reverse]
+          split at e
+          · assumption
+          · cases e
+        generalize hd2 : (if ws == 0 then d else if s16 x ws i == 1 then 1 else 2) = d2 at hv
+        by_cases d2' : d2 = 2
+        · subst d2'; subst hv; simp at h
+        have hspec : (d2 = 0 ∨ d2 = 1) ∧ ¬ (nameAt x ws i ≠ [] ∧ attrNames.contains (nameAt x ws i).reverse = false) ∧
+            ((d == 1) || decide (nameAt x ws i ≠ [])) = (d2 == 1) := by
+          subst hd2
+          by_cases w0 : ws = 0
+          · subst w0; simp [nameAt]; rcases hd with rfl | rfl <;> simp
+          · have hw0 : (ws == 0) = false := by simpa using w0
+            simp only [hw0, Bool.false_eq_true, if_false] at d2' ⊢
+            by_cases e1 : s16 x ws i = 1
+            · have hc := hs16 w0 e1
+              have hne : nameAt x ws i ≠ [] := fun e => by rw [e] at hc; simp [attrNames] at hc
+              simp [e1, hne] <;> simpa using hc
+            · simp [e1] at d2'
+        obtain ⟨h01, h2, h3⟩ := hspec
+        rw [if_neg (by simpa using h2)]
+        simp only [h3, show (d2 == 2) = false from by simpa using d2', Bool.false_eq_true, if_false] at hv ⊢
+        have l32 : (32 : UInt64) = (32 : UInt8).toUInt64 := rfl
+        have l44 : (44 : UInt64) = (44 : UInt8).toUInt64 := rfl
+        have l93 : (93 : UInt64) = (93 : UInt8).toUInt64 := rfl
+        rw [l32, l44, l93] at hv
+        simp only [u64_lit] at hv
+        have nil0 : nameAt x 0 (i + 1) = [] := by simp [nameAt]
+        by_cases c32 : a = 32
+        · subst c32; simp only [beq_self_eq_true, if_true] at hv ⊢
+          subst hv
+          obtain ⟨a1, a2⟩ := IH 0 d2 (by simp) h01 h
+          rw [nil0] at a2; exact ⟨a1, a2⟩
+        have b32 : (a == 32) = false := by simpa using c32
+        simp only [c32, b32, if_false, Bool.false_eq_true] at hv ⊢
+        by_cases c44 : a = 44
+        · subst c44; simp only [beq_self_eq_true, if_true] at hv ⊢
+          rcases h01 with rfl | rfl
+          · subst hv; simp at h
+          · simp only [beq_self_eq_true, if_true] at hv ⊢
+            subst hv
+            obtain ⟨a1, a2⟩ := IH 0 0 (by simp) (.inl rfl) h
+            rw [nil0] at a2; exact ⟨a1, by simpa using a2⟩
+        have b44 : (a == 44) = false := by simpa using c44
+        simp only [c44, b44, if_false, Bool.false_eq_true] at hv ⊢
+        by_cases c93 : a = 93
+        · subst c93; simp only [beq_self_eq_true, if_true] at hv ⊢
+          rcases h01 with rfl | rfl
+          · subst hv; simp at h
+          · simp only [beq_self_eq_true, if_true] at hv ⊢
+            subst hv; exact ⟨by omega, by rw [hi1]⟩
+        have b93 : (a == 93) = false := by simpa using c93
+        simp only [c93, b93, if_false, Bool.false_eq_true] at hv
+        subst hv; simp at h
+    · simp [s14, hlt] at h
+
+theorem pre_of : ∀ (w l : List UInt8), (∀ b ∈ w, b ≠ 0) → (∀ k < w.length, l.getD k 0 = w.getD k 0) →
+    w.isPrefixOf l = true
+  | [], _, _, _ => by simp [List.isPrefixOf]
+  | b :: w, l, hw, h => by
+    have h0 := h 0 (by simp); simp at h0
+    cases l with
+    | nil => simp at h0; exact absurd h0.symm (hw b (by simp))
+    | cons a l =>
+      simp at h0; subst h0
+      simp only [List.isPrefixOf, beq_self_eq_true, Bool.true_and]
+      exact pre_of w l (fun c hc => hw c (by simp [hc])) (fun k hk => by have := h (k + 1) (by simp; omega); simpa using this)
+
+theorem headW (l : List UInt8) (k : Nat) : ((l.drop k).head?.map isW).getD false = isW (l.getD k 0) := by
+  rw [List.head?_drop]; simp only [List.getD_eq_getElem?_getD]
+  cases l[k]? <;> simp [isW]
+
+/-- s19: `def` as a word at `j` -/
+theorem s19_sound (x : List UInt8) (j : UInt64) (hx : x.length < 2 ^ 32) (hj : j.toNat ≤ x.length) (h : s19 x j = 1) :
+    startsWord DEF (x.drop j.toNat) = true := by
+  simp only [s19, rd_at x j 1 hx hj (by decide), rd_at x j 2 hx hj (by decide), rd_at x j 3 hx hj (by decide)] at h
+  simp only [rd_at0] at h
+  generalize x.drop j.toNat = l at h ⊢
+  have g : ∀ (a : UInt8) (n : Nat), n < 256 → (a.toUInt64 == (no_index (OfNat.ofNat n : UInt64))) = true →
+      a = (no_index (OfNat.ofNat n : UInt8)) := fun a n hn e => (tu2 a n hn).1 (by simpa using e)
+  split at h <;> try (cases h)
+  rename_i e0; split at h <;> try (cases h)
+  rename_i e1; split at h <;> try (cases h)
+  rename_i e2; split at h <;> try (cases h)
+  rename_i e3
+  rw [s0_eq] at e3
+  simp only [startsWord, DEF, Bool.and_eq_true, Bool.not_eq_true']
+  refine ⟨pre_of _ _ (by decide) (fun k hk => ?_), ?_⟩
+  · simp at hk
+    rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2) with rfl | rfl | rfl
+    · exact g _ _ (by decide) e0
+    · exact g _ _ (by decide) (by simpa using e1)
+    · exact g _ _ (by decide) (by simpa using e2)
+  · rw [headW]; simp_all [List.getD_eq_getElem?_getD]
+
+theorem chain8 (b1 b2 b3 b4 b5 b6 b7 b8 : Bool) (y : UInt64)
+    (h : (if b1 = true then if b2 = true then if b3 = true then if b4 = true then if b5 = true then if b6 = true then
+      if b7 = true then if b8 = true then (1 : UInt64) else y else y else y else y else y else y else y else y) = 1) :
+    (b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8) = true ∨ y = 1 := by
+  cases b1 <;> cases b2 <;> cases b3 <;> cases b4 <;> cases b5 <;> cases b6 <;> cases b7 <;> cases b8 <;> simp_all
+
+/-- s18: `private` as a word at `j` (when `0 < k`), else s19 -/
+theorem s18_sound (x : List UInt8) (j k : UInt64) (hx : x.length < 2 ^ 32) (hj : j.toNat ≤ x.length) (h : s18 x j k = 1) :
+    ((decide (1 ≤ k.toNat) && startsWord PRIV (x.drop j.toNat)) || startsWord DEF (x.drop j.toNat)) = true := by
+  have hD : s19 x j = 1 → ((decide (1 ≤ k.toNat) && startsWord PRIV (x.drop j.toNat)) || startsWord DEF (x.drop j.toNat)) = true :=
+    fun e => by simp [s19_sound x j hx hj e]
+  unfold s18 at h
+  split at h
+  · rename_i hk
+    have hk1 : 1 ≤ k.toNat := by rw [UInt64.lt_iff_toNat_lt] at hk; simp at hk; omega
+    simp only [rd_at x j 1 hx hj (by decide), rd_at x j 2 hx hj (by decide), rd_at x j 3 hx hj (by decide),
+      rd_at x j 4 hx hj (by decide), rd_at x j 5 hx hj (by decide), rd_at x j 6 hx hj (by decide),
+      rd_at x j 7 hx hj (by decide)] at h
+    simp only [rd_at0] at h
+    have pv : ∀ (e : (((x.drop j.toNat).getD 0 0).toUInt64 == 112 && ((x.drop j.toNat).getD 1 0).toUInt64 == 114 &&
+        ((x.drop j.toNat).getD 2 0).toUInt64 == 105 && ((x.drop j.toNat).getD 3 0).toUInt64 == 118 &&
+        ((x.drop j.toNat).getD 4 0).toUInt64 == 97 && ((x.drop j.toNat).getD 5 0).toUInt64 == 116 &&
+        ((x.drop j.toNat).getD 6 0).toUInt64 == 101 && s0 ((x.drop j.toNat).getD 7 0).toUInt64 == 0) = true),
+        startsWord PRIV (x.drop j.toNat) = true := fun e => by
+      generalize x.drop j.toNat = l at e ⊢
+      rw [s0_eq] at e
+      simp only [Bool.and_eq_true, beq_iff_eq] at e
+      obtain ⟨⟨⟨⟨⟨⟨⟨e0, e1⟩, e2⟩, e3⟩, e4⟩, e5⟩, e6⟩, e7⟩ := e
+      simp only [startsWord, PRIV, Bool.and_eq_true, Bool.not_eq_true']
+      have g : ∀ (a : UInt8) (n : Nat), n < 256 → a.toUInt64 = (no_index (OfNat.ofNat n : UInt64)) → a = (no_index (OfNat.ofNat n : UInt8)) :=
+        fun a n hn e => (tu2 a n hn).1 e
+      refine ⟨pre_of _ _ (by decide) (fun k hk => ?_), ?_⟩
+      · simp at hk
+        rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6) with rfl | rfl | rfl | rfl | rfl | rfl | rfl
+        · exact g _ _ (by decide) e0
+        · exact g _ _ (by decide) e1
+        · exact g _ _ (by decide) e2
+        · exact g _ _ (by decide) e3
+        · exact g _ _ (by decide) e4
+        · exact g _ _ (by decide) e5
+        · exact g _ _ (by decide) e6
+      · rw [headW]; split at e7 <;> simp_all
+    rcases chain8 _ _ _ _ _ _ _ _ _ h with e | e
+    · simp [pv e, hk1]
+    · exact hD e
+  · exact hD h
+
+/-- s17 (when it accepts) checks what follows a declaration modifier -/
+theorem s17_sound (x : List UInt8) (i k : UInt64) (hx : x.length < 2 ^ 32) (hi : i.toNat ≤ x.length) (h : s17 x i k = 1) :
+    declNext k.toNat (x.drop i.toNat) = true := by
+  unfold s17 at h
+  simp only at h
+  split at h
+  · cases h
+  rename_i hj
+  have hj' : s15 (len' x) x i ≠ 0 := by simpa using hj
+  obtain ⟨q1, q2⟩ := s15_sound _ x i hx hi hj'
+  have hd := q2 ((x.drop i.toNat).length + 1) (by simp <;> omega)
+  simp only [declNext, hd]
+  generalize hJ : s15 (len' x) x i = j at h q1 ⊢
+  have hs : s18 x j k = 1 → ((k.toNat == 2 && [64, 91].isPrefixOf (x.drop j.toNat)) ||
+      (decide (1 ≤ k.toNat) && startsWord PRIV (x.drop j.toNat)) || startsWord DEF (x.drop j.toNat)) = true := fun e => by
+    have := s18_sound x j k hx q1 e
+    simp only [Bool.or_eq_true] at this ⊢
+    rcases this with b | c
+    · exact .inl (.inr b)
+    · exact .inr c
+  split at h
+  · rename_i hk2
+    have hk : k.toNat = 2 := by simp at hk2; subst hk2; rfl
+    split at h
+    · split at h
+      · rename_i e0 e1
+        rw [rd_at0] at e0; rw [rd_at x j 1 hx q1 (by decide)] at e1
+        have g : ∀ (a : UInt8) (n : Nat), n < 256 → (a.toUInt64 == (no_index (OfNat.ofNat n : UInt64))) = true → a = (no_index (OfNat.ofNat n : UInt8)) :=
+          fun a n hn e => (tu2 a n hn).1 (by simpa using e)
+        have p : [64, 91].isPrefixOf (x.drop j.toNat) = true := pre_of _ _ (by decide) (fun m hm => by
+          simp at hm; rcases (by omega : m = 0 ∨ m = 1) with rfl | rfl
+          · exact g _ _ (by decide) e0
+          · exact g _ _ (by decide) e1)
+        simp [hk, p]
+      · exact hs h
+    · exact hs h
+  · exact hs h
+
 theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.length < 2 ^ 32 → p.toNat ≤ x.length →
     s9 n x p o = t → t ≠ [] → ∃ t', Lexes (x.drop p.toNat) t' ∧ t = o ++ t'
   | 0, x, p, o, t, hx, hp, h, ht => by
@@ -1346,8 +1716,13 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
             obtain ⟨w1, w2⟩ := s11_sound _ x _ 0 hx q1 (by simp) hne2
             have hd := q2 r.length (by rw [hp3]; omega)
             rw [hp3, hr3] at hd
-            obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx w1 h ht
-            refine ⟨[] ++ t', Lexes.cons (by rw [hst, if_pos hc, hd]; simp at w2; simp [w2]) hL, by simpa using ht'⟩
+            split at h
+            · rename_i hs17
+              have hdn := s17_sound x _ 2 hx w1 (by simpa using hs17)
+              simp at hdn
+              obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx w1 h ht
+              refine ⟨[] ++ t', Lexes.cons (by rw [hst, if_pos hc, hd]; simp at w2; simp [w2, dc, hdn]) hL, by simpa using ht'⟩
+            · exact absurd (by simpa [bnew] using h.symm) ht
           by_cases d33 : r.tail.getD 0 0 = 33
           · have y33 : (r.tail.getD 0 0).toUInt64 = 33 := by rw [d33]; rfl
             simp (config := {decide := true}) only [y33, if_true, if_false] at h
@@ -1372,7 +1747,7 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
             have hd := q2 r.length (by rw [hp3]; omega)
             rw [hp3, hr3] at hd
             obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx w1 h ht
-            refine ⟨[] ++ t', Lexes.cons (by rw [hst, if_pos hc, hd]; simp at w2; simp [w2]) hL, by simpa using ht'⟩
+            refine ⟨[] ++ t', Lexes.cons (by rw [hst, if_pos hc, hd]; simp at w2; simp [w2, dc]) hL, by simpa using ht'⟩
           have n45 : ¬ (r.tail.getD 0 0).toUInt64 = 45 := by rw [l45]; exact nlit _ _ d45
           have n33 : ¬ (r.tail.getD 0 0).toUInt64 = 33 := by rw [l33]; exact nlit _ _ d33
           simp only [n45, n33, if_false] at h
@@ -1386,16 +1761,25 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
           obtain ⟨hq1, hq2⟩ := s11_sound _ x (p + 2) 0 hx (by omega) (by simp) hne
           rw [hp2, hr2] at hq2
           obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
-          refine ⟨[] ++ t', Lexes.cons (by rw [hst, if_neg hc]; simp at hq2; simp [hq2]) hL, by simpa using ht'⟩
+          have nd : (r.tail.head? == some 45) = false := by simpa using fun e => d45 (h45.1 e)
+          refine ⟨[] ++ t', Lexes.cons (by
+            rw [hst, if_neg hc]; simp at hq2
+            simp only [hq2, Option.bind_some, nd, Bool.false_and, Bool.false_eq_true, if_false]) hL, by simpa using ht'⟩
         · simp [hk96] at h
           obtain ⟨hp2, hp2l, hr2⟩ := two 91 hr0
           split at h
           · exact absurd (by simpa [bnew] using h.symm) ht
           rename_i hne
-          obtain ⟨hq1, hq2⟩ := s14_sound _ x (p + 2) hx (by omega) hne
-          rw [hp2, hr2] at hq2
-          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
-          exact ⟨[] ++ t', Lexes.cons (by rw [hst, hq2]; rfl) hL, by simpa using ht'⟩
+          split at h
+          · rename_i hs17
+            obtain ⟨hq1, hq2⟩ := s14_sound _ x (p + 2) 0 0 hx (by omega) (by omega) (by simp) (.inl rfl) hne
+            have hdn := s17_sound x _ 1 hx hq1 (by simpa using hs17)
+            simp at hdn
+            rw [hp2, hr2] at hq2
+            simp [nameAt] at hq2
+            obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
+            exact ⟨[] ++ t', Lexes.cons (by rw [hst, hq2]; simp [hdn]) hL, by simpa using ht'⟩
+          · exact absurd (by simpa [bnew] using h.symm) ht
         · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := op_props e he
           obtain ⟨g1, g2, g3, g4, g5⟩ := op_props2 e he
           simp [hke, h0, h5, h14, h90, h91, g1, g2, g3, g4, g5] at h
@@ -1465,9 +1849,15 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
         · simp [hk93] at h
           obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
           rw [s5_93] at h
-          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx wb2 h ht
-          rw [wb3] at hL
-          exact ⟨[] ++ t', Lexes.cons hst hL, by simpa using ht'⟩
+          split at h
+          · rename_i hs17
+            have hdn := s17_sound x _ 0 hx wb2 (by simpa using hs17)
+            simp at hdn
+            rw [wb3] at hdn
+            obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx wb2 h ht
+            rw [wb3] at hL
+            exact ⟨[] ++ t', Lexes.cons (by rw [hst, if_pos hdn]) hL, by simpa using ht'⟩
+          · exact absurd (by simpa [bnew] using h.symm) ht
 
 /-- Lexer soundness: if `C.s10` returns a nonempty buffer, the input lexes to exactly that buffer
 (`Lexes` = Nano/Lexer/Lex2Spec.lean; inputs under 2^32 bytes). -/

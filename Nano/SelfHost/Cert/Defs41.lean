@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_230 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 230) :
-    Spec230 inp (defMean inp κC ms PC.d230) := by
+theorem ok_234 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 234) :
+    Spec234 inp (defMean inp κC ms PC.d234) := by
   intro a0
-  refine defMean_den (C.g34 a0) PC.b230 ([.b a0] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b230
+  refine defMean_den (C.g34 a0) PC.b234 ([.b a0] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b234
   den_unfold
   den
 
-theorem ok_231 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 231) :
-    Spec231 inp (defMean inp κC ms PC.d231) := by
+theorem ok_235 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 235) :
+    Spec235 inp (defMean inp κC ms PC.d235) := by
   intro a0 a1 a2
-  refine defMean_den (C.g35 a0 a1 a2) PC.b231 ([.b a0, .b a1, .w a2] ++ List.replicate 12 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b231
+  refine defMean_den (C.g35 a0 a1 a2) PC.b235 ([.b a0, .b a1, .w a2] ++ List.replicate 12 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b235
   den_unfold
   den
 
-theorem ok_232 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 232) :
-    Spec232 inp (defMean inp κC ms PC.d232) := by
+theorem ok_236 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 236) :
+    Spec236 inp (defMean inp κC ms PC.d236) := by
   intro a0 a1 a2
-  refine defMean_den (C.g43 a0 a1 a2) PC.b232 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b232
+  refine defMean_den (C.g43 a0 a1 a2) PC.b236 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b236
   den_unfold
   den
 

@@ -32,8 +32,8 @@ theorem cal (i j : Nat) (d : DefA) (hd : PC.all[i]? = some d) (hij : i < j := by
 /-! the push-free callees used on the path, exact -/
 theorem X8 (p : UInt64) : F [] 8 PC.d8 [.w p] = .ok [.w (C.s4 [] p)] :=
   exact (ok_8 [] _ (by decide) (good 8 (by decide)) p) (quiet [] 8 (by decide) (by decide) _)
-theorem X181 : F [] 200 PC.d200 [] = .ok [.w C.g_999] :=
-  exact (ok_200 [] _ (by decide) (good 200 (by decide))) (quiet [] 200 (by decide) (by decide) _)
+theorem X181 : F [] 204 PC.d204 [] = .ok [.w C.g_999] :=
+  exact (ok_204 [] _ (by decide) (good 204 (by decide))) (quiet [] 204 (by decide) (by decide) _)
 
 /-! the path.  Each def is first evaluated over ABSTRACT callees (`g<i>`: a list `ms` and functions `G…` with their
 lookup and value as hypotheses), then instantiated (`X<i>`).  With the concrete callee in the goal the kernel, checking
@@ -54,29 +54,29 @@ theorem loopRun_big2 (fz fs : List W → Out) (env : List W) :
       | .inr st => loopRun fz fs 16777214 (← setSlots env1 1 st)) := rfl
 
 theorem g13 (ms : List Fn) (G8 : Fn) (h8 : ms[8]? = some G8) (e8 : G8 [.w 0] = .ok [.w 91]) :
-    defMean [] κC ms PC.d18 [.w 16777216, .w 0, .b []] = .ok [.b []] := by
-  simp only [defMean, PC.d18, ev]
-  simp [loopRun_big, PC.z18, PC.s18, ev, evL, NanoMain.val, prim, setSlots, h8, e8, bind, Except.bind, pure, Except.pure]
-theorem X13 : F [] 18 PC.d18 [.w 16777216, .w 0, .b []] = .ok [.b []] :=
-  g13 _ _ (cal 8 18 PC.d8 rfl) (by rw [X8]; exact congrArg (fun x => Except.ok [W.w x]) (by decide))
+    defMean [] κC ms PC.d22 [.w 16777216, .w 0, .b []] = .ok [.b []] := by
+  simp only [defMean, PC.d22, ev]
+  simp [loopRun_big, PC.z22, PC.s22, ev, evL, NanoMain.val, prim, setSlots, h8, e8, bind, Except.bind, pure, Except.pure]
+theorem X13 : F [] 22 PC.d22 [.w 16777216, .w 0, .b []] = .ok [.b []] :=
+  g13 _ _ (cal 8 22 PC.d8 rfl) (by rw [X8]; exact congrArg (fun x => Except.ok [W.w x]) (by decide))
 
-theorem g14 (ms : List Fn) (G13 : Fn) (h13 : ms[18]? = some G13) (e13 : G13 [.w 16777216, .w 0, .b []] = .ok [.b []]) :
-    defMean [] κC ms PC.d19 [] = .ok [.b []] := by
-  simp only [defMean, PC.d19]
-  simp [PC.b19, ev, evL, NanoMain.val, prim, h13, e13, bind, Except.bind, pure, Except.pure]
-theorem X14 : F [] 19 PC.d19 [] = .ok [.b []] := g14 _ _ (cal 18 19 PC.d18 rfl) X13
+theorem g14 (ms : List Fn) (G13 : Fn) (h13 : ms[22]? = some G13) (e13 : G13 [.w 16777216, .w 0, .b []] = .ok [.b []]) :
+    defMean [] κC ms PC.d23 [] = .ok [.b []] := by
+  simp only [defMean, PC.d23]
+  simp [PC.b23, ev, evL, NanoMain.val, prim, h13, e13, bind, Except.bind, pure, Except.pure]
+theorem X14 : F [] 23 PC.d23 [] = .ok [.b []] := g14 _ _ (cal 22 23 PC.d22 rfl) X13
 
 /-! the match desugaring on no tokens: `t11` (push-free) finds no `match`, so `t10` returns its input -/
-theorem X27 : F [] 30 PC.d30 [.w 16777216, .b [], .w 0] = .ok [.w 1] := by
-  have h := exact (ok_30 [] _ (by decide) (good 30 (by decide)) 16777216 [] 0 (by decide)) (quiet [] 30 (by decide) (by decide) _)
+theorem X27 : F [] 34 PC.d34 [.w 16777216, .b [], .w 0] = .ok [.w 1] := by
+  have h := exact (ok_34 [] _ (by decide) (good 34 (by decide)) 16777216 [] 0 (by decide)) (quiet [] 34 (by decide) (by decide) _)
   have e : C.t11 16777216 [] 0 = 1 := by decide
   simpa [enc, Enc.enc, e, F] using h
 
-theorem g28 (ms : List Fn) (G27 : Fn) (h27 : ms[30]? = some G27) (e27 : G27 [.w 16777216, .b [], .w 0] = .ok [.w 1]) :
-    defMean [] κC ms PC.d31 [.b []] = .ok [.b []] := by
-  simp only [defMean, PC.d31]
-  simp [PC.b31, ev, evL, NanoMain.val, prim, h27, e27, bind, Except.bind, pure, Except.pure]
-theorem X28 : F [] 31 PC.d31 [.b []] = .ok [.b []] := g28 _ _ (cal 30 31 PC.d30 rfl) X27
+theorem g28 (ms : List Fn) (G27 : Fn) (h27 : ms[34]? = some G27) (e27 : G27 [.w 16777216, .b [], .w 0] = .ok [.w 1]) :
+    defMean [] κC ms PC.d35 [.b []] = .ok [.b []] := by
+  simp only [defMean, PC.d35]
+  simp [PC.b35, ev, evL, NanoMain.val, prim, h27, e27, bind, Except.bind, pure, Except.pure]
+theorem X28 : F [] 35 PC.d35 [.b []] = .ok [.b []] := g28 _ _ (cal 34 35 PC.d34 rfl) X27
 
 /-- a loop that pushes one 0 per step: `n` pushes, below the capacity -/
 theorem push_loop {fz fs : List W → Out} (hz : ∀ w l, fz [.w w, .b l] = .ok (.inl [.b l]))
@@ -107,48 +107,48 @@ theorem defMean_loop_ok {ms : List Fn} {d : DefA} {z s : Nd} {w0 : UInt64} {rest
   rw [if_pos ⟨hlen, hk⟩, hb]
   simp only [List.cons_append, ev, hr, NanoMain.val, bind, Except.bind, pure, Except.pure, hv, if_true]
 
-theorem X15 : F [] 32 PC.d32 [.w 185408, .b []] = .ok [.b H0] := by
-  have h := push_loop (fz := fun e => ev ⟨[], κC, Pre [] 32⟩ PC.z32 e) (fs := fun e => ev ⟨[], κC, Pre [] 32⟩ PC.s32 e)
-    (fun w l => by simp [PC.z32, ev]) (fun w l hl => by
-      simp [PC.s32, ev, evL, NanoMain.val, prim, push, hl, bind, Except.bind, pure, Except.pure]) 185408 [] 185408 (by decide)
+theorem X15 : F [] 36 PC.d36 [.w 185408, .b []] = .ok [.b H0] := by
+  have h := push_loop (fz := fun e => ev ⟨[], κC, Pre [] 36⟩ PC.z36 e) (fs := fun e => ev ⟨[], κC, Pre [] 36⟩ PC.s36 e)
+    (fun w l => by simp [PC.z36, ev]) (fun w l hl => by
+      simp [PC.s36, ev, evL, NanoMain.val, prim, push, hl, bind, Except.bind, pure, Except.pure]) 185408 [] 185408 (by decide)
   rw [← H0_eq] at h
-  exact defMean_loop_ok (z := PC.z32) (s := PC.s32) rfl rfl (by decide) rfl h
+  exact defMean_loop_ok (z := PC.z36) (s := PC.s36) rfl rfl (by decide) rfl h
 
-theorem g31 (ms : List Fn) (G15 : Fn) (r : List UInt64) (h15 : ms[32]? = some G15)
-    (e15 : G15 [.w 185408, .b []] = .ok [.b r]) : defMean [] κC ms PC.d48 [.b []] = .ok [.b r] := by
-  simp only [defMean, PC.d48]
-  simp [PC.b48, ev, evL, NanoMain.val, h15, e15, bind, Except.bind, pure, Except.pure]
-theorem X31 : F [] 48 PC.d48 [.b []] = .ok [.b H0] := g31 _ _ _ (cal 32 48 PC.d32 rfl) X15
+theorem g31 (ms : List Fn) (G15 : Fn) (r : List UInt64) (h15 : ms[36]? = some G15)
+    (e15 : G15 [.w 185408, .b []] = .ok [.b r]) : defMean [] κC ms PC.d52 [.b []] = .ok [.b r] := by
+  simp only [defMean, PC.d52]
+  simp [PC.b52, ev, evL, NanoMain.val, h15, e15, bind, Except.bind, pure, Except.pure]
+theorem X31 : F [] 52 PC.d52 [.b []] = .ok [.b H0] := g31 _ _ _ (cal 36 52 PC.d36 rfl) X15
 
-theorem X38 (h : List UInt64) : F [] 55 PC.d55 [.w 16777216, .b [], .w 0, .b h] = .ok [.b h] := by
-  simp only [F, defMean, PC.d55, ev]
-  simp [loopRun_big, PC.z55, PC.s55, ev, evL, NanoMain.val, prim, setSlots, bind, Except.bind, pure, Except.pure]
+theorem X38 (h : List UInt64) : F [] 59 PC.d59 [.w 16777216, .b [], .w 0, .b h] = .ok [.b h] := by
+  simp only [F, defMean, PC.d59, ev]
+  simp [loopRun_big, PC.z59, PC.s59, ev, evL, NanoMain.val, prim, setSlots, bind, Except.bind, pure, Except.pure]
 
-theorem X160 : F [] 179 PC.d179 [.b []] = .ok [.b []] := by
-  simp only [F, defMean, PC.d179]
-  simp [PC.b179, ev, evL, NanoMain.val, prim, setSlots, bind, Except.bind, pure, Except.pure]
+theorem X160 : F [] 183 PC.d183 [.b []] = .ok [.b []] := by
+  simp only [F, defMean, PC.d183]
+  simp [PC.b183, ev, evL, NanoMain.val, prim, setSlots, bind, Except.bind, pure, Except.pure]
 
-theorem X231 (u : UInt64) : F [] 250 PC.d250 [.b [], .w u] = .ok [.b []] := by
-  simp only [F, defMean, PC.d250]
-  simp [PC.b250, ev, evL, NanoMain.val, prim, bind, Except.bind, pure, Except.pure]
+theorem X231 (u : UInt64) : F [] 254 PC.d254 [.b [], .w u] = .ok [.b []] := by
+  simp only [F, defMean, PC.d254]
+  simp [PC.b254, ev, evL, NanoMain.val, prim, bind, Except.bind, pure, Except.pure]
 
-theorem g232 (ms : List Fn) (G181 G231 : Fn) (u : UInt64) (h181 : ms[200]? = some G181) (h231 : ms[250]? = some G231)
+theorem g232 (ms : List Fn) (G181 G231 : Fn) (u : UInt64) (h181 : ms[204]? = some G181) (h231 : ms[254]? = some G231)
     (e181 : G181 [] = .ok [.w u]) (e231 : G231 [.b [], .w u] = .ok [.b []]) :
-    defMean [] κC ms PC.d251 [.b []] = .ok [.b []] := by
-  simp only [defMean, PC.d251]
-  simp [PC.b251, ev, evL, NanoMain.val, h181, h231, e181, e231, bind, Except.bind, pure, Except.pure]
-theorem X232 : F [] 251 PC.d251 [.b []] = .ok [.b []] :=
-  g232 _ _ _ _ (cal 200 251 PC.d200 rfl) (cal 250 251 PC.d250 rfl) X181 (X231 _)
+    defMean [] κC ms PC.d255 [.b []] = .ok [.b []] := by
+  simp only [defMean, PC.d255]
+  simp [PC.b255, ev, evL, NanoMain.val, h181, h231, e181, e231, bind, Except.bind, pure, Except.pure]
+theorem X232 : F [] 255 PC.d255 [.b []] = .ok [.b []] :=
+  g232 _ _ _ _ (cal 204 255 PC.d204 rfl) (cal 254 255 PC.d254 rfl) X181 (X231 _)
 
 /-! ### the parser on no tokens -/
-theorem X16 : F [] 33 PC.d33 [] = .ok [.w C.d1] :=
-  exact (ok_33 [] _ (by decide) (good 33 (by decide))) (quiet [] 33 (by decide) (by decide) _)
-theorem X26 : F [] 43 PC.d43 [] = .ok [.w C.d11] :=
-  exact (ok_43 [] _ (by decide) (good 43 (by decide))) (quiet [] 43 (by decide) (by decide) _)
-theorem X56 (h : List UInt64) (c a b : UInt64) : F [] 73 PC.d73 [.b h, .w c, .w a, .w b] = .ok [.b (C.v1 h c a b)] :=
-  exact (ok_73 [] _ (by decide) (good 73 (by decide)) h c a b) (quiet [] 73 (by decide) (by decide) _)
-theorem X95 (h : List UInt64) (a b : UInt64) : F [] 114 PC.d114 [.b h, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
-  exact (ok_114 [] _ (by decide) (good 114 (by decide)) h a b) (quiet [] 114 (by decide) (by decide) _)
+theorem X16 : F [] 37 PC.d37 [] = .ok [.w C.d1] :=
+  exact (ok_37 [] _ (by decide) (good 37 (by decide))) (quiet [] 37 (by decide) (by decide) _)
+theorem X26 : F [] 47 PC.d47 [] = .ok [.w C.d11] :=
+  exact (ok_47 [] _ (by decide) (good 47 (by decide))) (quiet [] 47 (by decide) (by decide) _)
+theorem X56 (h : List UInt64) (c a b : UInt64) : F [] 77 PC.d77 [.b h, .w c, .w a, .w b] = .ok [.b (C.v1 h c a b)] :=
+  exact (ok_77 [] _ (by decide) (good 77 (by decide)) h c a b) (quiet [] 77 (by decide) (by decide) _)
+theorem X95 (h : List UInt64) (a b : UInt64) : F [] 118 PC.d118 [.b h, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
+  exact (ok_118 [] _ (by decide) (good 118 (by decide)) h a b) (quiet [] 118 (by decide) (by decide) _)
 
 /-- a plain def's meaning from its body's value -/
 theorem defMean_plain_ok {ms : List Fn} {d : DefA} {e : Nd} {ps v : List W} (hb : d.body = e) (hlen : ps.length = d.npw)
@@ -168,41 +168,41 @@ theorem ev_ite_eq {cx : Ctx} {a b t e : Nd} {env : List W} {x y : UInt64} (ha : 
 theorem ev_const (cx : Ctx) (c : UInt64) (env : List W) : ev cx (.const c) env = .ok (.inl [.w c]) := by simp [ev]
 
 /-- the dispatcher at task 60 calls `v127` (id 97) -/
-theorem g117 (ms : List Fn) (G95 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h95 : ms[114]? = some G95)
+theorem g117 (ms : List Fn) (G95 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h95 : ms[118]? = some G95)
     (e95 : ∀ h a b, G95 [.b h, .w a, .w b] = .ok [.b (V h a b)]) (h : List UInt64) (a b : UInt64) :
-    defMean [] κC ms PC.d136 [.b h, .w 60, .w a, .w b] = .ok [.b (V h a b)] := by
+    defMean [] κC ms PC.d140 [.b h, .w 60, .w a, .w b] = .ok [.b (V h a b)] := by
   have hc : ev ⟨[], κC, ms⟩ (.loc 1 1) [.b h, .w 60, .w a, .w b] = .ok (.inl [.w 60]) := by simp [ev]
-  refine defMean_plain_ok (e := PC.b136) rfl rfl (by decide) rfl ?_
-  show ev _ PC.b136 [.b h, .w 60, .w a, .w b] = _
-  unfold PC.b136
+  refine defMean_plain_ok (e := PC.b140) rfl rfl (by decide) rfl ?_
+  show ev _ PC.b140 [.b h, .w 60, .w a, .w b] = _
+  unfold PC.b140
   repeat rw [ev_ite_ne hc (ev_const _ _ _) (by decide)]
   rw [ev_ite_eq hc (ev_const _ _ _) rfl]
   simp [ev, evL, NanoMain.val, h95, e95, bind, Except.bind, pure, Except.pure]
 
 /-- the task loop: one task (60) is pending; after it the status is not 1, so the loop returns -/
-theorem g118 (ms : List Fn) (G16 G117 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h16 : ms[33]? = some G16)
-    (h117 : ms[136]? = some G117) (e16 : G16 [] = .ok [.w 64])
+theorem g118 (ms : List Fn) (G16 G117 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h16 : ms[37]? = some G16)
+    (h117 : ms[140]? = some G117) (e16 : G16 [] = .ok [.w 64])
     (e117 : ∀ h a b, G117 [.b h, .w 60, .w a, .w b] = .ok [.b (V h a b)]) (h : List UInt64)
     (h0 : h[0]?.getD 0 = 1) (h5 : h[5]?.getD 0 = 1) (h64 : h[64]?.getD 0 = 60) (h65 : h[65]?.getD 0 = 0)
     (h66 : h[66]?.getD 0 = 0) (hR : (V (h.set 5 0) 0 0)[0]?.getD 0 ≠ 1) :
-    defMean [] κC ms PC.d137 [.w 16777216, .b h] = .ok [.b (V (h.set 5 0) 0 0)] := by
-  refine defMean_loop_ok (z := PC.z137) (s := PC.s137) rfl rfl (by decide) rfl ?_
+    defMean [] κC ms PC.d141 [.w 16777216, .b h] = .ok [.b (V (h.set 5 0) 0 0)] := by
+  refine defMean_loop_ok (z := PC.z141) (s := PC.s141) rfl rfl (by decide) rfl ?_
   show loopRun _ _ 16777216 _ = _
   rw [loopRun_big]
-  simp [loopRun_big2, PC.z137, PC.s137, PC.d137, ev, evL, NanoMain.val, prim, binop, setSlots, h16, h117, e16, e117, h0, h5, h64,
+  simp [loopRun_big2, PC.z141, PC.s141, PC.d141, ev, evL, NanoMain.val, prim, binop, setSlots, h16, h117, e16, e117, h0, h5, h64,
     h65, h66, hR, bind, Except.bind, pure, Except.pure]
 
 /-- `v99` on no tokens: whatever task 60 answers, no def was parsed (cell 12 is 0), so the result is empty -/
 theorem g120 (ms : List Fn) (G26 G31 G38 G56 G118 : Fn) (V1 : List UInt64 → UInt64 → UInt64 → UInt64 → List UInt64)
     (Z R : List UInt64) (hZ : Z.length = 185408)
-    (h26 : ms[43]? = some G26) (h31 : ms[48]? = some G31) (h38 : ms[55]? = some G38) (h56 : ms[73]? = some G56)
-    (h118 : ms[137]? = some G118) (e26 : G26 [] = .ok [.w 185408]) (e31 : G31 [.b []] = .ok [.b Z])
+    (h26 : ms[47]? = some G26) (h31 : ms[52]? = some G31) (h38 : ms[59]? = some G38) (h56 : ms[77]? = some G56)
+    (h118 : ms[141]? = some G118) (e26 : G26 [] = .ok [.w 185408]) (e31 : G31 [.b []] = .ok [.b Z])
     (e38 : G38 [.w 16777216, .b [], .w 0, .b Z] = .ok [.b Z])
     (e56 : ∀ h c a b, G56 [.b h, .w c, .w a, .w b] = .ok [.b (V1 h c a b)])
     (e118 : G118 [.w 16777216, .b (V1 ((Z.set 7 0).set 0 1 ++ [0, 2]) 60 0 0)] = .ok [.b R])
-    (hR12 : R[12]?.getD 0 = 0) : defMean [] κC ms PC.d139 [.b [], .w 1] = .ok [.b []] := by
-  refine defMean_plain_ok (e := PC.b139) rfl rfl (by decide) rfl ?_
-  simp [PC.b139, PC.d139, ev, evL, NanoMain.val, prim, binop, push, setSlots, κC, h26, h31, h38, h56, h118, e26, e31, e38, e56,
+    (hR12 : R[12]?.getD 0 = 0) : defMean [] κC ms PC.d143 [.b [], .w 1] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b143) rfl rfl (by decide) rfl ?_
+  simp [PC.b143, PC.d143, ev, evL, NanoMain.val, prim, binop, push, setSlots, κC, h26, h31, h38, h56, h118, e26, e31, e38, e56,
     e118, hR12, hZ, bind, Except.bind, pure, Except.pure]
 
 /-! Lean facts about the heap the task loop starts from -/
@@ -275,46 +275,46 @@ theorem R_facts : (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)[0]?.getD 0 ≠ 1 ∧ (
   rcases v127_cases HT 0 0 e37 with h | h <;> rw [h] <;> simp [bset, hl] <;> simpa [hl] using h12
 
 /-! ### the path, instantiated -/
-theorem X117 (h : List UInt64) (a b : UInt64) : F [] 136 PC.d136 [.b h, .w 60, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
-  g117 _ _ C.v127 (cal 114 136 PC.d114 rfl) X95 h a b
+theorem X117 (h : List UInt64) (a b : UInt64) : F [] 140 PC.d140 [.b h, .w 60, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
+  g117 _ _ C.v127 (cal 118 140 PC.d118 rfl) X95 h a b
 
-theorem X118 : F [] 137 PC.d137 [.w 16777216, .b (C.v1 HA 60 0 0)] = .ok [.b (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)] :=
-  g118 _ _ _ C.v127 (cal 33 137 PC.d33 rfl) (cal 136 137 PC.d136 rfl) (X16.trans (by rw [show C.d1 = 64 from by decide]))
+theorem X118 : F [] 141 PC.d141 [.w 16777216, .b (C.v1 HA 60 0 0)] = .ok [.b (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)] :=
+  g118 _ _ _ C.v127 (cal 37 141 PC.d37 rfl) (cal 140 141 PC.d140 rfl) (X16.trans (by rw [show C.d1 = 64 from by decide]))
     X117 _ H5_0 H5_5 H5_64 H5_65 H5_66 R_facts.1
 
-theorem X120 : F [] 139 PC.d139 [.b [], .w 1] = .ok [.b []] :=
-  g120 _ _ _ _ _ _ C.v1 H0 _ H0_len (cal 43 139 PC.d43 rfl) (cal 48 139 PC.d48 rfl) (cal 55 139 PC.d55 rfl)
-    (cal 73 139 PC.d73 rfl) (cal 137 139 PC.d137 rfl) (X26.trans (by rw [show C.d11 = 185408 from by decide])) X31 (X38 H0)
+theorem X120 : F [] 143 PC.d143 [.b [], .w 1] = .ok [.b []] :=
+  g120 _ _ _ _ _ _ C.v1 H0 _ H0_len (cal 47 143 PC.d47 rfl) (cal 52 143 PC.d52 rfl) (cal 59 143 PC.d59 rfl)
+    (cal 77 143 PC.d77 rfl) (cal 141 143 PC.d141 rfl) (X26.trans (by rw [show C.d11 = 185408 from by decide])) X31 (X38 H0)
     X56 X118 R_facts.2
 
-theorem g122 (ms : List Fn) (G120 : Fn) (h120 : ms[139]? = some G120) (e120 : G120 [.b [], .w 1] = .ok [.b []]) :
-    defMean [] κC ms PC.d141 [.b []] = .ok [.b []] := by
-  refine defMean_plain_ok (e := PC.b141) rfl rfl (by decide) rfl ?_
-  simp [PC.b141, ev, evL, NanoMain.val, h120, e120, bind, Except.bind, pure, Except.pure]
-theorem X122 : F [] 141 PC.d141 [.b []] = .ok [.b []] := g122 _ _ (cal 139 141 PC.d139 rfl) X120
+theorem g122 (ms : List Fn) (G120 : Fn) (h120 : ms[143]? = some G120) (e120 : G120 [.b [], .w 1] = .ok [.b []]) :
+    defMean [] κC ms PC.d145 [.b []] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b145) rfl rfl (by decide) rfl ?_
+  simp [PC.b145, ev, evL, NanoMain.val, h120, e120, bind, Except.bind, pure, Except.pure]
+theorem X122 : F [] 145 PC.d145 [.b []] = .ok [.b []] := g122 _ _ (cal 143 145 PC.d143 rfl) X120
 
-theorem g233 (ms : List Fn) (G14 G28 G122 G160 G232 : Fn) (h14 : ms[19]? = some G14) (h28 : ms[31]? = some G28)
-    (h122 : ms[141]? = some G122)
-    (h160 : ms[179]? = some G160) (h232 : ms[251]? = some G232) (e14 : G14 [] = .ok [.b []]) (e28 : G28 [.b []] = .ok [.b []])
+theorem g233 (ms : List Fn) (G14 G28 G122 G160 G232 : Fn) (h14 : ms[23]? = some G14) (h28 : ms[35]? = some G28)
+    (h122 : ms[145]? = some G122)
+    (h160 : ms[183]? = some G160) (h232 : ms[255]? = some G232) (e14 : G14 [] = .ok [.b []]) (e28 : G28 [.b []] = .ok [.b []])
     (e122 : G122 [.b []] = .ok [.b []]) (e160 : G160 [.b []] = .ok [.b []]) (e232 : G232 [.b []] = .ok [.b []]) :
-    defMean [] κC ms PC.d252 [] = .ok [.b []] := by
-  refine defMean_plain_ok (e := PC.b252) rfl rfl (by decide) rfl ?_
-  simp [PC.b252, ev, evL, NanoMain.val, h14, h28, h122, h160, h232, e14, e28, e122, e160, e232, bind, Except.bind, pure,
+    defMean [] κC ms PC.d256 [] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b256) rfl rfl (by decide) rfl ?_
+  simp [PC.b256, ev, evL, NanoMain.val, h14, h28, h122, h160, h232, e14, e28, e122, e160, e232, bind, Except.bind, pure,
     Except.pure]
-theorem X233 : F [] 252 PC.d252 [] = .ok [.b []] :=
-  g233 _ _ _ _ _ _ (cal 19 252 PC.d19 rfl) (cal 31 252 PC.d31 rfl) (cal 141 252 PC.d141 rfl) (cal 179 252 PC.d179 rfl)
-    (cal 251 252 PC.d251 rfl) X14 X28 X122 X160 X232
+theorem X233 : F [] 256 PC.d256 [] = .ok [.b []] :=
+  g233 _ _ _ _ _ _ (cal 23 256 PC.d23 rfl) (cal 35 256 PC.d35 rfl) (cal 145 256 PC.d145 rfl) (cal 183 256 PC.d183 rfl)
+    (cal 255 256 PC.d255 rfl) X14 X28 X122 X160 X232
 
 theorem sem_last {κ : Nat} {p : List DefA} {inp : List UInt8} {f : Fn} {l : List UInt64}
     (h : (means inp κ [] p).getLast? = some f) (hf : f [] = .ok [.b l]) : Sem κ p inp = .ok (l.map UInt64.toUInt8) := by
   unfold Sem; rw [h]; simp only [hf]
 
-theorem pre_all : Pre [] 253 = means [] κC [] PC.all := by
+theorem pre_all : Pre [] 257 = means [] κC [] PC.all := by
   unfold Pre; rw [List.take_of_length_le (by decide)]
 
-theorem last_all : (means [] κC [] PC.all).getLast? = some (F [] 252 PC.d252) := by
-  have h := cal 252 253 PC.d252 rfl
-  have hn := pre_length [] 253 (by decide)
+theorem last_all : (means [] κC [] PC.all).getLast? = some (F [] 256 PC.d256) := by
+  have h := cal 256 257 PC.d256 rfl
+  have hn := pre_length [] 257 (by decide)
   rw [pre_all] at h hn
   rw [List.getLast?_eq_getElem?, hn]; exact h
 

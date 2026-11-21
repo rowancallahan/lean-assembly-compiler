@@ -306,11 +306,15 @@ theorem all_ok (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Al
    fun ms G => ⟨_, rfl, ok_250 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_251 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_252 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_253 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_254 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_255 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_256 inp ms hin G⟩,
    trivial⟩
 
 /-- **the meaning of C's source text** (ParSpec's parse `PC.all`, `Sem`) is the Lean function `mLean`, up to the buffer capacity -/
 theorem sem_C (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Ref (Sem κC PC.all inp) (Sh.mLean inp) := by
   have G := means_all inp κC (specs inp) PC.all [] 0 ⟨rfl, by simp⟩ (all_ok inp hin)
-  have h := sem_of_good (n := 252) (S := Spec252 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
+  have h := sem_of_good (n := 256) (S := Spec256 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
   rwa [Sh.m_map] at h
 end Cert
