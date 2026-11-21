@@ -47,7 +47,7 @@ anchors; fixed by `x`) that the target accepts as an image of `x`'s J program `C
 the AST word list of `x` is shorter than 2^31: a fact of every source the front end accepts within the text bound
 (`src_ast_len`), which a `gen` written in nano cannot test (`bsize` reads the length modulo 2^64). -/
 def GenOKG (T : GTarget) (gen : List UInt8 → List UInt8) : Prop :=
-  ∀ x, gen x ≠ [] → mC x ≠ [] ∧ ((C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 → ∃ I : Img, I.code = gen x ∧
+  ∀ x, gen x ≠ [] → mC x ≠ [] ∧ ((C.o41 (C.y16 (C.t10 (C.s10 x)))).length < 2 ^ 31 → ∃ I : Img, I.code = gen x ∧
     ∀ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 → (∀ j ∈ Cj, SimW.JOK j) →
       mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] → T.valid Cj I)
 
@@ -87,18 +87,21 @@ theorem src_facts {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20
 /-- the AST word list of a source that C accepts (within the text bound) is shorter than 2^31: it is `serialize p` of
 the parsed program (the steps of `compiler_correctG`), bounded by `ParSerLen.ser_lt` -/
 theorem src_ast_len {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20) :
-    (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 := by
-  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => hne (by simp only [mC, e, g41_nil])
+    (C.o41 (C.y16 (C.t10 (C.s10 x)))).length < 2 ^ 31 := by
+  have hy0 : C.o41 (C.y16 (C.t10 (C.s10 x))) ≠ [] := fun e => hne (by simp only [mC, e, g41_nil])
   have hoe := o41_ne _ hy0
-  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
-  by_cases h0 : C.s10 x = []
+  have hy : C.y16 (C.t10 (C.s10 x)) ≠ [] := by rw [← hoe]; exact hy0
+  by_cases h0 : C.t10 (C.s10 x) = []
   · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
     rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
-  · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
+  · have hs0 : C.s10 x ≠ [] := fun e => h0 (by rw [e]; exact t10_nil)
+    have hL := LexSpec.s10_sound x (by omega) _ rfl hs0
     have hb := lexes_len hL
-    obtain ⟨p, hp, he⟩ := parStage _ (lexes_tokWF hL) (by omega) hy
+    have hd := DsSpec.t10_sound _ (by omega) h0
+    obtain ⟨hW, hts⟩ := DsSpec.ds_tokWF (lexes_tokWF hL) hd
+    obtain ⟨p, hp, he⟩ := parStage _ hW hts hy
     rw [hoe, he]
-    exact ParSerLen.ser_lt hp (by omega)
+    exact ParSerLen.ser_lt hp hts
 
 theorem ok_ne_oom (y : List UInt8) : (if y = [] then (1 : UInt64) else 0) ≠ oomFlag := by
   split <;> decide

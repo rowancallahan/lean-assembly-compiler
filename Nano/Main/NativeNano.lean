@@ -19,7 +19,7 @@ namespace NanoMain
 open Proven.Top Proven.Top.Alloc JT CallProbe
 
 /-- the native code generator in nano, from source text -/
-def genNano (x : List UInt8) : List UInt8 := C.e71 x (C.o41 (C.y16 (C.s10 x)))
+def genNano (x : List UInt8) : List UInt8 := C.e71 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
 
 /-- **the native AArch64 compiler** -/
 noncomputable def compileNano : SrcC → Option CompiledA := compileGen genNano
@@ -79,13 +79,13 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
   -- the output as an opaque list (no unfolding of the generator in definitional checks)
   obtain ⟨Bx, hBx⟩ : ∃ Bx, Bx = genNano x := ⟨_, rfl⟩
   rw [← hBx]
-  have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.s10 x))) := by unfold genNano; rfl
-  have hx' : C.e71 x (C.o41 (C.y16 (C.s10 x))) ≠ [] := by rw [← hgn]; exact hx
-  obtain ⟨g, hg⟩ : ∃ g, g = C.e70 (C.o41 (C.y16 (C.s10 x))) C.g_999 := ⟨_, rfl⟩
+  have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.t10 (C.s10 x)))) := by unfold genNano; rfl
+  have hx' : C.e71 x (C.o41 (C.y16 (C.t10 (C.s10 x)))) ≠ [] := by rw [← hgn]; exact hx
+  obtain ⟨g, hg⟩ : ∃ g, g = C.e70 (C.o41 (C.y16 (C.t10 (C.s10 x)))) C.g_999 := ⟨_, rfl⟩
   have gb : mC x = C.g40 16777216 x g 0 [] := by
-    have e0 : mC x = C.g42 x (C.o41 (C.y16 (C.s10 x))) C.g_999 := by unfold mC C.g41; rfl
+    have e0 : mC x = C.g42 x (C.o41 (C.y16 (C.t10 (C.s10 x)))) C.g_999 := by unfold mC C.g41; rfl
     rw [e0, hg, g42_e70]
-  have he71 : C.e71 x (C.o41 (C.y16 (C.s10 x))) =
+  have he71 : C.e71 x (C.o41 (C.y16 (C.t10 (C.s10 x)))) =
       if (C.e72 16777216 g 0 == 0) = true then [] else
       if (bsize (C.e64 g) == 0) = true then [] else C.e49 16777216 x (C.e64 g) 0 [] := by
     rw [hg]; simp only [C.e71]
@@ -112,7 +112,7 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
     exact g40_first x g 16777215 (fun e => d1 (by rw [e]; rfl))
   refine ⟨hmne, fun ha => ?_⟩
   have gl : g.length < 2 ^ 64 := by
-    have := e70_len (C.o41 (C.y16 (C.s10 x))) C.g_999 ha
+    have := e70_len (C.o41 (C.y16 (C.t10 (C.s10 x)))) C.g_999 ha
     rw [hg]; omega
   by_cases d2 : 262144 < bsize g
   · rw [if_pos d2] at h64'; exact absurd rfl h64'

@@ -39,6 +39,9 @@ def isLet : Nat → Nd → Bool
   | _ + 1, .letE .. => true
   | f + 1, .ite _ _ _ t e => isLet f t || isLet f e
   | _ + 1, _ => false
+/-- a let, tuple-let or (desugared) match directly as an operator or comparison operand: Lean's result depends on the
+surrounding position (LEAN-DIFF M15 variant), so it is rejected by shape -/
+def isLetH : Nd → Bool | .letE .. => true | _ => false
 def isShiftN : Nd → Bool | .bin op _ _ => isShift op | _ => false
 /-- `p ls j`: leaf j is of a kind Lean elaborates late; a literal leaf left of it is defaulted to Nat first -/
 def leftLit (lit : List Bool) (ls : List Nd) (p : Nd → Bool) : Bool :=
@@ -51,11 +54,11 @@ def letLitVal : Nat → List Nat → List Bool → Nd → Bool
   | _ + 1, _, _, _ => false
 def treeOk (f : Nat) (ws : List Nat) (env : List Bool) (lc : Bool) (ls : List Nd) : Bool :=
   let lit := ls.map (isL f ws env)
-  !(lit.all id && (lc || !ls.all isConst)) && !leftLit lit ls isShiftN
+  !(lit.all id && (lc || !ls.all isConst)) && !leftLit lit ls isShiftN && !ls.any isLetH
 def cmpOk (f : Nat) (ws : List Nat) (env : List Bool) (a b : Nd) : Bool :=
   let ls := leaves f a ++ leaves f b
   let lit := ls.map (isL f ws env)
-  !(lit.all id && (isBin a || isBin b)) && !leftLit lit ls isShiftN && !leftLit lit ls (letLitVal f ws env)
+  !(lit.all id && (isBin a || isBin b)) && !leftLit lit ls isShiftN && !ls.any isLetH && !leftLit lit ls (letLitVal f ws env)
 /-- an if with a literal branch and a let-headed (possibly match) branch -/
 def litLetIte (f : Nat) (ws : List Nat) (env : List Bool) : Nd → Bool
   | .ite _ _ _ t e => (isL f ws env t && isLet f e) || (isL f ws env e && isLet f t)
