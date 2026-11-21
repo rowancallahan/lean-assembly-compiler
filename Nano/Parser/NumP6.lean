@@ -164,4 +164,53 @@ theorem m_close {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s c} {S0 
     exact hP ⟨hI.pb, hI.lb, hI.sb, hI.pop.pt, hI.lt, hgl, (List.prefix_append _ _).trans hI.ps, hI.ls⟩ n
   · rw [if_neg (by simpa using hok)]; exact hQ _ (show u 0 ≠ 1 by decide)
 
+/-- BINDM slot pos: bind the slot to lw of the value at pos -/
+theorem m_bindm {x d : Buf} {np : Nat} {ws : List Nat} (hC : LC x d ws) {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S c gb}
+    {f : Nat} {v : Nd} {rest : Buf} {pv sl : Nat} (hsl : sl < 2 ^ 32) (hf : v.ser.length ≤ f) (hnb : NB np v)
+    (hx : x.drop pv = v.ser ++ rest) (hpv : 0 < pv)
+    (hI : MI b bs t (ts ++ [(6, u sl, u pv)]) g s S)
+    (hP : ∀ b', MI b' (bs ++ [(sl, NumSpec.lw f ws (envOf bs) v)]) t ts g s S →
+      GM x d Q b' (u (encB (bs ++ [(sl, NumSpec.lw f ws (envOf bs) v)])).length) t (u ts.length) c g s (u S.length) gb) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
+  apply gm_top hQ hI
+  intro hsz n
+  have hts := hI.lts; simp at hts
+  have hR := u31_ok hC hf hnb hx hpv hI.pb (by have := hsz.1; omega) hI.sb
+  generalize hRe : u31 x d b (u (encB bs).length) (u pv) = R at hR
+  obtain ⟨b1, vv, vt, e, ok⟩ := R
+  by_cases hok : ok = 1
+  · subst hok
+    obtain ⟨p1, p2, p3, p3', p4, -⟩ := hR rfl
+    simp only at p1 p2 p3 p3' p4
+    subst p4
+    have hL := p3.length_le
+    have hb1 := p1.length_le
+    have hR2 := u26_ok (W := []) (L := (NumSpec.lw f ws (envOf bs) v).map w2) (by simpa using p3) p1 (by omega)
+      (by simp only [List.length_map] at hL ⊢; omega) (by simp only [List.length_map, List.length_nil] at hL ⊢; omega) (u sl)
+    simp only [List.length_nil, Nat.zero_add] at hR2
+    generalize hR2e : u26 b1 (u (encB bs).length) vv (u 0) (u (List.map w2 (NumSpec.lw f ws (envOf bs) v)).length) (u sl) = R2 at hR2
+    obtain ⟨b2, bt2, ok2⟩ := R2
+    rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ _ hRe _ (show u26 b1 (u (encB bs).length) vv 0
+      (u (List.map w2 (NumSpec.lw f ws (envOf bs) v)).length) (u sl) = (b2, bt2, ok2) from hR2e)]
+    rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))]
+    by_cases hok2 : ok2 = 1
+    · subst hok2
+      obtain ⟨q1, q2, q3⟩ := hR2 rfl
+      simp only at q1 q2 q3
+      have hbs := hI.pb.length_le
+      have hb := hsz.1
+      simp only [List.length_map] at q3 hL
+      rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl)), upred _ (by omega)]
+      have e2 : bt2 = u (encB (bs ++ [(sl, NumSpec.lw f ws (envOf bs) v)])).length := by
+        rw [q2, encB_snoc, List.length_append, encR_len]; simp only [List.length_map]; exact congrArg u (by omega)
+      rw [e2]
+      refine hP _ ⟨?_, by simp only; omega, ?_, hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ n
+      · rw [encB_snoc]; simpa [encR] using q1
+      · intro r hr; rcases List.mem_append.1 hr with hr | hr
+        · exact hI.sb r hr
+        · simp at hr; subst hr; exact hsl
+    · rw [if_neg (by simpa using hok2)]; exact hQ _ (show u 0 ≠ 1 by decide)
+  · rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ _ hRe _ rfl, if_neg (by simpa using hok)]
+    exact hQ _ (show u 0 ≠ 1 by decide)
+
 end NumP

@@ -66,7 +66,7 @@ def GM (x d : Buf) (Q : MO → Prop) (b : Buf) (bt : UInt64) (t : Buf) (tt c : U
 /-- the main machine's invariant: chain, tasks and slot stack are prefixes; the groups buffer is exact -/
 structure MI (b : Buf) (bs : List (Nat × List Bool)) (t : Buf) (ts : List T3) (g s : Buf) (S : List UInt64) : Prop where
   pb : encB bs <+: b
-  lb : b.length < 2 ^ 42
+  lb : b.length < 2 ^ 44
   sb : ∀ r ∈ bs, r.1 < 2 ^ 32
   pt : encT ts <+: t
   lt : t.length < 2 ^ 42
@@ -82,7 +82,7 @@ theorem MI.pop {b bs t ts g s S r} (h : MI b bs t (ts ++ [r]) g s S) : MI b bs t
   ⟨h.pb, h.lb, h.sb, (by rw [encT_snoc]; exact List.prefix_append _ _ : encT ts <+: encT (ts ++ [r])).trans h.pt,
     h.lt, h.lg, h.ps, h.ls⟩
 
-theorem u36_eq {b t g s : Buf} (hb : b.length < 2 ^ 42) (ht : t.length < 2 ^ 42) (hg : g.length < 2 ^ 42)
+theorem u36_eq {b t g s : Buf} (hb : b.length < 2 ^ 44) (ht : t.length < 2 ^ 42) (hg : g.length < 2 ^ 42)
     (hs : s.length < 2 ^ 42) :
     (u36 b t g s == 0) = !(decide (b.length < 2 ^ 40) && decide (t.length < 2 ^ 40) && decide (g.length < 2 ^ 40) &&
       decide (s.length < 2 ^ 40)) := by
