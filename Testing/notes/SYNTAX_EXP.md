@@ -4,6 +4,149 @@ Base: `origin/release-434` @ 56e2584. Toolchain: Lean 4.34.1. RISC-V model: `dep
 `6ac35da9… 161`, checked). Locally the root `lake-manifest.json` was switched to lean-sail v10 to build the regenerated
 model (as on `rv-regen-434`); that change is **not committed** (release-434 still pins v5).
 
+## syntax-1 (2026-11-21): exp-syntax + exp-syntax-match combined, on combined-2 (stage rename), fuzzed
+
+### Owner decisions (2026-11-21)
+1. Extending the trusted lexer definition (comments, attributes): approved.
+2. The `pOf`/desugar trusted parse change for `match`: approved. Broader parser changes are allowed if heavily fuzzed.
+3. +8 MiB work memory for `match`: accepted.
+4. Still open, unchanged here: namespace flattening; out-of-range index semantics.
+5. The compiler's own source stays in the bootstrap subset; comments are allowed there once this lands. Checked by
+   `Testing/scripts/subset_check.sh`.
+
+### Bugs the fuzzer found (both fixed in the trusted lexer spec)
+- **Miscompile, `open … in`.** `def a := open Nat in 1 +` newline `2` is 3 in Lean, but the old spec gave 2, because
+  `open` skipped the rest of its line. Now a `namespace`/`open`/`section`/`end` line may contain only names, dots and
+  spaces, and no word `in` (`lineOk`, `inWord`).
+- **Doc comments.** After `/--` or `/-!`, Lean skips whitespace, dash-dash lines and plain block comments before the
+  body. So `/-- -- x -/` is not a complete comment, and `/-- -- x -/` newline `y -/` is one comment. Now `docWs` does
+  the same before `blockEnd`. Checked against real Lean on 17 probe texts, including `/--/`, `/---/`, `/-- --/`,
+  CR LF and nested openers.
+- Also tightened: `@[…]` may contain only names, spaces and commas (`attrEnd`). Lean lets a comment hide the `]`.
+
+### What changed in the trusted definitions (this round; verbatim diff of `LexSpec`, exp-syntax-match → syntax-1)
+```diff
+diff --git a/Nano/V2Self/Proof/Lex/Lex2Spec.lean b/Nano/Lexer/Lex2Spec.lean
+index 77de9188..4333e170 100644
+--- a/Nano/V2Self/Proof/Lex/Lex2Spec.lean
++++ b/Nano/Lexer/Lex2Spec.lean
+@@ -1,13 +1,16 @@
+-/- Nano/V2Self/Proof/Lex/Lex2Spec: the SPECIFICATION of the S lexer (`C.s10`), independent of Lex2's code.
++/- Nano/Lexer/Lex2Spec: the SPECIFICATION of the S lexer (`C.s10`), independent of Lex2's code.
+ `Lexes x t`: the byte list `x` lexes to the token word list `t`.  One token at a time (`step`), maximal munch:
+ whitespace (space, newline) is skipped; the operator table is searched longest-first; a word is a maximal run of
+ [A-Za-z0-9_'] (a keyword/prim, an identifier `14 (1,b)* 0`, or, when it starts with a digit, a decimal number
+ `5` + 8 little-endian bytes of the value mod 2^64, all characters of the word must then be digits).
+ Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
+-(slash-dash ... dash-slash, docstrings included; unterminated: rejected); an attribute `@[ … ]` up to the first `]` (none: rejected); the
+-words `namespace`, `open`, `section`, `end` up to the newline; the word `private`.
++(slash-dash ... dash-slash; unterminated: rejected); a doc comment (slash-dash-dash or slash-dash-bang): as Lean, the
++whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
++attribute `@[ … ]` of names, spaces and commas; the words `namespace`, `open`, `section`, `end` with the rest of their
++line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the word
++`private`.
+ Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
+-import Nano.V2Self.Prelude
++import Nano.Main.Prelude
+ namespace LexSpec
+ 
+ def isW (b : UInt8) : Bool :=
+@@ -58,6 +61,33 @@ def blockEnd : Nat → List UInt8 → Option (List UInt8)
+     else if c = 47 ∧ c' = 45 then blockEnd (d + 1) r
+     else blockEnd d (c' :: r)
+ 
++/-- Lean's whitespace after a doc-comment opener (fuel `f`): spaces, newlines (CR LF too), dash-dash lines and plain
++nested block comments; the rest from the comment body's first byte -/
++def docWs : Nat → List UInt8 → Option (List UInt8)
++  | 0, _ => none
++  | _ + 1, [] => some []
++  | f + 1, c :: r =>
++    if c = 32 ∨ c = 10 ∨ (c = 13 ∧ r.head? = some 10) then docWs f r
++    else if c = 45 ∧ r.head? = some 45 then docWs f (r.dropWhile (· != 10))
++    else if c = 47 ∧ r.head? = some 45 ∧ r.tail.head? ≠ some 45 ∧ r.tail.head? ≠ some 33 then
++      (blockEnd 0 r.tail).bind (docWs f)
++    else some (c :: r)
++
++/-- `in` as a word: after a space, followed by the end, a space or a newline -/
++def inWord : List UInt8 → Bool
++  | 105 :: 110 :: t => t.head? == none || t.head? == some 32 || t.head? == some 10
++  | _ => false
++
++/-- the rest of a `namespace`/`open`/`section`/`end` line: names, dots, spaces up to the newline, no word `in` -/
++def lineOk : List UInt8 → Bool
++  | [] => true
++  | b :: r => b == 10 || ((isW b || b == 46 || b == 32) && !(b == 32 && inWord r) && lineOk r)
++
++/-- the rest after the `]` of an attribute whose bytes are names, spaces and commas -/
++def attrEnd : List UInt8 → Option (List UInt8)
++  | [] => none
++  | b :: r => if b == 93 then some r else if isW b || b == 32 || b == 44 then attrEnd r else none
++
+ /-- decimal value mod 2^64 -/
+ def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
+ /-- 8 little-endian bytes -/
+@@ -69,11 +99,10 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+   | c :: r =>
+     if c == 32 || c == 10 then some ([], r)
+     else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
+-    else if c == 47 && r.head? == some 45 then (blockEnd 0 r.tail).map fun t => ([], t)
+-    else if c == 64 && r.head? == some 91 then
+-      (match r.tail.dropWhile (· != 93) with
+-       | [] => none
+-       | _ :: t => some ([], t))
++    else if c == 47 && r.head? == some 45 then
++      (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
++       else blockEnd 0 r.tail).map fun t => ([], t)
++    else if c == 64 && r.head? == some 91 then (attrEnd r.tail).map fun t => ([], t)
+     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
+       | some (s, k) => some ([k], (c :: r).drop s.length)
+       | none =>
+@@ -81,7 +110,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+         let rest := (c :: r).dropWhile isW
+         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
+         else if isW c then
+-          if lineKw.contains w then some ([], rest.dropWhile (· != 10))
++          if lineKw.contains w then (if lineOk rest then some ([], rest.dropWhile (· != 10)) else none)
+           else if dropKw.contains w then some ([], rest)
+           else some ((match kwTable.lookup w with
+                  | some k => [k]
+```
+`DsSpec.*`, `pOf` and `mC` are unchanged against exp-syntax-match; see the sections below. The REVIEW statements are
+unchanged, and `review_axioms.sh` gives "OK: 8 theorems, axioms as pinned".
+
+### Code and proofs (this round)
+- C, `Nano/Lexer/Lex2.lean`: new push-free scanners s13 (line check), s14 (attribute) and s15 (doc whitespace). `s9`'s
+  92/95/96 branches use them.
+- `Lex2Sound`: `s13_sound`, `s14_sound`, `s15_sound` (fuel-generic), `rd_at`, `blockEnd_le`; `kind_spec` and
+  `s9_sound` are updated.
+- `SrcLink.step_app`: `docWs_app` (needs the chunk to end in a newline), `attrEnd_app`, `lineOk_app`, `inWord_app`.
+- `Sem.step_len`: `docWs_len`, `attrEnd_len`. `MainTokWF.step_tok`: the new branches emit `[]`.
+- Regenerated: self_S, B1, B2/B3, Cert, the SrcLink chunks (34 groups), the Tests ids (+3 from def 15; s13–s15 added
+  to `S`), self_S_ast, B2_arm.
+- Stage rename: `apply.sh` was run on this branch with a temporary rule C/Dsg → Lexer/Dsg (`rewrite.py` itself is
+  unchanged), then origin/combined-2 was merged in. `build_self_S.py`/`build_self_A.py` include Dsg, and the Arm/apc
+  lakefile lists the four Ds modules.
+
+### Checks (syntax-1 @ 28211caf)
+- `lake build` of every stage folder: 747 jobs OK. REVIEW + `review_axioms.sh`: OK (8 theorems).
+- `release_check.sh` gates fix1, fix23, examples, selfhost: all PASS. B2 = B3 = 381,564 B, sha256 `d919496f…`.
+- Native ARM: GA_arm fixpoint (402,100 B); B2_na compiles C's source to B2.bin. `cross_native.sh`: 14 sources ×
+  3 hosts × 2 compilers identical.
+- `subset_check.sh`: OK, and it fails when a `match` is injected into Lex2.
+- Arm/apc: build-runner request `build-slot-2-syntax1-apc` (the DeepMind/Sail dependencies are not on this box).
+
+### Fuzz (`Testing/nano/v2self/fuzz/fuzz_syntax.py` + `lean_check.py`)
+FUZZ_RESULTS
+
+Known superset (owner decision pending; no miscompile possible, since Lean gives these texts no meaning): the compiler
+accepts texts that Lean rejects.
+- Doc comments, `/-!` or `@[…]` in a position Lean does not allow (for example mid-expression).
+- Typing differences: Lean defaults unconstrained literals to Nat.
+- Layout: Lean's offside rule for match arms; S has no layout rule.
+
+Rejecting the misplaced modifiers would need a modifier token checked in `DsSpec.ds`: a further trusted-spec change and
+about 3–5 h of proofs.
+
 ## Morning summary (SYNTAX-EXP, 2026-11-20)
 Both branches include `origin/release-434` @234d4ff5 (which now contains rv-regen-434). The merge changed no file under
 `Nano/V2Self`, `Testing/nano/v2self` or the build configuration, so the results below carry over; runner confirmation on
