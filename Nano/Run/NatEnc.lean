@@ -76,4 +76,84 @@ theorem atomize_j : ∀ (n : Nat) (l : List J) (tl : List NTm), atomize n l = so
           exact List.take_append_drop _ _
       · exact absurd h (by simp)
 
+/-! ## the encoder -/
+
+theorem jOf_map (ts : List NTm) : jOf (ts.map fun t => (⟨t, false, false⟩ : NAt)) = ts.flatMap NTm.j := by
+  induction ts with
+  | nil => rfl
+  | cons t l ih => simp only [List.map_cons, jOf_cons, List.flatMap_cons, ih]
+
+/-- all jump targets of an atom list, from J pc `q` -/
+def tgs : List NAt → Nat → List Nat
+  | [], _ => []
+  | x :: l, q => x.t.tg q ++ tgs l (q + x.t.j.length)
+
+theorem tgs_mem : ∀ (pre : List NAt) (x : NAt) (suf : List NAt) (q p : Nat),
+    p ∈ x.t.tg (q + (jOf pre).length) → p ∈ tgs (pre ++ x :: suf) q
+  | [], x, suf, q, p, h => by
+    simp only [List.nil_append, tgs, List.mem_append]
+    left; simpa [jOf] using h
+  | y :: pre, x, suf, q, p, h => by
+    simp only [List.cons_append, tgs, List.mem_append]
+    right
+    apply tgs_mem pre x suf (q + y.t.j.length) p
+    rw [jOf_cons, List.length_append, ← Nat.add_assoc] at h
+    exact h
+
+/-- **the encoder's checks** (decidable; the nano translator performs the same ones): the size limit, the per-atom
+side conditions, no dead register (flags off, no atom that kills one), every jump target an atom boundary -/
+def NChk (tl : List NAt) : Prop :=
+  (wordsOf tl).length < 2 ^ 18 ∧
+  (∀ x ∈ tl, x.t.ok = true ∧ x.d5 = false ∧ x.d6 = false ∧ x.t.kills 5 = false ∧ x.t.kills 6 = false) ∧
+  (∀ p ∈ tgs tl 0, p ∈ (bnd tl 0 0).map Prod.fst)
+
+instance (tl : List NAt) : Decidable (NChk tl) := by unfold NChk; infer_instance
+
+theorem kills_of (t : NTm) (h5 : t.kills 5 = false) (h6 : t.kills 6 = false) (r : Nat) : t.kills r = false := by
+  cases t <;> simp_all [NTm.kills]
+
+/-- the checks give a well-formed atom list -/
+theorem nchk_wf {tl : List NAt} (h : NChk tl) : NWf tl := by
+  obtain ⟨hs, ha, ht⟩ := h
+  have hdead : ∀ x ∈ tl, ∀ r, x.dead r = false := fun x hx r => by
+    obtain ⟨-, h5, h6, -, -⟩ := ha x hx
+    simp [NAt.dead, h5, h6]
+  have hout : ∀ x ∈ tl, ∀ r, x.out r = false := fun x hx r => by
+    obtain ⟨-, h5, h6, k5, k6⟩ := ha x hx
+    simp [NAt.out, NAt.dead, h5, h6, kills_of x.t k5 k6 r]
+  have mem : ∀ {pre : List NAt} {x : NAt} {suf : List NAt}, tl = pre ++ x :: suf → x ∈ tl := fun e => by
+    rw [e]; simp
+  exact {
+    size := hs
+    ok := fun x hx => (ha x hx).1
+    rd := fun x hx r hd => by rw [hdead x hx r] at hd; exact absurd hd (by decide)
+    fall := fun pre x suf e _ r ho => by rw [hout x (mem e) r] at ho; exact absurd ho (by decide)
+    tgt := fun pre x suf e p hp => by
+      refine ⟨?_, fun r ho => by rw [hout x (mem e) r] at ho; exact absurd ho (by decide)⟩
+      have hm : p ∈ tgs tl 0 := by
+        rw [e]; exact tgs_mem pre x suf 0 p (by rw [Nat.zero_add]; exact hp)
+      obtain ⟨⟨a, w⟩, hm', rfl⟩ := List.mem_map.1 (ht p hm)
+      exact ⟨w, hm'⟩
+    ret := fun pre x suf rs e _ pre' off d5 d6 suf' _ r hd => by
+      rw [hdead x (mem e) r] at hd; exact absurd hd (by decide) }
+
+/-- **the native encoder** (specification): the code bytes of a J program, or none -/
+def natEncJ (Cj : List J) : Option (List UInt8) :=
+  ((atomize Cj.length Cj).map fun ts => ts.map fun t => (⟨t, false, false⟩ : NAt)).bind fun tl =>
+    if NChk tl then some (wordBytes (wordsOf tl)) else none
+
+/-- **the encoder's output is an image of the J program** (the image relation by construction) -/
+theorem natEncJ_img {Cj : List J} {B : List UInt8} (h : natEncJ Cj = some B) : ∃ I : Img, I.code = B ∧ NatV Cj I := by
+  unfold natEncJ at h
+  cases hz : atomize Cj.length Cj with
+  | none => rw [hz] at h; exact absurd h (by simp)
+  | some ts =>
+    rw [hz] at h
+    change (if NChk (ts.map fun t => (⟨t, false, false⟩ : NAt)) then _ else _) = some B at h
+    split at h
+    · rename_i hc
+      cases h
+      exact ⟨imgOf _, rfl, _, by rw [jOf_map]; exact (atomize_j _ _ _ hz).symm, rfl, nchk_wf hc⟩
+    · cases h
+
 end JT
