@@ -25,6 +25,20 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
+1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
+2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
+   output = Lean's output. Proof: evaluator for nano's Expr fragment, eval(emit a) = nano semantics of a, and the
+   existing compiler theorem. When they don't match, nothing is claimed (elaboration differs), so only fuzz applies.
+3. Expr entry point: a second front door that takes elaborated Expr (e.g. exported from Lean). It is written in
+   nano and self-hosted, an optional input, not the shelved Lean-hosted compile mode. Users who don't trust nano's
+   parser/elaborator can use Lean's elaborator and rely only on the back-end theorem (Expr fragment ⊆ Lean,
+   same Expr ⇒ same output).
+4. Self-consistency check: the compiler compiled by Lean's toolchain (B1) vs. compiled by itself (B2 = B3), plus
+   comparing nano's Expr of its own source with Lean's Expr of it (extends SrcLink). If equal, nano's parser /
+   elaborator don't change the meaning of nano's own code.
+Reuse the earlier Expr-level work in Legacy/Riscv/Frontx (kernel-checked equation per function) where it fits.
+
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |
 |---|---|---|
