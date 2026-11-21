@@ -41,4 +41,40 @@ theorem n_push (S : A64SemN M X W) {h r : Nat} (hM : NMid X W K A s0 st h s) (hB
       (by omega) (by rw [e31]; exact hw (by rw [e31, e30] at hlt; exact hlt))
     exact ⟨s3, Runs.trans (Runs.trans r1 r2) r3, by rw [if_neg hlt]; exact N3⟩
 
+/-- **pop two, then drop `k` bytes** (`a11`): `ldp x6, x5, [x11]; add x11, x11, #k` (t1 := top, t0 := next) -/
+theorem n_pop2 (S : A64SemN M X W) {h k : Nat} (hM : NMid X W K A s0 st h s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
+    (a0 : A[h]? = some (ArmEnc.ldp (armReg 6) (armReg 5) (armReg 31)))
+    (a1 : A[h + 1]? = some (ArmEnc.addi (armReg 31) (armReg 31) k)) (hk : k < 4096)
+    (hw : wok K (st.x 31).toNat) (hw8 : wok K ((st.x 31).toNat + 8)) :
+    let st1 := CallProbe.wr (CallProbe.wr st 6 (st.m (st.x 31).toNat)) 5 (st.m ((st.x 31).toNat + 8))
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st1 31 (st1.x 31 + UInt64.ofNat k)) (h + 2) s' := by
+  intro st1
+  obtain ⟨s1, r1, N1⟩ := n_ldp S hM hB a0 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+    (hM.x 31 (by omega) (by omega)) hw hw8
+  obtain ⟨s2, r2, N2⟩ := n_addi S N1 hB a1 (by decide) (by decide) (by decide) (by decide) hk
+  exact ⟨s2, Runs.trans r1 r2, N2⟩
+
+/-- **BIN `op`**, not mul (`a12`): `ldp x6, x5, [x11]; add x11, x11, #8; OP x5, x5, x6; str x5, [x11]` -/
+theorem n_bin (S : A64SemN M X W) {h op : Nat} (hM : NMid X W K A s0 st h s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
+    (a0 : A[h]? = some (ArmEnc.ldp (armReg 6) (armReg 5) (armReg 31)))
+    (a1 : A[h + 1]? = some (ArmEnc.addi (armReg 31) (armReg 31) 8))
+    (a2 : A[h + 2]? = some (ArmEnc.rr (ArmEnc.aluC op) (armReg 5) (armReg 5) (armReg 6)))
+    (a3 : A[h + 3]? = some (ArmEnc.str (armReg 5) (armReg 31) 0))
+    (h1 : 1 ≤ op) (h2 : op ≤ 8) (h3 : op ≠ 3)
+    (hw : wok K (st.x 31).toNat) (hw8 : wok K ((st.x 31).toNat + 8)) :
+    let st1 := CallProbe.wr (CallProbe.wr st 6 (st.m (st.x 31).toNat)) 5 (st.m ((st.x 31).toNat + 8))
+    let st2 := CallProbe.wr st1 31 (st1.x 31 + UInt64.ofNat 8)
+    let st3 := CallProbe.wr st2 5 (CallProbe.aluf op (st2.x 5) (st2.x 6))
+    wok K (st3.x 31).toNat →
+    ∃ s', Runs M s s' ∧
+      NMid X W K A s0 { st3 with m := CallProbe.upd st3.m (st3.x 31).toNat (st3.x 5) } (h + 4) s' := by
+  intro st1 st2 st3 hw3
+  obtain ⟨s2, r2, N2⟩ := n_pop2 S hM hB a0 a1 (by decide) hw hw8
+  obtain ⟨s3, r3, N3⟩ := n_alu S N2 hB a2 h1 h2 h3 (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by decide)
+  change NMid X W K A s0 st3 _ s3 at N3
+  obtain ⟨s4, r4, N4⟩ := n_str (a := (st3.x 31).toNat) S N3 hB a3 (by decide) (N3.x 5 (by omega) (by omega))
+    (by decide) (N3.x 31 (by omega) (by omega)) (by decide) (by decide) (by omega) hw3
+  exact ⟨s4, Runs.trans (Runs.trans r2 r3) r4, N4⟩
+
 end JT
