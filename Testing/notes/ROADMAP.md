@@ -686,3 +686,8 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
 - Syntax: nano's accepted language is a SUBSET of Lean's (owner, 2026-11-21): every program nano accepts, Lean
   accepts with the same results; fuzz FAILs on any nano-accepts/Lean-rejects case. Concretely: misplaced docstrings/attributes are rejected too, via a
   decl-modifier check in the trusted desugar spec; reject fuzz checks Lean-rejects ⇒ nano-rejects.
+- Lean parser as the model (owner, 2026-11-21): nano's syntax rules follow Lean 4's own parser (src/Lean/Parser) rule by
+  rule, with file:line citations in Testing/notes/LEAN_RULES.md; elaborator-dependent meaning (literal defaulting,
+  name resolution) is handled by rejecting ambiguous programs + differential fuzz against real Lean. Later, once nano
+  has monads/structures/typeclasses: port a cut-down Lean parser for nano's subset into nano, real Lean as test oracle
+  (no formal equivalence: Lean's parser is partial/meta code and not provable as is).
