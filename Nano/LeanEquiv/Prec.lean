@@ -44,4 +44,23 @@ theorem cmp_prod_lean :
     LexSpec.opTable.contains (symBytes " == ", 23) ∧ LexSpec.opTable.contains (symBytes " < ", 20) ∧
     LexSpec.opTable.contains (symBytes " × ", 16) := by decide +kernel
 
+/-- the symbols (trimmed) and term positions (`none`, with their precedence dropped: all 0 here) of a description -/
+def shape : ParserDescr → List (Option String)
+  | .node _ _ d => shape d
+  | .unary _ d => shape d
+  | .binary _ a b => shape a ++ shape b
+  | .symbol s => [some s]
+  | .cat `term 0 => [none]
+  | .const _ => []
+  | _ => [some "?"]
+
+/-- `if c then t else e` as Lean declares it (Init/Notation.lean:485): three terms at precedence 0 between the three
+keywords nano's lexer tags 32 33 34; the node's own precedence is `leadPrec` (1022: not an application argument) -/
+theorem ite_lean :
+    shape termIfThenElse = [some "if ", none, some " then", none, some "else ", none] ∧
+    (∃ d, termIfThenElse = .node `termIfThenElse 1022 d) ∧
+    LexSpec.kwTable.contains (symBytes "if ", 32) ∧ LexSpec.kwTable.contains (symBytes " then", 33) ∧
+    LexSpec.kwTable.contains (symBytes "else ", 34) := by
+  refine ⟨by decide +kernel, ⟨_, rfl⟩, by decide +kernel, by decide +kernel, by decide +kernel⟩
+
 end LeanEquiv

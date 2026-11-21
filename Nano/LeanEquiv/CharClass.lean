@@ -43,4 +43,9 @@ theorem isIdFirstAscii_eq_isIdFirst : ∀ b, b < 128 → Lean.isIdFirstAscii b =
 theorem ws_eq_lean : ∀ b, (ch b).isWhitespace = (b == 32 || b == 10 || b == 9 || b == 13) :=
   all_bytes (by decide +kernel)
 
+/-- subset forms: what nano skips is Lean whitespace; a nano digit is a Lean digit -/
+theorem ws_imp_lean : ∀ b, (b == 32 || b == 10) = true → (ch b).isWhitespace = true :=
+  all_bytes (by decide +kernel)
+theorem isD_imp_isDigit (b : UInt8) (h : isD b = true) : (ch b).isDigit = true := isD_eq_lean b ▸ h
+
 end LeanEquiv

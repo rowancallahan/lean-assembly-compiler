@@ -16,3 +16,7 @@ import Nano.LeanEquiv.Numeral
 #print axioms LeanEquiv.cmp_prod_lean
 #print axioms LeanEquiv.numVal_eq
 #print axioms LeanEquiv.numVal_eq_lean
+#print axioms LeanEquiv.ws_imp_lean
+#print axioms LeanEquiv.isD_imp_isDigit
+#print axioms LeanEquiv.numeral_sub_toNat?
+#print axioms LeanEquiv.ite_lean
