@@ -15,16 +15,16 @@ namespace C
 def e0 (b : Buf) (j v : UInt64) : Buf := if j < bsize b then bset b j v else bpush b v
 
 /-! ## printing -/
-def e1 : Nat → List UInt8 → UInt64 → List UInt8
-  | 0, o, w => o
-  | n + 1, o, w => if w == 0 then o else e1 n (put o (w &&& 255)) (w >>> 8)
+def e1 : Nat → List UInt8 → List UInt8 → UInt64 → List UInt8
+  | 0, x, o, w => o
+  | n + 1, x, o, w => if w == 0 then o else e1 n x (put o (w &&& 255)) (w >>> 8)
 
 /-- phrase `i` from word `j` on -/
-def e2 : Nat → List UInt8 → UInt64 → UInt64 → List UInt8
-  | 0, o, i, j => o
-  | n + 1, o, i, j =>
+def e2 : Nat → List UInt8 → List UInt8 → UInt64 → UInt64 → List UInt8
+  | 0, x, o, i, j => o
+  | n + 1, x, o, i, j =>
     let w := ew i j;
-    if (w >>> 56) == 0 then e1 9 o w else e2 n (e1 9 o w) i (j + 1)
+    if (w >>> 56) == 0 then e1 9 x o w else e2 n x (e1 9 x o w) i (j + 1)
 
 def e3 : Nat → UInt64 → UInt64 → UInt64
   | 0, i, a => a
@@ -36,19 +36,26 @@ def e4 : Nat → UInt64 → UInt64 → UInt64 → UInt64 × UInt64
   | n + 1, k, p, c => if k < p then (c, k) else e4 n (k - p) p (c + 1)
 
 /-- decimal digits of k from 10^i down; z: a digit was printed -/
-def e5 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → List UInt8
-  | 0, o, k, i, z => o
-  | n + 1, o, k, i, z =>
+def e5 : Nat → List UInt8 → List UInt8 → UInt64 → UInt64 → UInt64 → List UInt8
+  | 0, x, o, k, i, z => o
+  | n + 1, x, o, k, i, z =>
     let (c, u) := e4 16 k (e3 20 i 1) 0;
     let o1 := (if c == 0 then (if z == 0 then (if i == 0 then put o 48 else o) else put o 48) else put o (48 + c));
-    if i == 0 then o1 else e5 n o1 u (i - 1) (z ||| c)
+    if i == 0 then o1 else e5 n x o1 u (i - 1) (z ||| c)
 
-def e6 (o : List UInt8) (k : UInt64) : List UInt8 := e5 21 o k 19 0
+def e6 (x : List UInt8) (o : List UInt8) (k : UInt64) : List UInt8 := e5 21 x o k 19 0
 
 /-- the identifier bytes of the token at p (tag 14, then (1, byte)*, 0) -/
-def e7 : Nat → List UInt8 → Buf → UInt64 → List UInt8
-  | 0, o, t, p => o
-  | n + 1, o, t, p => if bget t p == 1 then e7 n (put o (bget t (p + 1))) t (p + 2) else o
+def e7 : Nat → List UInt8 → List UInt8 → Buf → UInt64 → List UInt8
+  | 0, x, o, t, p => o
+  | n + 1, x, o, t, p => if bget t p == 1 then e7 n x (put o (bget t (p + 1))) t (p + 2) else o
+
+/-- phrases written as ` !<id>` (S-compact, Testing/nano/expr/expand.py; the output stays under the 2^19-byte capacity) -/
+def e56 (i : UInt64) : UInt64 :=
+  if i == 9 then 1 else if i == 11 then 1 else if i == 41 then 1 else if 11 < i then (if i < 32 then 1 else 0) else 0
+
+def e57 (x : List UInt8) (o : List UInt8) (i : UInt64) : List UInt8 :=
+  if e56 i == 1 then e6 x (e2 4 x o 47 0) i else e2 32 x o i 0
 
 /-! ## tokens -/
 def e8 : Nat → Buf → UInt64 → UInt64
@@ -402,23 +409,23 @@ def e49 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → Buf
     else e48 r f g a h s q l p e d
 
 /-- run the work list: (s, (l, o)) -/
-def e50 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → Buf → List UInt8 → Buf × (Buf × List UInt8)
-  | 0, r, t, f, g, a, h, s, q, l, o => (s, (l, o))
-  | n + 1, r, t, f, g, a, h, s, q, l, o =>
+def e50 : Nat → List UInt8 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → Buf → List UInt8 → Buf × (Buf × List UInt8)
+  | 0, x, r, t, f, g, a, h, s, q, l, o => (s, (l, o))
+  | n + 1, x, r, t, f, g, a, h, s, q, l, o =>
     if q == 0 then (s, (l, o)) else
     let k := bget s (q - 4);
-    let x := bget s (q - 3);
-    if k == 1 then e50 n r t f g a h s (q - 4) l (e2 32 o x 0)
-    else if k == 4 then e50 n r t f g a h s (q - 4) l (e6 (e2 32 o 43 0) x)
-    else if k == 5 then e50 n r t f g a h s (q - 4) l (e6 (e2 32 o 44 0) x)
-    else if k == 7 then e50 n r t f g a h s (q - 4) l (e7 16777216 (e2 32 o 45 0) t (x + 1))
+    let y := bget s (q - 3);
+    if k == 1 then e50 n x r t f g a h s (q - 4) l (e57 x o y)
+    else if k == 4 then e50 n x r t f g a h s (q - 4) l (e6 x (e2 32 x o 43 0) y)
+    else if k == 5 then e50 n x r t f g a h s (q - 4) l (e6 x (e2 32 x o 44 0) y)
+    else if k == 7 then e50 n x r t f g a h s (q - 4) l (e7 16777216 x (e2 32 x o 45 0) t (y + 1))
     else if k == 2 then
-      (if x < 5 then e50 n r t f g a h s (q - 4) l (e2 32 o (6 + x) 0)
-       else e50 n r t f g a h (e41 (e41 s (q - 4) 2 (e14 h x) 0 0) q 2 (e13 h x) 0 0) (q + 4) l (e2 32 o 11 0))
+      (if y < 5 then e50 n x r t f g a h s (q - 4) l (e57 x o (6 + y))
+       else e50 n x r t f g a h (e41 (e41 s (q - 4) 2 (e14 h y) 0 0) q 2 (e13 h y) 0 0) (q + 4) l (e57 x o 11))
     else
-      (let (s1, z) := e49 16777216 r f g a h s (q - 4) l x (bget s (q - 2)) (bget s (q - 1)) k;
+      (let (s1, z) := e49 16777216 r f g a h s (q - 4) l y (bget s (q - 2)) (bget s (q - 1)) k;
        let (q1, l1) := z;
-       e50 n r t f g a h (e42 1048576 s1 (q - 4) (q1 - 4)) q1 l1 o)
+       e50 n x r t f g a h (e42 1048576 s1 (q - 4) (q1 - 4)) q1 l1 o)
 
 /-! ## per def -/
 /-- zero the slot table words 8 .. 8 + c -/
@@ -454,9 +461,9 @@ def e54 (r f g a : Buf) (s : Buf) (i p : UInt64) : Buf × UInt64 :=
   else (e41 (e41 s2 q2 3 (p + 6) (bget f (4 * i + 3)) m) (q2 + 4) 1 5 0 0, q2 + 8)
 
 /-- every def from IR position p (tag 20): o -/
-def e55 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → List UInt8 → List UInt8
-  | 0, r, t, f, g, h, s, a, l, i, p, c, n, o => o
-  | k + 1, r, t, f, g, h, s, a, l, i, p, c, n, o =>
+def e55 : Nat → List UInt8 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → List UInt8 → List UInt8
+  | 0, x, r, t, f, g, h, s, a, l, i, p, c, n, o => o
+  | k + 1, x, r, t, f, g, h, s, a, l, i, p, c, n, o =>
     if bget r p == 20 then
       (let m := bget f (4 * i + 2);
        let l1 := e52 1048576 g h (bset (bset (bset (e51 1073741824 l 0 (8 + 3 * bget r (p + 3))) 1 (m + 1)) 2 i) 0 0) (bget f (4 * i + 1)) 0 m 0;
@@ -470,18 +477,18 @@ def e55 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf → Buf �
        let (c1, n1) := z3;
        let e := bget a1 (3 * (p + 6));
        let (s2, q2) := e54 r f g a1 s1 i p;
-       let (s3, z4) := e50 1073741824 r t f g a1 h1 (e42 1048576 s2 0 (q2 - 4)) q2 l2 o;
+       let (s3, z4) := e50 1073741824 x r t f g a1 h1 (e42 1048576 s2 0 (q2 - 4)) q2 l2 o;
        let (l3, o1) := z4;
-       e55 k r t f g h1 s3 a1 l3 (i + 1) (e + 1) c1 n1 o1)
+       e55 k x r t f g h1 s3 a1 l3 (i + 1) (e + 1) c1 n1 o1)
     else o
 
 def e99 (x : List UInt8) : List UInt8 :=
   let r := y16 (s10 x);
-  if bsize r == 0 then e2 4 [] 46 0 else
+  if bsize r == 0 then e2 4 x [] 46 0 else
   let t := s10 x;
   let (f, z) := e27 16777216 t 0 bnew bnew (bpush bnew 0) (bpush bnew 2000);
   let (g, z1) := z;
   let (h, s) := z1;
-  e55 1073741824 r t f g h s (e21 1073741824 bnew 0 (3 * bsize r)) (e21 16 bnew 0 8) 0 1 0 0 []
+  e55 1073741824 x r t f g h s (e21 1073741824 bnew 0 (3 * bsize r)) (e21 16 bnew 0 8) 0 1 0 0 []
 
 end C

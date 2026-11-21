@@ -15,8 +15,10 @@ P += [" @ @ @ @ @ c ite.{1}", " @ @ @ c Eq.{1} c Bool" + BEQ, " c Bool.true @ @ 
       " c Bool.true", " @ @ @ @ c LT.lt.{0} c UInt64 c instLTUInt64", " @ @ c UInt64.decLt",
       " @ @ @ @ @ c Prod.casesOn.{1,0,0}", " @ @ @ @ c Prod.mk.{0,0}", " @ c List.nil.{0} c UInt8", " c bnew"]
 P += [f" c {n}" for n in ["len'", "rd", "len", "put", "bnew", "bsize", "bget", "bset", "bpush"]]
-P += [" @ @ @ @ c Nat.casesOn.{1} \\ c Nat", " \\ c Nat", " #", " n", " ", "R\n"]
-assert len(P) == 47 and P[22] == " @ @ @ @ @ c ite.{1}" and P[41].startswith(" @ @ @ @ c Nat.casesOn") and P[32] == " c len'"
+P += [" @ @ @ @ c Nat.casesOn.{1} \\ c Nat", " \\ c Nat", " #", " n", " ", "R\n", " !"]
+# phrases E writes as ` !<id>` (S-compact; expand.py restores S): the long fixed ones
+ABBREV = [i for i in range(len(P)) if 11 < i < 32 or i in (9, 11, 41)]
+assert len(P) == 48 and P[22] == " @ @ @ @ @ c ite.{1}" and P[41].startswith(" @ @ @ @ c Nat.casesOn") and P[32] == " c len'"
 def words(s):
     b = s.encode(); w = [int.from_bytes(b[i:i+8], 'little') for i in range(0, len(b), 8)]
     if len(b) % 8 == 0: w.append(0)

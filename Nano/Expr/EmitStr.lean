@@ -50,6 +50,7 @@ def ew (i j : UInt64) : UInt64 :=
   else if i == 44 then (if j == 0 then 28192 else 0)
   else if i == 45 then (if j == 0 then 32 else 0)
   else if i == 46 then (if j == 0 then 2642 else 0)
+  else if i == 47 then (if j == 0 then 8480 else 0)
   else 0
 
 end C
