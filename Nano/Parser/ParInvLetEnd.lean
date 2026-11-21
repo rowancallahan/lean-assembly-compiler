@@ -23,7 +23,7 @@ theorem rep_take {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun y hy => by rw [c 29 (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
-    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn es ea rA.2.1⟩
   · rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; simp; omega
   · simp only [List.length_take] at hi
@@ -39,7 +39,7 @@ theorem rep_take {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (
 
 /-- the scratch word h[31] is not part of the representation -/
 theorem rep_31 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (v : UInt64) : Rep (bset h 31 v) ts st fs :=
-  rep_same r (same_bset 21 h 31 v (Or.inr rfl)) (Or.inl rfl) (drop_bset _ _ _ (by decide))
+  rep_same r (same_bset 21 h 31 v (Or.inr rfl)) (Or.inl rfl) (drop_bset0 _ _ _ (by decide))
 
 /-! ## task 12: `letEnd s d` (v118) -/
 theorem h_letEnd {h ts : Buf} {st : St} {s d : Nat} {fs : List Frame} (r : Rep h ts st (.letEnd s d :: fs))

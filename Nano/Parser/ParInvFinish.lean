@@ -71,7 +71,7 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
     refine ⟨v1 (v1 (bset g 31 (cw st.cur.res).toUInt64) 83 0 0) 81 z 0, zn, _, rfl, ?_, ?_⟩
     · simp [stepF, hvz, hshape, hni, b01, hn20, hres20]
     · have R2 := rep_scratch (h' := bset g 31 (cw st.cur.res).toUInt64) R1
-        (fun i _ a31 => bget_bset' g 31 i _ (fun e => a31 (by rw [← e]; rfl))) (drop_bset _ _ _ (by decide))
+        (fun i _ a31 => bget_bset' g 31 i _ (fun e => a31 (by rw [← e]; rfl))) (drop_bset0 _ _ _ (by decide))
       have R3 := rep_push .defClose 0 0 R2 (by simp [inDefF, Frame.isDefs]) trivial (fun e => hH0 (v1_zero _ _ _ _ e))
       have hf : FrameArgs (v1 (bset g 31 (cw st.cur.res).toUInt64) 83 0 0) st.arena (.flat zn) z 0 := by
         obtain ⟨_, _, _, _, I3, hI3, _⟩ := R3.2.2.2.2.2.2.2.1

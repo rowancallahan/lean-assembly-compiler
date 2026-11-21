@@ -160,7 +160,6 @@ theorem stepS (cx : Ctx) (n p : UInt64) :
     simp [S, ev, val, evL, prim, binop, h, h', bind, Except.bind, pure, Except.pure]
   · have h' : ¬ p < UInt64.ofNat cx.inp.length := h
     simp [S, ev, val, evL, prim, binop, h, h', bind, Except.bind, pure, Except.pure]
-theorem zeroZ (cx : Ctx) (n p : UInt64) : ev cx Z [.w n, .w p] = .ok (.inl [.w p]) := rfl
 theorem loop (cx : Ctx) : ∀ n p F, loopRun (fun e => ev cx Z e) (fun e => ev cx S e) n [.w F, .w p] = .ok [.w (g n cx.inp p)]
   | 0, p, F => rfl
   | n + 1, p, F => by

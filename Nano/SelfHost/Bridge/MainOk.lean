@@ -105,10 +105,6 @@ theorem rw_disj {D : List Sig} {Γ S S' e e' ks ks'} (p : Nat) (h : TyN D Γ S e
     ∀ k, Templates.rd e k → ¬ wr p e' k := fun k hr hw => by
   obtain ⟨kd, e1⟩ := rd_known h k hr; rw [wr_fresh p h' k hw] at e1; cases e1
 
-theorem rdL_disj {D : List Sig} {Γ S e cs ks ks'} (p : Nat) (h : TyL D Γ cs ks) (h' : TyN D Γ S e ks') :
-    ∀ k, rdL cs k → ¬ wr p e k := fun k hr hw => by
-  obtain ⟨kd, e1⟩ := rdL_known h k hr; rw [wr_fresh p h' k hw] at e1; cases e1
-
 /-- `K`'s callee table agrees with the signatures `D` -/
 def KD (K : SC) (D : List Sig) : Prop :=
   ∀ (i : Nat) sg, D[i]? = some sg → i < K.nd ∧ K.npwOf i = sg.1.length ∧ K.nresOf i = sg.2.length

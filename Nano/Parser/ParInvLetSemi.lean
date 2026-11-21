@@ -21,19 +21,8 @@ theorem rep_set11 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) 
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun y hy => by rw [c 29 (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
-    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn es ea rA.2.1⟩
-
-theorem stat0' (g : Buf) : bget (bset g 0 0) 0 = 0 := by
-  cases g with
-  | nil => rfl
-  | cons x r => rfl
-
-theorem ite0 (c : Prop) [Decidable c] (A B : Buf) (ha : bget A 0 = 0) (hb : bget B 0 = 0) :
-    bget (if c then A else B) 0 = 0 := by
-  split
-  · exact ha
-  · exact hb
 
 theorem h_letSemi {h ts : Buf} {st : St} {x : List Nat} {tl : Bool} {fs : List Frame} (r : Rep h ts st (.letSemi x tl :: fs))
     (hv : st.vals ≠ []) (hn20 : st.nx < 2 ^ 20) (hc20 : ∀ v ∈ st.vals, cw v.sh < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
@@ -89,7 +78,7 @@ theorem h_letSemi {h ts : Buf} {st : St} {x : List Nat} {tl : Bool} {fs : List F
       have zb : ∀ (g : Buf) (k v : UInt64), k.toNat ≠ 0 → bget g 0 = 0 → bget (bset g k v) 0 = 0 :=
         fun g k v hk hg => by rw [bget_bset' _ _ _ _ (by simpa using hk)]; exact hg
       have st4 : bget (v1 (v1 H2 12 st.nx.toUInt64 (bget H2 4)) 1 0 (b01 tl)) 0 ≠ 0 :=
-        fun z => hs (ite0 _ _ _ (stat0' _) (z6 _ (zb _ 11 _ (by decide) (zb _ 31 _ (by decide) z))))
+        fun z => hs (ite0 _ _ _ (status_bset0 _) (z6 _ (zb _ 11 _ (by decide) (zb _ 31 _ (by decide) z))))
       have R3 := rep_push (.letEnd st.nx st.binds.length) st.nx.toUInt64 (bget H2 4) R2 (by simp [inDefF, Frame.isDefs])
         ⟨rfl, j4⟩ (pushOK st4)
       have R4 := rep_push (.expr 0 (bm tl)) 0 (b01 tl) R3 (by simp [inDefF, Frame.isDefs]) ⟨rfl, b01_toNat tl⟩ st4
@@ -115,7 +104,7 @@ theorem h_letSemi {h ts : Buf} {st : St} {x : List Nat} {tl : Bool} {fs : List F
         apply UInt64.toNat_inj.mp; rw [UInt64.toNat_add]; simp
       rw [en] at hs ⊢
       by_cases ccap : (1048575 : UInt64) < (st.nx + cw top.sh).toUInt64
-      · rw [if_pos ccap] at hs; exact absurd (stat0' _) hs
+      · rw [if_pos ccap] at hs; exact absurd (status_bset0 _) hs
       rw [if_neg ccap] at hs ⊢
       have hcapN : ¬ 2 ^ 20 ≤ st.nx + cw top.sh := by
         have ht := hc20 top (by rw [evs]; simp)

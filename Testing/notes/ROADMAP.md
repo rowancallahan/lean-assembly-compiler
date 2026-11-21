@@ -646,3 +646,25 @@ parts from Nano/Run, so the move is complete in one go. Same checks as reorg-nan
   it heavily under QEMU, and treat that as enough for now; the Sail ARM proof follows later via the same A64Sem
   interface. Note: the two ARM models are NOT proved equal to each other; the compiler is proved correct on each
   separately through A64Sem.
+
+## Syntax decisions (owner, 2026-11-21)
+- Extend the trusted lexer definition for comments/attributes: approved.
+- `match` via a desugar stage in the trusted parse definition (pOf): approved; broader parser changes allowed if heavily
+  fuzz-tested (differential vs desugared/stripped programs, Lean #eval cross-check, reject fuzz).
+- Extra work memory (+8 MiB for match): accepted.
+- Open: namespace flattening; out-of-range index semantics (silent default / trap / proven-in-bounds).
+- Order: syntax growth now, in parallel with the native ARM proof (front end vs codegen/run files); core optimizations
+  after the native ARM proof lands, applied to both RISC-V and native ARM generators.
+
+## Self-hosting is a hard gate on every merge (owner, 2026-11-21)
+Every PR that touches the compiler (any stage, either generator) must, before merge:
+1. regenerate the self-hosting proofs (Nano/SelfHost: Cert, CertArm, SrcLink, Bridge) for the new compiler source, and
+   build them with REVIEW + review_axioms unchanged ("OK: 8 theorems");
+2. reach the fixpoint on RISC-V: B1 → B2 = checked-in B2.bin, B3 = B2 (sha256 in the PR);
+3. reach the fixpoint for native ARM: GA_arm compiles its own source to itself, and the 3-host cross matrix
+   (RISC-V / rv2arm / native) is identical (Testing/nano/v2self/native_arm/cross_native.sh);
+4. release_check.sh gates fix1/fix23 pass.
+The compiler's OWN source stays in the bootstrap subset (the language as of release-native-arm), even as the
+compiler accepts more (owner, 2026-11-21: avoids confusion). New syntax is for user programs only; a check script fails
+if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outside the subset. Exception (owner,
+2026-11-21): comments are allowed in the compiler source once the comments feature is merged (they change no code). Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.

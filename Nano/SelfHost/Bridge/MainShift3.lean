@@ -59,8 +59,6 @@ theorem er_arg {δ : Nat} {ps : List Kd} {n : Nat} {args args' : List UInt64} (h
   · rw [List.getElem?_append_right (by simpa using hk2)] at hk
     simp [List.getElem?_replicate] at hk
 
-theorem er_mono {δ : Nat} {Γ : List (Option Kd)} {env env' : Env} (he : ER δ Γ env env') : ER δ Γ env env' := he
-
 /-! ## `wd` does not see the heap base -/
 mutual
 theorem wd_hb (K : SC) (h : Nat) : ∀ e : ParSpec.Nd, wd { K with hb := h } e = wd K e

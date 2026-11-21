@@ -219,7 +219,7 @@ theorem rep_set29 {h ts : Buf} {st : St} {fs : List Frame} {pos : UInt64} {x : L
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun y hy => by rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; simp only [Option.some.injEq] at hy; subst hy; exact nameAt_frame et (by omega) hx,
-    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn es ea rA.2.1⟩
 
 theorem h_stash {h ts : Buf} {st : St} {x : List Nat} {fs : List Frame} (r : Rep h ts st (.stash x :: fs)) (hs : bget (step h) 0 ≠ 0) :

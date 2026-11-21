@@ -179,7 +179,7 @@ theorem rvSteps : rvTarget.StepLaws where
     have hb : s.b = K.base := hR.bb
     obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 hw (by rw [hj, hR.w4])
     refine ⟨t', ht, ?_⟩
-    have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
+    have : s.ly.un ((s.x rs).toNat - s.b) = j := by rw [hj, hb, Nat.add_sub_cancel_left]; exact s.ly.inv j
     simp [this, CallProbe.wr]; exact hr
   bgeu a b off := rv_at fun hK hR hw hl hS hc hs => by
     jcase; obtain ⟨h1, h2, ho⟩ := hS

@@ -95,8 +95,6 @@ theorem get_set_ne (s : St) (r j : Nat) (v : UInt64) (h : j ≠ r) : (s.set r v)
 theorem getD_append_lt (L : List UInt64) (v : UInt64) (q : Nat) (h : q < L.length) :
     (L ++ [v]).getD q 0 = L.getD q 0 := by
   simp [List.getD_eq_getElem?_getD, List.getElem?_append_left h]
-theorem getD_append_eq (L : List UInt64) (v : UInt64) : (L ++ [v]).getD L.length 0 = v := by
-  simp [List.getD_eq_getElem?_getD]
 
 /-- storing `v` at the new top slot of a stack with room for it -/
 theorem Stk.push {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hs : Stk c s h L) (v : UInt64)

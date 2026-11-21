@@ -28,6 +28,8 @@ def kids : RN → List RN | mk _ _ _ _ _ k => k
 def isInp (n : RN) : Bool := n.tag == 2 && n.b % 2 ^ 64 == 0
 end RN
 
+@[simp] theorem RN.sh_mk (t a b : Nat) (s : Option Sh) (p : Bool) (k : List RN) : (RN.mk t a b s p k).sh = s := rfl
+
 /-- binding row (d9 + 4 i): name, slot, shape code (`none` = 0: a binder whose type is not parsed yet), input flag -/
 structure Bd where
   name : List Nat
@@ -135,6 +137,9 @@ def cw : Option Sh → Nat | some s => s.width | none => 1
 
 /-- `v7`: the innermost (last) binding with this name -/
 def findB (bs : List Bd) (x : List Nat) : Option Bd := bs.reverse.find? fun b => b.name == x
+
+theorem findB_mem {bs : List Bd} {x bd} (h : findB bs x = some bd) : bd ∈ bs := by
+  unfold findB at h; exact List.mem_reverse.mp (List.mem_of_find?_eq_some h)
 
 /-- `v8`: the index of the last def row with this name among `ds` -/
 def findD (ds : List DefR) (x : List Nat) : Option Nat :=

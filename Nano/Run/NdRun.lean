@@ -1,6 +1,6 @@
 /- Machine bridge (Opus box E): the side conditions of the node theorem, `OkV` / `OkT` / `OkL`: widths (Gen's g53
-pass) and scoping (the parser's slot discipline), and `At` helpers.  The node theorem itself is `runVS` / `runTS` /
-`runLS` (EVSRun.lean, safe contracts). -/
+pass) and scoping (the parser's slot discipline), and `At` helpers.  The node theorem itself is `runVO` / `runTO` /
+`runLO` (CapNode.lean, all outcomes). -/
 import Nano.Run.NdSem
 namespace Templates
 open CallProbe ParSpec

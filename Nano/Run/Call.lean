@@ -28,25 +28,42 @@ inductive J where
   | bne (a b : Nat) (off : Int)
   | sb (rs2 rs1 : Nat) (off : Int)
 
+/-- a link layout: `off n` is the byte offset of J instruction `n` in the target's code, `un` reads it back -/
+structure LinkLay where
+  off : Nat → Nat
+  un : Nat → Nat
+  inv : ∀ n, un (off n) = n
+
+/-- the uniform layout: `4·(k + 1)` bytes per J instruction (RISC-V k = 0; AArch64 blocks of 4 words k = 3) -/
+def LinkLay.lin (k : Nat) : LinkLay :=
+  ⟨fun n => 4 * (k + 1) * n, fun a => a / (4 * (k + 1)), fun n => Nat.mul_div_cancel_left n (by omega)⟩
+
 structure St where
   x : Nat → UInt64
   m : Nat → UInt64
   /-- the code base (byte address of instruction 0): return addresses are byte addresses `b + 4·pc` -/
   b : Nat
-  /-- the target's extra instruction words per J instruction (RISC-V 0; AArch64 blocks of 4 words: 3); the link
-  width `w = 4·(wk + 1)` (bytes of target code per J instruction) -/
-  wk : Nat
+  /-- the target's link layout: the return address of J instruction `n` is `b + ly.off n` (RISC-V `4n`; AArch64
+  blocks of 4 words `16n`; a variable-length target: the byte offset of `n` in its code) -/
+  ly : LinkLay
 
-/-- the link width: return addresses are `b + w·pc` -/
-def St.w (s : St) : Nat := 4 * (s.wk + 1)
+/-- the link offset of J instruction `n`: return addresses are `b + lo n` -/
+def St.lo (s : St) (n : Nat) : Nat := s.ly.off n
 
-theorem St.w_pos (s : St) : 0 < s.w := by unfold St.w; omega
-
-theorem St.w_eq {s t : St} (h : t.wk = s.wk) : t.w = s.w := by unfold St.w; rw [h]
+theorem St.w_eq {s t : St} (h : t.ly = s.ly) : t.lo = s.lo := by unfold St.lo; rw [h]
 
 /-- the link a `jal` at `pc` writes, read back by `jalr` -/
-theorem link_div (s : St) (n : Nat) : (s.b + s.w * n - s.b) / s.w = n := by
-  rw [Nat.add_sub_cancel_left, Nat.mul_div_cancel_left _ s.w_pos]
+theorem link_div (s : St) (n : Nat) : s.ly.un (s.b + s.lo n - s.b) = n := by
+  rw [Nat.add_sub_cancel_left]; exact s.ly.inv n
+
+/-- every return address of `C` (the link of a `jal x1`) fits in 64 bits -/
+def LinkOK (C : List J) (s : St) : Prop := ∀ n off, C[n]? = some (.jal 1 off) → s.b + s.lo (n + 1) < 2 ^ 64
+
+/-- the uniform layout's link offsets -/
+theorem St.lo_lin {s : St} {k : Nat} (h : s.ly = LinkLay.lin k) (n : Nat) : s.lo n = 4 * (k + 1) * n := by
+  unfold St.lo; rw [h]; rfl
+theorem St.un_lin {s : St} {k : Nat} (h : s.ly = LinkLay.lin k) (a : Nat) : s.ly.un a = a / (4 * (k + 1)) := by
+  rw [h]; rfl
 
 def upd {α} (f : Nat → α) (k : Nat) (v : α) : Nat → α := fun i => if i = k then v else f i
 
@@ -68,8 +85,8 @@ def step (C : List J) : Nat × St → Option (Nat × St)
     | some (.addi rd rs imm) => some (pc + 1, wr s rd (UInt64.ofNat (ea (s.x rs) imm)))
     | some (.ld rd rs off) => some (pc + 1, wr s rd (s.m (ea (s.x rs) off)))
     | some (.sd r2 r1 off) => some (pc + 1, { s with m := upd s.m (ea (s.x r1) off) (s.x r2) })
-    | some (.jal rd off) => some (((pc : Int) + off).toNat, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1))))
-    | some (.jalr rd rs) => some (((s.x rs).toNat - s.b) / s.w, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1))))
+    | some (.jal rd off) => some (((pc : Int) + off).toNat, wr s rd (UInt64.ofNat (s.b + s.lo (pc + 1))))
+    | some (.jalr rd rs) => some (s.ly.un ((s.x rs).toNat - s.b), wr s rd (UInt64.ofNat (s.b + s.lo (pc + 1))))
     | some (.bgeu a b off) => some (if (s.x b).toNat ≤ (s.x a).toNat then ((pc : Int) + off).toNat else pc + 1, s)
     | some (.alu op rd a b) => some (pc + 1, wr s rd (aluf op (s.x a) (s.x b)))
     | some (.slli rd rs sh) => some (pc + 1, wr s rd (s.x rs <<< sh.toUInt64))
@@ -106,16 +123,16 @@ theorem Star.b {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.b = a.2.b :
   | refl => rfl
   | tail _ hs ih => rw [step_b hs, ih]
 
-theorem wr_w (s : St) (r : Nat) (v : UInt64) : (wr s r v).wk = s.wk := by unfold wr; split <;> rfl
+theorem wr_w (s : St) (r : Nat) (v : UInt64) : (wr s r v).ly = s.ly := by unfold wr; split <;> rfl
 
 /-- steps never change the link width -/
-theorem step_w {C : List J} {a c : Nat × St} (h : step C a = some c) : c.2.wk = a.2.wk := by
+theorem step_w {C : List J} {a c : Nat × St} (h : step C a = some c) : c.2.ly = a.2.ly := by
   obtain ⟨pc, s⟩ := a
   simp only [step] at h
   split at h <;> simp at h <;> (try split at h) <;> (try simp at h) <;> (try (obtain ⟨_, rfl⟩ := h)) <;> (try subst h) <;>
     simp [wr_w]
 
-theorem Star.w {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.wk = a.2.wk := by
+theorem Star.w {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.ly = a.2.ly := by
   induction h with
   | refl => rfl
   | tail _ hs ih => rw [step_w hs, ih]
@@ -124,9 +141,6 @@ theorem Star.w {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.wk = a.2.wk
 def At (C : List J) (pos : Nat) (l : List J) : Prop := ∀ i, i < l.length → C[pos + i]? = l[i]?
 
 /-! ## UInt64 arithmetic without wrap -/
-theorem addi_toNat (b : UInt64) (imm : Int) (h : ea b imm < 2 ^ 64) : (UInt64.ofNat (ea b imm)).toNat = ea b imm := by
-  simp [UInt64.toNat_ofNat]; omega
-
 /-! ## one-instruction lemmas -/
 section
 variable {C : List J} {pc : Nat} {s : St}
@@ -137,15 +151,9 @@ theorem s_ld {rd rs off} (h : C[pc]? = some (.ld rd rs off)) :
 theorem s_sd {r2 r1 off} (h : C[pc]? = some (.sd r2 r1 off)) :
     step C (pc, s) = some (pc + 1, { s with m := upd s.m (ea (s.x r1) off) (s.x r2) }) := by simp [step, h]
 theorem s_jal {rd off} (h : C[pc]? = some (.jal rd off)) :
-    step C (pc, s) = some (((pc : Int) + off).toNat, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1)))) := by simp [step, h]
-theorem s_jalr {rd rs} (h : C[pc]? = some (.jalr rd rs)) :
-    step C (pc, s) = some (((s.x rs).toNat - s.b) / s.w, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1)))) := by simp [step, h]
-theorem s_alu {op rd a b} (h : C[pc]? = some (.alu op rd a b)) :
-    step C (pc, s) = some (pc + 1, wr s rd (aluf op (s.x a) (s.x b))) := by simp [step, h]
+    step C (pc, s) = some (((pc : Int) + off).toNat, wr s rd (UInt64.ofNat (s.b + s.lo (pc + 1)))) := by simp [step, h]
 theorem s_slli {rd rs sh} (h : C[pc]? = some (.slli rd rs sh)) :
     step C (pc, s) = some (pc + 1, wr s rd (s.x rs <<< sh.toUInt64)) := by simp [step, h]
-theorem s_lbu {rd rs off} (h : C[pc]? = some (.lbu rd rs off)) :
-    step C (pc, s) = some (pc + 1, wr s rd (lbm s.m (ea (s.x rs) off))) := by simp [step, h]
 theorem s_bgeu_f {a b off} (h : C[pc]? = some (.bgeu a b off)) (hc : ¬ (s.x b).toNat ≤ (s.x a).toNat) :
     step C (pc, s) = some (pc + 1, s) := by simp [step, h, hc]
 theorem s_bgeu_t {a b off} (h : C[pc]? = some (.bgeu a b off)) (hc : (s.x b).toNat ≤ (s.x a).toNat) :
@@ -187,7 +195,7 @@ theorem At.at {C pos l} (h : At C pos l) (i) (hi : i < l.length) : C[pos + i]? =
 theorem push_run {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0)
     (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) :
     run C 3 (pc, s) = some (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
-                                     upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.wk⟩) := by
+                                     upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.ly⟩) := by
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have e : ea (s.x 31) (-8) = (s.x 31).toNat - 8 := by simp [ea]; omega
   have t6' : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by
@@ -245,7 +253,7 @@ theorem copy_run {C pc p q} (s : St) (hq : ∀ k, k ≤ q → At C pc (copy p q 
     have e1 : ea (s'.x 31) (8 * ((q - 1 - k : Nat) : Int)) = (s.x 31).toNat + 8 * (q - 1 - k) := by simp [ea, x31]; omega
     have e2 : ea (s'.x 8) (8 * (p : Int) + 16 - 8 * ((k + 1 : Nat) : Int)) = (s.x 8).toNat + 8 * p + 16 - 8 * (k + 1) := by
       simp [ea, x8]; omega
-    refine ⟨⟨upd s'.x 5 (s.m ((s.x 31).toNat + 8 * (q - 1 - k))), Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q (k + 1), s'.b, s'.wk⟩, ?_, ?_, rfl, hb⟩
+    refine ⟨⟨upd s'.x 5 (s.m ((s.x 31).toNat + 8 * (q - 1 - k))), Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q (k + 1), s'.b, s'.ly⟩, ?_, ?_, rfl, hb⟩
     · rw [show 2 * (k + 1) = 2 * k + 2 by omega, run_add hr]
       have rd : s'.m ((s.x 31).toNat + 8 * (q - 1 - k)) = s.m ((s.x 31).toNat + 8 * (q - 1 - k)) := by
         rw [hm]; exact Mc_src s.m _ _ q (by omega) k k (Nat.le_refl _) (by omega)
@@ -266,49 +274,6 @@ theorem At.right {C pos l1 l2} (h : At C pos (l1 ++ l2)) : At C (pos + l1.length
 def pro (r : Nat) (oom : Int) : List J :=
   push 1 oom ++ (push 8 oom ++ [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom])
 
-theorem pro_run {C f s r oom} (hC : At C f (pro r oom)) (hlt : (s.x 31).toNat < 2 ^ 63)
-    (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat) :
-    ∃ s1, run C 9 (f, s) = some (f + 12, s1) ∧
-      (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r ∧ (s1.x 8).toNat = (s.x 31).toNat - 16 ∧
-      (∀ i, i ≠ 31 → i ≠ 8 → s1.x i = s.x i) ∧
-      s1.m = upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8) := by
-  have A1 : At C f (push 1 oom) := hC.left
-  have R1 : At C (f + 4) (push 8 oom ++ [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom]) := by
-    simpa [push] using hC.right
-  have A2 : At C (f + 4) (push 8 oom) := R1.left
-  have A3 : At C (f + 8) [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom] := by
-    simpa [push] using R1.right
-  have r1 := push_run (s := s) A1 (by decide) (by decide) (by omega)
-  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
-  have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
-  have t16 : (UInt64.ofNat ((s.x 31).toNat - 8 - 8)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.wk⟩) A2 (by decide) (by decide)
-    (by simp [upd, t8]; omega)
-  simp only [upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 31 by decide), t8] at r2
-  have r12 := run_add (l := 3) r1
-  rw [r2] at r12
-  have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp)
-  simp at b0 b1 b2
-  have t16r : (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)).toNat = (s.x 31).toNat - 16 - 8 * r := by simp; omega
-  have t16' : (UInt64.ofNat ((s.x 31).toNat - 16)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  have e16 : (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 := by omega
-  rw [e16] at r12
-  refine ⟨⟨upd (upd (upd (upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8))) 31 (UInt64.ofNat ((s.x 31).toNat - 16)))
-      8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)),
-    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.wk⟩, ?_, ?_, ?_, ?_, rfl⟩
-  · rw [show 9 = (3 + 3) + 3 by rfl, run_add r12]
-    have ea1 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) 0 = (s.x 31).toNat - 16 := by simp [ea, t16']
-    have ea2 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
-      simp only [ea, t16']; omega
-    have c : (s.x 30).toNat ≤ (s.x 31).toNat - 16 - 8 * r := by omega
-    simp [run, step, b0, b1, b2, wr, upd_same, upd_other _ _ (show (31:Nat) ≠ 8 by decide), ea1, ea2,
-      upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (30:Nat) ≠ 8 by decide), t16r, c,
-      show ((f : Int) + 8 + 2 + 2).toNat = f + 12 by omega]
-    omega
-  · simp [upd_same, t16r]
-  · simp [upd_same, upd_other _ _ (show (8:Nat) ≠ 31 by decide), t16']
-  · intro i h1 h2; simp [upd, h1, h2]
-
 theorem copy_prefix (p q : Nat) : ∀ n k, k ≤ n → ∃ l, copy p q n = copy p q k ++ l
   | 0, k, h => ⟨[], by rw [show k = 0 by omega]; simp [copy]⟩
   | n + 1, k, h => by
@@ -325,7 +290,7 @@ def epi (p q : Nat) : List J :=
 
 theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
     (hD : (s.x 31).toNat + 8 * q ≤ (s.x 8).toNat + 8 * p + 16) (hlt : (s.x 8).toNat + 8 * p + 16 < 2 ^ 63) :
-    ∃ s3, run C (2 + 2 * q + 3) (e, s) = some (((s.m ((s.x 8).toNat + 8)).toNat - s.b) / s.w, s3) ∧ s3.b = s.b ∧
+    ∃ s3, run C (2 + 2 * q + 3) (e, s) = some (s.ly.un ((s.m ((s.x 8).toNat + 8)).toNat - s.b), s3) ∧ s3.b = s.b ∧
       (s3.x 31).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q ∧ s3.x 8 = s.m (s.x 8).toNat ∧
       (∀ i, i ≠ 31 → i ≠ 8 → i ≠ 5 → i ≠ 14 → i ≠ 15 → s3.x i = s.x i) ∧
       s3.m = Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q q := by
@@ -340,7 +305,7 @@ theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
   have e8 : ea (s.x 8) 8 = (s.x 8).toNat + 8 := by simp [ea]; omega
   have e0 : ea (s.x 8) 0 = (s.x 8).toNat := by simp [ea]
   -- after the two loads
-  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b, s.wk⟩
+  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b, s.ly⟩
   have r2 : run C 2 (e, s) = some (e + 2, s') := by
     simp [run, step, a0, a1, wr, e8, e0, upd_other _ _ (show (8:Nat) ≠ 14 by decide), s']
   have x31 : s'.x 31 = s.x 31 := by simp [s', upd]
@@ -356,23 +321,18 @@ theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
   have tA : (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q)).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q := by
     simp; omega
   have eB : ea (s.m (s.x 8).toNat) 0 = (s.m (s.x 8).toNat).toNat := by simp [ea]
-  refine ⟨⟨upd (upd s''.x 31 (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q))) 8 (s.m (s.x 8).toNat), s''.m, s''.b, s''.wk⟩,
+  refine ⟨⟨upd (upd s''.x 31 (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q))) 8 (s.m (s.x 8).toNat), s''.m, s''.b, s''.ly⟩,
     ?_, ?_, ?_, ?_, ?_, ?_⟩
   · have b2 : s''.b = s.b := hbb
-    have w2 : s''.wk = s.wk := (run_star hr).w
+    have w2 : s''.ly = s.ly := (run_star hr).w
     rw [show 2 + 2 * q + 3 = (2 + 2 * q) + 3 by omega, run_add r22]
     simp [run, step, c0, c1, c2, wr, y8, eA, upd_same, upd_other _ _ (show (15:Nat) ≠ 31 by decide),
-      upd_other _ _ (show (14:Nat) ≠ 8 by decide), upd_other _ _ (show (14:Nat) ≠ 31 by decide), y14, y15, eB, b2, w2, St.w]
+      upd_other _ _ (show (14:Nat) ≠ 8 by decide), upd_other _ _ (show (14:Nat) ≠ 31 by decide), y14, y15, eB, b2, w2, St.lo]
   · exact hbb
   · simp [upd, tA]
   · simp [upd_same]
   · intro i h1 h2 h3 h4 h5; simp [upd, h1, h2, hx i h3, s', h4, h5]
   · rw [hm, x31, x8]
-
-theorem Mc_above (m : Nat → UInt64) (T D q : Nat) (hD : 8 * q ≤ D) :
-    ∀ k, k ≤ q → ∀ a, D ≤ a → Mc m T D q k a = m a
-  | 0, _, _, _ => rfl
-  | k + 1, hk, a, ha => by simp only [Mc]; rw [upd_other _ _ (by omega)]; exact Mc_above m T D q hD k (by omega) a ha
 
 theorem Mc_dest (m : Nat → UInt64) (T D q : Nat) (hD : 8 * q ≤ D) :
     ∀ k, k ≤ q → ∀ i, i < k → Mc m T D q k (D - 8 * (i + 1)) = m (T + 8 * (q - 1 - i))
@@ -382,62 +342,5 @@ theorem Mc_dest (m : Nat → UInt64) (T D q : Nat) (hD : 8 * q ≤ D) :
     rcases Nat.lt_or_ge i k with h | h
     · rw [upd_other _ _ (by omega)]; exact Mc_dest m T D q hD k (by omega) i h
     · rw [show i = k by omega, upd_same]
-
-/-- **probe 2**: a non-leaf call `jal ra f` with the arguments on top of a live caller stack.  The callee's
-body is abstract (`hB`): from the prologue's state it reaches the epilogue with its result (q words) on top,
-keeping s0 and the saved ra/s0, and writing nothing at or above the caller's pre-argument stack pointer
-`T + 8p`.  Then the call returns to `c + 1` with t6 = T + 8p − 8q, s0 restored, every cell at or above
-T + 8p (the live value and the caller's frame) unchanged, and the result words copied in order. -/
-theorem call_live {C : List J} {c f e p q r : Nat} {off oom : Int} (Bd : St → St → Prop)
-    (hj : C[c]? = some (.jal 1 off)) (hf : ((c : Int) + off).toNat = f)
-    (hP : At C f (pro r oom)) (hE : At C e (epi p q)) (s : St)
-    (hT : (s.x 31).toNat + 8 * p < 2 ^ 62) (hc : s.b + s.w * (c + 1) < 2 ^ 64)
-    (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat)
-    (hB : ∀ s1, (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r → (s1.x 8).toNat = (s.x 31).toNat - 16 →
-      s1.x 30 = s.x 30 → ∃ s2, Bd s1 s2 ∧ Star C (f + 12, s1) (e, s2) ∧ s2.x 8 = s1.x 8 ∧
-        (s2.x 31).toNat + 8 * q = (s.x 31).toNat - 16 - 8 * r ∧
-        ∀ a, ((s.x 31).toNat - 16 ≤ a ∧ a < (s.x 31).toNat) ∨ (s.x 31).toNat + 8 * p ≤ a → s2.m a = s1.m a) :
-    ∃ s1 s2 s3, Bd s1 s2 ∧ Star C (c, s) (c + 1, s3) ∧
-      (s3.x 31).toNat = (s.x 31).toNat + 8 * p - 8 * q ∧ s3.x 8 = s.x 8 ∧
-      (∀ a, (s.x 31).toNat + 8 * p ≤ a → s3.m a = s.m a) ∧
-      ∀ i, i < q → s3.m ((s.x 31).toNat + 8 * p - 8 * (i + 1)) = s2.m ((s2.x 31).toNat + 8 * (q - 1 - i)) := by
-  -- the call
-  let sj := wr s 1 (UInt64.ofNat (s.b + s.w * (c + 1)))
-  have sj1 : step C (c, s) = some (f, sj) := by rw [s_jal hj, hf]
-  have sjx : ∀ i, i ≠ 1 → sj.x i = s.x i := by intro i hi; simp [sj, wr, upd, hi]
-  have sjm : sj.m = s.m := by simp [sj, wr]
-  have sjr : sj.x 1 = UInt64.ofNat (s.b + s.w * (c + 1)) := by simp [sj, wr, upd]
-  have sjb : sj.b = s.b := wr_b _ _ _
-  have j31 := sjx 31 (by decide); have j30 := sjx 30 (by decide); have j8 := sjx 8 (by decide)
-  -- the prologue
-  obtain ⟨s1, hr1, h31, h8, hx1, hm1⟩ := pro_run (s := sj) hP (by rw [j31]; omega) (by rw [j31, j30]; exact hh)
-  rw [j31] at h31 h8 hm1
-  -- the body
-  obtain ⟨s2, hb, hst, k8, k31, kmem⟩ := hB s1 h31 h8 (by rw [hx1 30 (by decide) (by decide), j30])
-  -- the epilogue
-  have kD : (s2.x 31).toNat + 8 * q ≤ (s2.x 8).toNat + 8 * p + 16 := by rw [k8, h8]; omega
-  have kl : (s2.x 8).toNat + 8 * p + 16 < 2 ^ 63 := by rw [k8, h8]; omega
-  obtain ⟨s3, hr3, g3b, g31, g8, gx, gm⟩ := epi_run s2 hE kD kl
-  have b2 : s2.b = s.b := by
-    exact hst.b.trans ((run_star hr1).b.trans sjb)
-  have S8 : (s2.x 8).toNat = (s.x 31).toNat - 16 := by rw [k8, h8]
-  have ra : s2.m ((s2.x 8).toNat + 8) = UInt64.ofNat (s.b + s.w * (c + 1)) := by
-    rw [S8, kmem _ (Or.inl ⟨by omega, by omega⟩), hm1, upd_other _ _ (by omega),
-      show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, upd_same, sjr]
-  have w2 : s2.w = s.w := St.w_eq (hst.w.trans ((run_star hr1).w.trans (wr_w _ _ _)))
-  have pc3 : ((s2.m ((s2.x 8).toNat + 8)).toNat - s2.b) / s2.w = c + 1 := by
-    have tn : (UInt64.ofNat (s.b + s.w * (c + 1))).toNat = s.b + s.w * (c + 1) := by simp; omega
-    rw [ra, b2, w2, tn, link_div]
-  rw [pc3] at hr3
-  refine ⟨s1, s2, s3, hb, ?_, ?_, ?_, ?_, ?_⟩
-  · exact (Star.one sj1).trans ((run_star hr1).trans (hst.trans (run_star hr3)))
-  · rw [g31, S8]; omega
-  · rw [g8, S8, kmem _ (Or.inl ⟨Nat.le_refl _, by omega⟩), hm1, upd_same, j8]
-  · intro a ha
-    rw [gm, S8, Mc_above _ _ _ q (by omega) q (Nat.le_refl _) a (by omega), kmem _ (Or.inr ha), hm1,
-      upd_other _ _ (by omega), upd_other _ _ (by omega), sjm]
-  · intro i hi
-    rw [gm, S8, show (s.x 31).toNat + 8 * p - 8 * (i + 1) = (s.x 31).toNat - 16 + 8 * p + 16 - 8 * (i + 1) by omega,
-      Mc_dest _ _ _ q (by omega) q (Nat.le_refl _) i hi]
 
 end CallProbe

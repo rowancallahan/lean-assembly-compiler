@@ -65,7 +65,7 @@ theorem ldr_ok {t : Arm64.State} {D} {m : Nat → UInt64} {d n f' e : Nat} (hm :
   rwa [ea', hv, show ((wd (0xF9400000 + f' / 8 * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 0 5).toNat = d by fldt] at this
 
 theorem wr_m (s : St) (r : Nat) (v : UInt64) : (wr s r v).m = s.m := by unfold wr; split <;> rfl
-theorem wr_wk (s : St) (r : Nat) (v : UInt64) : (wr s r v).wk = s.wk := by unfold wr; split <;> rfl
+theorem wr_wk (s : St) (r : Nat) (v : UInt64) : (wr s r v).ly = s.ly := by unfold wr; split <;> rfl
 theorem wr_x0 (s : St) (r : Nat) (v : UInt64) (h : s.x 0 = 0) : (wr s r v).x 0 = 0 := by
   unfold wr; split
   · exact h

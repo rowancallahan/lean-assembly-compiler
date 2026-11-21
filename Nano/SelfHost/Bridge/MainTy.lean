@@ -123,10 +123,6 @@ theorem setSlots_ok {env Γ s vs} (he : EnvOK env Γ) (hs : s + vs.length ≤ Γ
   unfold setK; rw [kOf_length]
   rw [← List.append_assoc]; exact ((he.take s).append (f2_kOf vs)).append (he.drop _)
 
-theorem push_ok (κ : Nat) (l : List UInt64) (v : UInt64) :
-    push κ l v ≠ .error .stuck ∧ ∀ r, push κ l v = .ok r → kOf r = [.b] := by
-  unfold push; split <;> simp_all [kOf, W.k]
-
 theorem prim_ok (cx : Ctx) (p : Nat) (as : List W) (rs : List Kd) (h : primK p (kOf as) = some rs) :
     prim cx p as ≠ .error .stuck ∧ ∀ v, prim cx p as = .ok v → kOf v = rs := by
   match as with

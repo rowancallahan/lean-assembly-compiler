@@ -802,8 +802,6 @@ theorem dw_eq (l : List UInt8) : l.dropWhile isW = l.drop (l.takeWhile isW).leng
 
 theorem and255' : (∀ e ∈ opTable, e.2 &&& 255 = e.2) ∧ (∀ e ∈ kwTable, e.2 &&& 255 = e.2) := by decide
 
-theorem drop_drop' (x : List UInt8) (a b : Nat) : (x.drop a).drop b = x.drop (a + b) := by
-  simp [List.drop_drop]
 
 theorem word_end (x : List UInt8) (p : UInt64) (hx : x.length < 2 ^ 32) (c : UInt8) (r : List UInt8)
     (hdp : x.drop p.toNat = c :: r) :
@@ -818,7 +816,7 @@ theorem word_end (x : List UInt8) (p : UInt64) (hx : x.length < 2 ^ 32) (c : UIn
   have htw := tw_len (c :: r)
   have hlen : (c :: r).length = x.length - p.toNat := by rw [← hdp]; simp
   refine ⟨he, by omega, ?_, ?_⟩
-  · rw [he, dw_eq, ← hdp, drop_drop']
+  · rw [he, dw_eq, ← hdp, List.drop_drop]
   · rw [hdp, he, Nat.add_sub_cancel_left]; exact take_takeWhile _
 
 /-! ### trivia scanners (s12: first byte `b`; s11: nested block comment end) -/
@@ -1286,7 +1284,7 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
       · rw [hdp] at h
         have hl : p.toNat < x.length := by
           have := congrArg List.length hdp; simp at this; omega
-        have hr : ∀ m, x.drop (p.toNat + m) = (c :: r).drop m := fun m => by rw [← hdp, drop_drop']
+        have hr : ∀ m, x.drop (p.toNat + m) = (c :: r).drop m := fun m => by rw [← hdp, List.drop_drop]
         have hlenc : (c :: r).length = x.length - p.toNat := by rw [← hdp]; simp
         have l10 : (10 : UInt64) = (10 : UInt8).toUInt64 := rfl
         have l93 : (93 : UInt64) = (93 : UInt8).toUInt64 := rfl

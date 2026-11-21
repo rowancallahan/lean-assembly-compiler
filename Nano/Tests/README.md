@@ -1,11 +1,21 @@
-# Nano/Tests: non-vacuity tests and audit witnesses
+# Proof/Tests — non-vacuity tests and audit witnesses
 
-| file | what |
+Not imported by the final theorems; each file is named in `REVIEW.lean` or `Testing/notes/NANO_V2_AUDIT.md`.
+
+| file | contents |
 |---|---|
-| `MainWitness.lean` | non-vacuity of `compiler_correct` per stage on three small sources (`decide +kernel`) |
-| `MainCert.lean` | per-program meaning certificates (`srcRun ⟨x⟩ inp = some (f inp)`) |
-| `AuditWitness.lean`, `AuditSpace.lean` | `C_correctLO` instantiated on `ex1`; a concrete `spaceC` bound (≤ 4,194,416 bytes) |
-| `OwnNV.lean` | `o41_sound` accepts `pOk`, rejects aliasing `pAlias` |
-| `SelfInCapFree`, `SelfInQuiet`, `SelfInPath`, `SelfInWitness` | steps A–C: `SelfIn` (input for the self-application theorems) is inhabited by the empty input |
+| `OwnNV.lean` | `pOk` accepted by `o41` and linear; `pAlias` (read after consume) rejected: non-vacuity of `o41_sound` |
+| `MainWitness.lean` | three small sources pass lexer, parser spec, `o41`, `g41` in the kernel (`stages`, `x1..`): `OwnStage`/`GenStage` premises hold |
+| `MainCert.lean` | per-program meaning certificates: `srcRun ⟨x⟩ inp = some (f inp)` via `progEq`, `sem`, `cert` |
+| `AuditSpace.lean` | audit A2: `spaceC_ex1_eq : spaceC Witness.x2 [5] = 4194416` (kernel run + `shiftInv`) |
+| `AuditWitness.lean` | `C_correctLO` instantiated for `ex1` (`ex1_computes`, `ex1_compiles`, `ex1_applies`) |
+| `SelfInCapFree.lean` | step A: push-free defs never report `cap` (`ev_nocap`, `Quiet`) |
+| `SelfInQuiet.lean` | step B: the 171 push-free defs of C are quiet on all inputs (`S`, `quiet`) |
+| `SelfInPath.lean` | step C: on `[]` no def reports `cap` (13 push-reaching defs by hand, `X<i>`; `CapFree.sem_nil`) |
+| `SelfInWitness.lean` | `selfIn_nonempty : Nonempty SelfIn` (the self-application theorems are not vacuous) |
 
-Role: guards against vacuous hypotheses in `Nano/Main`; nothing imports these except `REVIEW`-adjacent scripts (`Testing/scripts/deadcode.lean`). Check: `lake build Nano.Tests.AuditWitness Nano.Tests.SelfInWitness`. Limit: concrete instances only, not coverage.
+Decisions: witnesses are kernel-checked (`decide +kernel`) where feasible; the parser run `C.y16 ts = a` is checked
+natively only (Par1's layout puts tokens at word 184,384; one kernel `bget` there costs 28 s / 5.5 GB).
+Hence `ex1_compiles` takes that run as a hypothesis, and `ex1_applies` takes `memoryNeeded ≤ workLength` (the
+audit-finding-1 premise, discharged for `[5]` by `spaceC_ex1_eq`).
+Check: `lake build Nano.Tests.SelfInWitness Nano.Tests.AuditWitness` (+ the rest of the folder).

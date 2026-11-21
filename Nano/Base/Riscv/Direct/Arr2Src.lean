@@ -35,12 +35,6 @@ theorem BExec.env_keep {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') {v : N
   | loopT _ _ _ ih1 ih2 => simp only [BStmt.assigns] at ih1 hv ih2; rw [ih2 hv, ih1 hv]
   | mop => simp only [BStmt.assigns, List.mem_singleton] at hv; simp [BEnv.set, hv]
 
-theorem BExec.heap_length {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') : σ'.heap.length = σ.heap.length := by
-  induction h with
-  | store => simp
-  | seq _ _ ih1 ih2 => rw [ih2, ih1]
-  | loopT _ _ _ ih1 ih2 => rw [ih2, ih1]
-  | _ => rfl
 
 /-- `load`/`store`/`assign` with the block and index given by equations (no dependent indexing) -/
 theorem BExec.load' {v b : Nat} {i : BExp} {σ : BState} {B : List (BitVec 8)} {j : Nat} {x : BitVec 8}

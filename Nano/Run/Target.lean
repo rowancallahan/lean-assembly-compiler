@@ -56,7 +56,7 @@ structure Rel (K : LayW) (C : List J) (s0 : T.M.State) (p : Nat × CallProbe.St)
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
   /-- the link width is the block size: `w = 4·blockLen` -/
-  ww : p.2.wk = T.blockLen - 1
+  ww : p.2.ly = CallProbe.LinkLay.lin (T.blockLen - 1)
   x : ∀ j, 0 < j → j < 32 → (T.M.observe s).register (T.reg j) = p.2.x j
   keep : ∀ r, (∀ j, 0 < j → j < 32 → T.reg j ≠ r) → r ∉ T.scratch →
     (T.M.observe s).register r = (T.M.observe s0).register r

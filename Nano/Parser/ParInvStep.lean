@@ -380,10 +380,6 @@ theorem out_frameT {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e 
     intro l; rw [List.drop_drop, Nat.add_assoc]
   rw [d1, e, ← d1]; exact rk
 
-/-- a write below the token region leaves the high part of the heap as a list -/
-theorem drop_bset (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
-  simp only [bset]; exact List.drop_set_of_lt hi
-
 theorem tokensAt_frameN {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgreeN h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts := by
   obtain ⟨a, b, c, d⟩ := r
   have d' : (bget h 7).toNat = ts.length := by rw [d]; simp; omega

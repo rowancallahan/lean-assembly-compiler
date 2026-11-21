@@ -44,7 +44,7 @@ theorem StkOK.wok {KL : LayW} {hb E0 n : Nat} {s : St} (h : StkOK KL hb E0 n s) 
     {i : Nat} (hi : i < n) : wok KL ((s.x 31).toNat + 8 * i) :=
   ⟨by have := h.lo; omega, by have := h.hi; have := h.top; omega, by have := h.a31; omega⟩
 
-theorem finTailS {KL : LayW} {C : List J} {pc q lu t p nl hb : Nat} {Inv : St → Prop} {W : Nat → Prop}
+theorem finTail {KL : LayW} {C : List J} {pc q lu t p nl hb : Nat} {Inv : St → Prop} {W : Nat → Prop}
     (hI : InvOKH hb p Inv) (s s1 s3 : St) (env env1 : Env) (H3 : Hp) (v : UInt64)
     (I1 : Inv s1) (z1 : s1.x 0 = 0) (O0 : FrameOK p nl s) (e81 : s1.x 8 = s.x 8) (F1 : Frame p nl s1 env1)
     (ag1 : ∀ k, ¬ W k → env1 k = env k)
@@ -82,7 +82,7 @@ theorem finTailS {KL : LayW} {C : List J} {pc q lu t p nl hb : Nat} {Inv : St �
   · intro a ha hW
     rw [qm a (by omega) (by intro ⟨_, h2⟩; omega)]; exact m1 a ha hW
 
-theorem fin2XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
+theorem fin2X {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
     {F : UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp)}
     (hI : InvOKH hb p Inv) (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 2 SP) (hU : Fin2S KL C (pc + lp) lu Inv hb E0 F) :
     EVHwS KL C pc (lp + lu) p nl Inv hb E0 R W 1 (fin2S SP F) where
@@ -109,9 +109,9 @@ theorem fin2XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St �
     obtain ⟨s3, st3, q31, qv, R3, A3, qx, qm⟩ := hU s1 H1 v H3 I1 z1 R1 (by rw [p1]; have := O0.1; have := O0.2.2; omega)
       ⟨L0.lo, L0.hi, by rw [p1]; have := L0.top; have := O0.1; have := R1.1; have := R1.2.1; have := R1.2.2.1; rw [p1] at *; omega, L1.a31⟩ A1 hF'
     rw [p1, show (s.x 31).toNat - 8 * 2 + 8 = (s.x 31).toNat - 8 by omega] at q31 qv qm
-    exact finTailS hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31 qv R3 qx qm (by omega) (by omega)
+    exact finTail hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31 qv R3 qx qm (by omega) (by omega)
 
-theorem fin1XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
+theorem fin1X {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
     {F : UInt64 → Nat → Hp → Option (UInt64 × Hp)}
     (hI : InvOKH hb p Inv) (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 1 SP) (hU : Fin1S KL C (pc + lp) lu Inv hb E0 F) :
     EVHwS KL C pc (lp + lu) p nl Inv hb E0 R W 1 (fin1S SP F) where
@@ -136,10 +136,10 @@ theorem fin1XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St �
     obtain ⟨s3, st3, q31, qv, R3, A3, qx, qm⟩ := hU s1 H1 v H3 I1 z1 R1 K1 A1 hF'
     have q31' : (s3.x 31).toNat = (s.x 31).toNat - 8 := by rw [q31, p1]
     rw [p1, show (s.x 31).toNat - 8 * 1 = (s.x 31).toNat - 8 by omega] at qv qm
-    exact finTailS hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31' qv R3
+    exact finTail hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31' qv R3
       (fun r a b c d e _ => qx r a b c d e) qm (by omega) (by omega)
 
-theorem fin3XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
+theorem fin3X {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemW}
     {F : UInt64 → UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp)}
     (hI : InvOKH hb p Inv) (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 3 SP) (hU : Fin3S KL C (pc + lp) lu Inv hb E0 F) :
     EVHwS KL C pc (lp + lu) p nl Inv hb E0 R W 1 (fin3S SP F) where
@@ -168,10 +168,10 @@ theorem fin3XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St �
       rw [va, vb, vc, p1, show (s.x 31).toNat - 8 * 3 = (s.x 31).toNat - 24 by omega]; exact hF
     obtain ⟨s3, st3, q31, qv, R3, A3, qx, qm⟩ := hU s1 H1 v H3 I1 z1 R1 (by rw [p1]; have := O0.1; have := O0.2.2; omega) K1 A1 hF'
     rw [p1, show (s.x 31).toNat - 8 * 3 + 16 = (s.x 31).toNat - 8 by omega] at q31 qv qm
-    exact finTailS hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31 qv R3 qx qm (by omega) (by omega)
+    exact finTail hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31 qv R3 qx qm (by omega) (by omega)
 
 
-theorem fin2_aluS {KL : LayW} {C : List J} {q op : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q (binT op))
+theorem fin2_alu {KL : LayW} {C : List J} {q op : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q (binT op))
     (hop : 1 ≤ op ∧ op ≤ 8) : Fin2S KL C q 5 Inv hb E0 (aluF2 op) := by
   intro s2 H2 v H3 I2 z2 hR hl K2 A2 hF
   simp only [aluF2, Option.some.injEq, Prod.mk.injEq] at hF
@@ -187,7 +187,7 @@ theorem fin2_aluS {KL : LayW} {C : List J} {q op : Nat} {Inv : St → Prop} {hb 
   · intro r h5 h6 _ _ _ h31; simp [upd_ne, h5, h6, h31]
   · intro a ha _; simp only []; rw [upd_other _ _ ha]
 
-theorem fin1_rdS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} {c28 c29 : UInt64}
+theorem fin1_rd {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} {c28 c29 : UInt64}
     {inp : Nat → UInt64} (hC : At C q rdT) (hInv : InpOK Inv c28 c29 inp) (hW : InpW KL Inv) :
     Fin1S KL C q 6 Inv hb E0 (rdF1 c29 inp) := by
   intro s1 H1 v H2 I1 z1 hR K1 A1 hF
@@ -232,7 +232,7 @@ theorem bufInfo_al {hb : Nat} {H : Hp} {b : UInt64} {lc : UInt64 × UInt64} (h :
   · rename_i hc; exact hc.2
   · simp at h
 
-theorem fin1_bsizeS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bsizeT) :
+theorem fin1_bsize {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bsizeT) :
     Fin1S KL C q 3 Inv hb E0 (bsizeF hb) := by
   intro s1 H1 v H2 I1 z1 hR K1 A1 hF
   simp only [bsizeF, Option.map_eq_some_iff] at hF
@@ -251,7 +251,7 @@ theorem fin1_bsizeS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E
   · intro r h5 h6 h7 h14 h15; simp [upd_ne, h5]
   · intro a ha _; simp only []; rw [upd_other _ _ ha]
 
-theorem fin2_bgetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bgetT) :
+theorem fin2_bget {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bgetT) :
     Fin2S KL C q 10 Inv hb E0 (bgetF hb) := by
   intro s2 H2 v H3 I2 z2 hR hl K2 A2 hF
   simp only [bgetF, Option.bind_eq_some_iff] at hF
@@ -309,7 +309,7 @@ theorem fin2_bgetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
   · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h31
   · intro a ha _; rw [hm]; exact upd_other _ _ ha
 
-theorem fin2_bpushS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q (bpushT 6 q)) :
+theorem fin2_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q (bpushT 6 q)) :
     Fin2S KL C q 12 Inv hb E0 (bpushF hb) := by
   intro s2 H2 v H3 I2 z2 hR hl K2 A2 hF
   simp only [bpushF, Option.bind_eq_some_iff] at hF
@@ -366,7 +366,7 @@ theorem fin2_bpushS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E
       rw [hm]; rw [upd_other _ _ (by omega), upd_other _ _ (by omega)]
   · simp only [hg, if_false] at hF; exact absurd hF (by simp)
 
-theorem fin3_bsetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bsetT) :
+theorem fin3_bset {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q bsetT) :
     Fin3S KL C q 9 Inv hb E0 (bsetF hb) := by
   intro s3 H3 v H4 I3 z3 hR hl K3 A3 hF
   simp only [bsetF, Option.bind_eq_some_iff] at hF
@@ -442,7 +442,7 @@ theorem fin3_bsetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
     · intro a ha hn; rw [hm]
 
 
-theorem bnew_EVHS {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+theorem bnew_EVH {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
     (hC : At C pc (bnewT tgt pc κ)) :
     EVHS KL C pc (bnewT tgt pc κ).length p nl Inv hb E0 (fun _ => False) (fun _ => False) (bnewS κ) where
   stable := fun _ _ _ _ _ => rfl
@@ -514,9 +514,9 @@ theorem bnew_EVHS {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : S
 
 
 /-- BNEW κ -/
-theorem bnewXS {KL : LayW} {C : List J} {pc κ p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
+theorem bnewX {KL : LayW} {C : List J} {pc κ p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
     (hI : InvOKH hb p Inv) (hC : At C pc (bnewT 1 pc κ)) :
     EVHwS KL C pc (bnewT 1 pc κ).length p nl Inv hb E0 R W 1 (one (bnewS κ)) :=
-  (ofEVHS (bnew_EVHS (nl := nl) hI hC)).mono (fun _ h => h.elim) (fun _ h => h.elim)
+  (ofEVH (bnew_EVH (nl := nl) hI hC)).mono (fun _ h => h.elim) (fun _ h => h.elim)
 
 end Templates

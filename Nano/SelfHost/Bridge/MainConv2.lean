@@ -32,8 +32,6 @@ theorem ex_map {α β : Type} {S : Nat → Hp → Option α} {H : Hp} (f : α �
   obtain ⟨N, hN⟩ := h
   exact ⟨N, fun sp a b => by obtain ⟨r, hr⟩ := hN sp a b; exact ⟨f r, by simp [hr]⟩⟩
 
-theorem ex_const {α : Type} {H : Hp} (x : α) : Ex (fun (_ : Nat) (_ : Hp) => some x) H := ⟨0, fun _ _ _ => ⟨x, rfl⟩⟩
-
 theorem leafS_ex (V : Env → UInt64) (env : Env) (H : Hp) : Ex (leafS V env) H :=
   ⟨8, fun sp a _ => ⟨([V env], H), by simp [leafS, show H.top + 8 ≤ sp by omega]⟩⟩
 

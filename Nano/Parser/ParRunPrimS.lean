@@ -39,9 +39,6 @@ theorem pApp_bound {f cx tl x r nx p} (h : findEnv cx.env x = some p) :
 theorem pApp_bnew {f cx tl r nx} : pApp (f + 2) cx tl (.k 43 :: r) nx = some (.prim 5 [], .s .bf, r, nx) := by
   simp [pApp, primSig, pArgs, dropInp]
 
-theorem findB_mem' {bs : List Bd} {x bd} (h : findB bs x = some bd) : bd ∈ bs := by
-  unfold findB at h; exact List.mem_reverse.mp (List.mem_of_find?_eq_some h)
-
 theorem defs_sub_rows {st : St} {d : DefR} (h : d ∈ st.defs) : d ∈ rows st := by simp [rows, h]
 
 /-- a leaf atom on the primary path -/
@@ -59,7 +56,7 @@ theorem prim_leaf {n md ks st st1 fin cx} (hc : CxRel st cx) (hnn : CxNN st) (hl
       unfold locOf at hlo; split at hlo
       · cases hlo
       · simp at hlo; subst hlo; simp at hst; obtain ⟨_, rfl, _⟩ := hst
-        exact hnn.1 _ (findB_mem' hbd)
+        exact hnn.1 _ (findB_mem hbd)
     | cst ht hbd hd hj hpar hm =>
       obtain ⟨_, rfl⟩ := mkNode_inv hm; simp at hst; obtain ⟨_, rfl, _⟩ := hst
       exact (hnn.2 _ (defs_sub_rows (List.mem_of_getElem? hj))).1

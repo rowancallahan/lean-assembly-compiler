@@ -1,23 +1,29 @@
-# Nano/Ownership: linearity check on buffers (stage 3)
+# Proof/Own — soundness of the ownership stage `C.o41`
 
-## Contents
-| file(s) | what |
-|---|---|
-| `Own.lean` | **code**: the ownership stage `o41` in the nano subset (was `C/Own`) |
-| `OwnSpec.lean` | spec `OwnSpec.Linear`: buffers are affine, borrowed only by `bsize`/`bget`/read-only params |
-| `OwnWF.lean`, `MainKeep.lean` | well-formedness and the "program kept" lemma |
-| `OwnP0` … `OwnP30` | the proof of the walk, split by case to stay under the module budget |
-| `OwnStage.lean` | `own_stage`: o41 accepts ⇒ `Linear` |
+**What / where.** `C.o41` (Nano/Ownership/Own.lean) runs between the parser and Gen. Gen's BPUSH/BSET/PUT update buffers in place, so a program must use each buffer linearly. `o41` accepts only such programs; this folder proves **accepted ⇒ `Linear`** (spec: Testing/notes/NANO_V2_OWN.md). Used by Proof/Bridge (MainBridge3) and Proof/Tests/OwnNV.
 
-## Role
-Between `Nano/Parser` (AST) and `Nano/Codegen`; passes the AST through or rejects. Guarantees Codegen/Run may treat buffer updates as in-place (the machine proofs assume `Linear`). Notes: `Testing/notes/NANO_V2_OWN.md`.
+## Files
+- `OwnSpec.lean` — the discipline: `Linear`, `progOk`, `chk`, `dest`, `join`, `okAll`, … (pure Lean, no machine).
+- `OwnWF.lean` — well-formedness of parser output (`NdAr` PRIM arities, `Bnd` size bounds).
+- `OwnP0–P1` — word arithmetic (`u n`, `uw` simp set); walk-state representation (`AS`, `WCx`, `Fr`, `RS/RF/RV/RT`).
+- `OwnP2–P7` — leaf loops/passes of `o41` each equal to an `OwnSpec` function (dest, ok1/okAll, finC/finB/strip, entry pushes, flag loop `o22`, join, let check).
+- `OwnP8–P22` — one walk step per frame kind (phase 0/1/2, pops, finishes, IF/LET/LOOP, list nodes), then each node = `OwnSpec.chk`.
+- `OwnP23–P26` — `o34` walk loop vs `Reach`; def body = `defOk`.
+- `OwnP27–P30` — def-level buffer loops, def table, flags buffer `o42`, program loop `o39` and stage `o41`.
+- `MainKeep.lean` — static facts (only owned slots are killed) for read-only liveness.
+- `OwnStage.lean` — final theorem.
 
 ## Decisions
-Checks a spec relation rather than a type system, so soundness is one theorem (`o41_sound`, via `own_stage`).
-Non-vacuity examples are in `Nano/Tests/OwnNV.lean`.
+- Spec is a separate pure function over `DefA`; the machine code is proved equal to it piecewise, so each step lemma is a local simulation (alternative: one monolithic run proof — rejected, too costly to check).
+- Numbers are `UInt64` words; `serialize` wraps mod 2^64, so size bounds `Bnd` and `|serialize p| < 2^64` are premises.
+- `Reach W σ P`: finitely many `o30` steps ending in P or the error flag — gives soundness without termination bookkeeping.
+
+## Main results
+- `OwnStage.lean:own_stage` — `ParsesProgram ts p`, `OwnWF.Bnd p` (and the serialization bound) ⇒ `o41` accepting ⇒ `LinearK`.
+- `OwnP30.lean` — program-loop/stage lemma it builds on; `OwnP8.lean:Reach`.
 
 ## Check
-`lake build Nano.Ownership.OwnStage`.
+`lake build Nano.Ownership.OwnStage`; whole repo: `lake build`, then `Testing/scripts/review_axioms.sh` ("OK: 8 theorems, axioms as pinned").
 
 ## Limits
-Sound, not complete: it may reject linear programs it cannot see are linear.
+Soundness only (accepted ⇒ linear); completeness is not proved. Bounds on nslots/nres (< 251) and serialization length are assumed, discharged by Gen/Bridge. OwnP* are hand-written (not generated).

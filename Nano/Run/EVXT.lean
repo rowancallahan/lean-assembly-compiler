@@ -1,7 +1,7 @@
 /- Machine bridge (Opus box E): TAIL mode (loop arms, Gen's CT), semantics only.  A tail fragment either EXITS
 (`.inl vs`: pushes the result words and jumps to the def's epilogue) or CONTINUEs (`.inr st`: new loop state, jump to the
 loop head).  Here: the result type `TRes`/`SemT` and the semantics combinators `exitS`, `contS`, `ifTS`, `letTS`.
-The run theorems are the safe ones in EVSTail.lean (`valTS`, `contTS`, `ifTS'`, `letTS'`; contract `EVHtS` in EVSDefs.lean). -/
+The run theorems are the safe ones in EVSTail.lean (`valT`, `contT`, `ifT`, `letT`; contract `EVHtS` in EVSDefs.lean). -/
 import Nano.Run.EVX
 namespace Templates
 open CallProbe

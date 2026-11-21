@@ -5,7 +5,7 @@ import Nano.Run.EVSComp
 namespace Templates
 open CallProbe SimW SafeRun
 
-/-- **a def**, safe twin of `defX` -/
+/-- **a def**: prologue (`proA 1 f r`, Gen's g38) ++ body ++ epilogue (`epi p q`) satisfies `DefXS` -/
 theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Prop} {Rb Wb : Nat → Prop} {Sb : SemW}
     (hIG : IGOK hb E0 IG) (hP : At C f (proA 1 f (nl - p)))
     (hB : EVHwS KL C (f + 12) lb p nl (IGp IG E0 p) hb E0 Rb Wb q Sb) (hE : At C (f + 12 + lb) (epi p q))
@@ -48,7 +48,7 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
     have slot_ne : ∀ k, k < nl → slotAddr p ((s.x 31).toNat - 16) k ≠ (s.x 31).toNat - 8 ∧ slotAddr p ((s.x 31).toNat - 16) k ≠ (s.x 31).toNat - 16 ∧
         slotAddr p ((s.x 31).toNat - 16) k < (s.x 31).toNat + 8 * p := by
       intro k hk; unfold slotAddr slotOff; split <;> omega
-    have s2ra : s2.m ((s.x 31).toNat - 8) = UInt64.ofNat (s.b + s.w * ret) := by
+    have s2ra : s2.m ((s.x 31).toNat - 8) = UInt64.ofNat (s.b + s.lo ret) := by
       rw [m2 _ (by omega) (fun k hk _ => by rw [h8]; exact (slot_ne k hk).1.symm), hm1, upd_other _ _ (by omega),
         upd_same, hx1]
     have s2s0 : s2.m ((s.x 31).toNat - 16) = s.x 8 := by
@@ -61,7 +61,7 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
     have hD1 : (s2.x 31).toNat + 8 * q ≤ (s2.x 8).toNat + 8 * p + 16 := by rw [p2, x82]; omega
     have hD2 : (s2.x 8).toNat + 8 * p + 16 < 2 ^ 63 := by rw [x82]; omega
     have b2 : s2.b = s.b := r2.star.b.trans b1
-    have w2 : s2.w = s.w := St.w_eq (r2.star.w.trans hr1.star.w)
+    have w2 : s2.lo = s.lo := St.w_eq (r2.star.w.trans hr1.star.w)
     have hbt2 : hb ≤ H'.top := R2.2.1
     obtain ⟨s3, hr3, b3, p3, x83, hx3, hm3⟩ := epi_srun (K := KL) s2 hE hD1 hD2 (by omega) hq
       (wk _ (by rw [x82]; omega) (by rw [x82]; omega) (by rw [x82]; omega))
@@ -71,9 +71,9 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
       ⟨ret, by
         rw [x82, show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, s2ra, ← hbase, w2]
         simp; omega⟩
-    have pc3 : ((s2.m ((s2.x 8).toNat + 8)).toNat - s2.b) / s2.w = ret := by
-      rw [x82, show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, s2ra, b2, w2]
-      have : (UInt64.ofNat (s.b + s.w * ret)).toNat = s.b + s.w * ret := by simp; omega
+    have pc3 : s2.ly.un ((s2.m ((s2.x 8).toNat + 8)).toNat - s2.b) = ret := by
+      rw [x82, show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, s2ra, b2, show s2.ly = s.ly from r2.star.w.trans hr1.star.w]
+      have : (UInt64.ofNat (s.b + s.lo ret)).toNat = s.b + s.lo ret := by simp; omega
       rw [this, link_div]
     rw [pc3] at hr3
     rw [x82, show (s.x 31).toNat - 16 + 8 * p + 16 = (s.x 31).toNat + 8 * p by omega] at hm3 p3
@@ -96,14 +96,14 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
       rw [mo a (Or.inr ha), m2 a (by omega) (fun k hk _ => by rw [h8]; have := (slot_ne k hk).2.2; omega)]
       exact m1 a (by omega) (by omega)
 
-/-- **CALL**, safe twin of `callX`: the jal lands on the callee entry `f` (an Int equation, so the target is
+/-- **CALL** (argument words, then `jal ra f`): the jal lands on the callee entry `f` (an Int equation, so the target is
 non-negative), inside the code -/
 theorem callXS {KL : LayW} {C : List J} {pc la p nl pa q f hb E0 : Nat} {IG : St → Prop} {RA WA : Nat → Prop} {SA : SemW}
     {Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)} {off : Int}
     (hIG : IGOK hb E0 IG) (hA : EVHwS KL C pc la p nl (IGp IG E0 p) hb E0 RA WA pa SA)
     (hj : C[pc + la]? = some (.jal 1 off)) (hf : ((pc + la : Nat) : Int) + off = (f : Int))
     (hD : DefXS KL C f pa q IG hb E0 Sd) (hE62 : E0 < 2 ^ 62)
-    (hcb : ∀ s, IG s → s.b + s.w * (pc + la + 1) < 2 ^ 64) (hfl : f < C.length) (hC18 : C.length < 2 ^ 18) :
+    (hcb : ∀ s, IG s → s.b + s.lo (pc + la + 1) < 2 ^ 64) (hfl : f < C.length) (hC18 : C.length < 2 ^ 18) :
     EVHwS KL C pc (la + 1) p nl (IGp IG E0 p) hb E0 RA WA q (callS pa SA Sd) where
   stable := fun env env' sp H h => by
     simp only [callS]; rw [hA.stable env env' sp H h]
@@ -118,11 +118,11 @@ theorem callXS {KL : LayW} {C : List J} {pc la p nl pa q f hb E0 : Nat} {IG : St
       · exact h
       · rw [List.getElem?_eq_none h] at hj; cases hj
     have hf' : (((pc + la : Nat) : Int) + off).toNat = f := by rw [hf]; simp
-    let sj := wr s1 1 (UInt64.ofNat (s1.b + s1.w * (pc + la + 1)))
+    let sj := wr s1 1 (UInt64.ofNat (s1.b + s1.lo (pc + la + 1)))
     have stj : step C (pc + la, s1) = some (f, sj) := by rw [s_jal hj, hf']
     have saj : SafeX KL C (pc + la, s1) := by
       simp only [SafeX, hj]; refine ⟨by decide, ?_, ?_, ?_, ?_⟩ <;> omega
-    have ej : sj = { s1 with x := upd s1.x 1 (UInt64.ofNat (s1.b + s1.w * (pc + la + 1))) } := by simp [sj, wr]
+    have ej : sj = { s1 with x := upd s1.x 1 (UInt64.ofNat (s1.b + s1.lo (pc + la + 1))) } := by simp [sj, wr]
     have jx : ∀ i, i ≠ 1 → sj.x i = s1.x i := by intro i hi; rw [ej]; simp [upd, hi]
     have jm : sj.m = s1.m := by rw [ej]
     have jb : sj.b = s1.b := by rw [ej]
@@ -136,9 +136,9 @@ theorem callXS {KL : LayW} {C : List J} {pc la p nl pa q f hb E0 : Nat} {IG : St
       intro i hi; rw [jm, j31, show (s.x 31).toNat - 8 * pa + 8 * (pa - 1 - i) = (s.x 31).toNat - 8 * (i + 1) by omega]
       exact v1 i hi
     have htop : (sj.x 31).toNat + 8 * pa ≤ E0 := by have := I0.2; rw [j31]; omega
-    have hx1 : sj.x 1 = UInt64.ofNat (sj.b + sj.w * (pc + la + 1)) := by rw [ej]; simp [upd, St.w]
-    have wj : sj.w = s.w := St.w_eq ((wr_w _ _ _).trans r1.star.w)
-    have hret : sj.b + sj.w * (pc + la + 1) < 2 ^ 64 := by rw [jb, b1, wj]; exact hcb s I0.1
+    have hx1 : sj.x 1 = UInt64.ofNat (sj.b + sj.lo (pc + la + 1)) := by rw [ej]; simp [upd, St.lo]
+    have wj : sj.lo = s.lo := St.w_eq ((wr_w _ _ _).trans r1.star.w)
+    have hret : sj.b + sj.lo (pc + la + 1) < 2 ^ 64 := by rw [jb, b1, wj]; exact hcb s I0.1
     have hSd' : Sd u (sj.x 31).toNat H1 = some (vs, H') := by rw [j31]; exact hSd
     have ja : (sj.x 31).toNat % 8 = 0 := by rw [jx 31 (by decide)]; exact L1.a31
     obtain ⟨s', st', I', z', p', l', v', e8', R', A', m'⟩ :=

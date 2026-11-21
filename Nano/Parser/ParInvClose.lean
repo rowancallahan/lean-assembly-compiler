@@ -12,7 +12,7 @@ theorem shRows_frame {g g1 : Buf} (r : ShRows g) (e26 : bget g1 26 = bget g 26)
   have ek : ∀ k : Nat, k < 8192 → ∀ q : UInt64, q.toNat < 3 →
       bget g1 (d7 + 8192 + 3 * k.toUInt64 + q) = bget g (d7 + 8192 + 3 * k.toUInt64 + q) := fun k hk q hq =>
     e _ (by
-      rw [UInt64.toNat_add, pairCell0 k hk, Nat.mod_eq_of_lt (by omega)]; omega)
+      rw [UInt64.toNat_add, shRow0 k hk, Nat.mod_eq_of_lt (by omega)]; omega)
   refine ⟨by rw [e26]; exact r1, fun k h1 h2 => ?_, fun k hk => ?_⟩
   · rw [e26] at h1; have := ek k h2 0 (by decide); simp only [UInt64.add_zero] at this; rw [this]; exact r2 k h1 h2
   · rw [e26] at hk
@@ -121,7 +121,7 @@ theorem h_defClose {h ts : Buf} {st : St} (r : Rep h ts st [.defClose]) :
       fun s hs => by rw [e 25 (by decide)]; exact (r25 s hs).frame es,
       fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
       by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32,
-      out_frame rO (by rw [← hg1]; exact drop_bset _ _ _ (by decide))⟩
+      out_frame rO (by rw [← hg1]; exact drop_bset0 _ _ _ (by decide))⟩
   have T1 : TasksRep g1 st.arena [] := tasks_frame rK (e 5 (by decide)) (fun i a b => by simp at b; omega) et hn es
     (fun i a b => e i (by omega)) har
   have T2 := tasks_push .defs 0 0 T1 (by decide) (by omega) (by rw [e 7 (by decide)]; exact hn) har trivial

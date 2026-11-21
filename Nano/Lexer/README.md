@@ -1,22 +1,14 @@
-# Nano/Lexer: source bytes → token buffer (stage 1 of the compiler C)
+# Proof/Lex — specification and soundness of the S lexer (`C.s10`)
 
-## Contents
-| file | what |
+| file | contents |
 |---|---|
-| `Lex2.lean` | **code**: the lexer `C.s10`, written in the nano subset (was `C/Lex2`) |
-| `Lex2Spec.lean` | spec `LexSpec.Lexes x t`: maximal-munch tokenisation of byte list `x` to token words `t`, independent of the code |
-| `Lex2Sound.lean` | soundness: `s10`'s output satisfies `Lexes` |
-| `ParTokWF.lean` | `TokWF ts`: the token-buffer well-formedness the parser proof assumes |
-| `MainTokWF.lean` | `Lexes x ts → TokWF ts` (discharges that assumption) |
+| `Lex2Spec.lean` | `LexSpec.Lexes x t`: `x` lexes to token words `t` (maximal munch; `isW`, `isD`, `opTable`, `kwTable`, `le8`), independent of the lexer's code |
+| `Lex2Sound.lean` | `s9_sound` (loop invariant), `s10_sound`: `s10 x = t`, `t ≠ []`, `x.length < 2^32` ⇒ `Lexes x t` |
+| `ParTokWF.lean` | `TokWF ts` (= `∃ toks, TokL ts toks`): token-buffer well-formedness, hypothesis of `ParserSound`; `tokens_of` |
+| `MainTokWF.lean` | `Lexes x ts → TokWF ts`: glues the lexer spec to the parser's hypothesis |
 
-## Role
-Reads the program text (`List UInt8`), writes a `Buf` of tag bytes (def, let, numbers + 8 LE value bytes, punctuation, names). Feeds `Nano/Parser`. Driver: `mC x = g41 x (o41 (y16 (s10 x)))` (`Main/Sem.lean`).
-
-## Decisions
-Spec is a one-token-at-a-time relation (not a second lexer), so the proof is "code refines relation", and the parser proof only needs `TokWF`. Alternative rejected: proving against a reference lexer function (spec would repeat the code's shape).
-
-## Check
-`lake build Nano.Lexer.Lex2Sound Nano.Lexer.MainTokWF`. Used by `Nano/Main` (`Sem`) and the certificate in `Nano/SelfHost`.
-
-## Limits
-Inputs under 2^32 bytes. Buffer capacity exhaustion is a separate exit handled in `Nano/Run` (Cap*).
+Where it sits: first stage of `mC x = g41 x (o41 (y16 (s10 x)))`; `Main/Sem` uses `s10_sound` + `MainTokWF`.
+Decisions: the spec is a relation, one token per `step` (not a second lexer), so soundness is the only direction needed;
+keyword/operator tag facts (`op_tags`, `kw_tags`, `and255'`) are closed by `decide` over the tables.
+Guarantee: soundness only (no completeness: an input the lexer rejects, `s10 x = []`, is simply outside the theorem).
+Check: `lake build Nano.Lexer.MainTokWF`. Limit: inputs shorter than 2^32 bytes.

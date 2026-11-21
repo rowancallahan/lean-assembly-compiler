@@ -26,7 +26,7 @@ theorem gen_mainN (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Pars
       At C S startPre ∧ S + 32 ≤ C.length ∧ (∀ j ∈ C, SimW.JOK j) ∧
       ∀ (KL : SimW.LayW) E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
         2048 ≤ (s0.x 12).toNat →
-        (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + s0.w * C.length < 2 ^ 64 →
+        (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → LinkOK C s0 →
         (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
         KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
@@ -60,7 +60,7 @@ theorem gen_mainN (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Pars
     obtain ⟨j0, hj0, rfl⟩ := List.mem_map.1 hj
     exact SimW.jok_norm j0 (hgl j0 hj0)
   · intro KL E0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13
-    rw [hlen] at a7
+    replace a7 : LinkOK C s0 := fun n off h => a7 n _ (by rw [List.getElem?_map, h]; rfl)
     obtain ⟨r1, r2⟩ := hrun KL E0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13
     refine ⟨fun vs H' hS => ?_, fun fk hk hS => ?_⟩
     · obtain ⟨y, hy, hY⟩ := r1 vs H' hS

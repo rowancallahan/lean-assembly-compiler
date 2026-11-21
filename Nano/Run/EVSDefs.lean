@@ -1,5 +1,5 @@
-/- Safe retrofit (EVS), shared definitions (Opus box E).  The Safe twins of the plain contracts EVH / EVHw / DefX, and the
-tail contract `EVHtS` (its plain form is deleted): the same statements with `SimW.SStarX KL C` runs, plus
+/- The fragment contracts (Opus box E): `EVHwS` (w result words), `EVHS` (one word), `EVHtS` (tail mode), `DefXS`
+(a def).  Runs are `SimW.SStarX KL C` runs; the only contracts since the plain `Star` ones were removed.  Premises:
   * `Lay KL hb E0 p s` — the per-state layout: work region [KL.lo, KL.hi) ⊇ [hb, E0) (heap … stack … frames),
     code base = KL.base, this frame's top s0 + 8p + 16 ≤ E0, t6 and s0 8-aligned.  Contracts preserve it (s0 and the
     code base are kept, t6 moves by 8w), so it is a premise of every run and needs no conclusion;
@@ -49,7 +49,10 @@ theorem Lay.post' {KL : LayW} {hb E0 p : Nat} {s s' : St} (h : Lay KL hb E0 p s)
     (e31 : (s'.x 31).toNat = (s.x 31).toNat) : Lay KL hb E0 p s' :=
   h.post (w := 0) e8 eb (by rw [e31]; omega) (by omega)
 
-/-- **EVHw, safe**: as `EVHw` with a SafeX run; premises `Lay`, `HAl H`; conclusion `HAl H'` -/
+/-- **the value contract** (w words): if the semantics `S env sp H` succeeds with `(vs, H')`, the code at [pc, pc+len)
+pushes the w words `vs` (component i at old t6 − 8(i+1)) by a SafeX run, keeps s0, the frame up to its own lets `W`,
+every cell at or above the old t6 except those slots, `Inv`, x0 = 0, and moves the heap relation from H to H'.  `S`
+reads only the slots in `R`.  Premises `Lay`, `HAl H`; conclusion `HAl H'`. -/
 structure EVHwS (KL : LayW) (C : List J) (pc len p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R W : Nat → Prop)
     (w : Nat) (S : SemW) : Prop where
   run : ∀ (s : St) (env : Env) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 → Frame p nl s env →
@@ -96,7 +99,7 @@ structure DefXS (KL : LayW) (C : List J) (f p q : Nat) (IG : St → Prop) (hb E0
     (Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)) : Prop where
   run : ∀ (s : St) (args : List UInt64) (H : Hp) (vs : List UInt64) (H' : Hp) (ret : Nat), IG s → s.x 0 = 0 →
     HRel hb s H → args.length = p → (∀ i, i < p → s.m ((s.x 31).toNat + 8 * (p - 1 - i)) = args.getD i 0) →
-    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + s.w * ret) → s.b + s.w * ret < 2 ^ 64 →
+    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + s.lo ret) → s.b + s.lo ret < 2 ^ 64 →
     KL.lo ≤ hb → E0 ≤ KL.hi → s.b = KL.base → (s.x 31).toNat % 8 = 0 → HAl H →
     Sd args (s.x 31).toNat H = some (vs, H') →
     ∃ s', SStarX KL C (f, s) (ret, s') ∧ IG s' ∧ s'.x 0 = 0 ∧ (s'.x 31).toNat = (s.x 31).toNat + 8 * p - 8 * q ∧

@@ -29,8 +29,6 @@ theorem Exec.loop_inv {c : Exp} {b : Stmt} (I Q : Env → Prop) (μ : Env → Na
       obtain ⟨σ', hl, hQ⟩ := ih _ (h ▸ hlt) σ₁ rfl hI₁
       exact ⟨σ', .loopT hc hb hl, hQ⟩
 
-theorem Exec.seq_assign {a : Stmt} {σ σ₁ : Env} (h : Exec a σ σ₁) (v : Fin 4) (e : Exp) :
-    Exec (.seq a (.assign v e)) σ (σ₁.set v (e.denote σ₁)) := .seq h .assign
 
 theorem sub_one_lt {n : BitVec 64} (h : n ≠ 0) : (n - 1).toNat < n.toNat := by
   have : n.toNat ≠ 0 := fun e => h (BitVec.eq_of_toNat_eq (by simpa using e))

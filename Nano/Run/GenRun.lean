@@ -65,7 +65,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
 /-- the start code's global invariant: input registers and bytes, the ra / s0 save slots, the code base -/
 def IGs (s0 : St) (inp : Nat → UInt64) : St → Prop := fun s =>
   s.x 28 = s0.x 10 ∧ s.x 29 = s0.x 11 ∧ (∀ i, i < (s0.x 11).toNat → lbm s.m ((s0.x 10).toNat + i) = inp i) ∧
-  s.m (s0.x 12).toNat = s0.x 1 ∧ s.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s.b = s0.b ∧ s.wk = s0.wk
+  s.m (s0.x 12).toNat = s0.x 1 ∧ s.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s.b = s0.b ∧ s.ly = s0.ly
 
 theorem lbm_eq {m m' : Nat → UInt64} {a : Nat} (h : m' (a - a % 8) = m (a - a % 8)) : lbm m' a = lbm m a := by
   unfold lbm; rw [h]

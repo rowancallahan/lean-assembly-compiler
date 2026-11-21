@@ -1,5 +1,5 @@
 /- **rv2arm's block correctness on DeepMind's AArch64 model** (`BlockOKD`): ArmBlock's `BlockOK` with `RelD` for
-`RelA` and DeepMind steps (`Reach`) for `Runs`; same premises (`validJ`, `s.wk = 3`, `AccOK` with `NoWrap`). -/
+`RelA` and DeepMind steps (`Reach`) for `Runs`; same premises (`validJ`, `s.ly = 3`, `AccOK` with `NoWrap`). -/
 import Blocks.KMem
 set_option linter.unusedVariables false
 namespace Proven.Apc.Blocks
@@ -9,7 +9,7 @@ open CallProbe Proven.Arm ArmBlock
 DeepMind steps, `RelD` to `RelD` -/
 def BlockOKD : Prop :=
   ∀ (C : List J) (D : Nat → Prop) (K : Nat → BitVec 64) (pc : Nat) (s : St) (j : J) (t : Arm64.State)
-    (ps' : Nat × St), C[pc]? = some j → validJ C.length pc j → s.wk = 3 → AccOK C D (pc, s) →
+    (ps' : Nat × St), C[pc]? = some j → validJ C.length pc j → s.ly = 3 → AccOK C D (pc, s) →
     RelD C D K (pc, s) t → step C (pc, s) = some ps' → Reach t (RelD C D K ps')
 
 theorem blockOKD : BlockOKD := by

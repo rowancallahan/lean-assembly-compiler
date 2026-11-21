@@ -20,7 +20,7 @@ theorem rep_cursor {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
   have u3 : (3 : UInt64).toNat = 3 := rfl
   have cells : ∀ i : UInt64, i.toNat ≠ 3 → bget (bset g 3 p') i = bget g i := fun i a => bget_bset' _ _ _ _ (by rw [u3]; omega)
   have et' : TokAgree g (bset g 3 p') := ⟨cells 7 (by decide), fun i hi => cells i (by omega)⟩
-  refine rep_tok R (by simp [length_bset]) (fun i _ b _ => cells i b) (drop_bset _ _ _ (by decide))
+  refine rep_tok R (by simp [length_bset]) (fun i _ b _ => cells i b) (drop_bset0 _ _ _ (by decide))
     (by rw [bget_bset_eq _ _ _ _ rfl (by rw [u3]; omega)]; exact tokAt_frame et' hn hK) ?_ rfl
   exact tasks_frame R.2.2.2.2.2.2.2.2.2.2.2.2.2 (cells 5 (by decide)) (fun i a b => cells i (by omega)) et' hn
     (fun i a _ => cells i (by omega)) (fun i a _ => cells i (by omega)) har
@@ -76,7 +76,7 @@ theorem rep_ty {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (w 
       cases hs'
       rw [bget_bset_eq _ _ _ _ rfl (by rw [u25]; omega)]; exact hw.frame es,
     fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
 /-- a leaf type: scratch write, cursor move, type cell, then task 62 -/
@@ -86,7 +86,7 @@ theorem ty_leaf {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st fs) (
     Rep (v1 (bset (bset (bset g 31 z) 3 p') 25 w) 62 0 0) ts { st with toks := rest, ty := some s } (.tyCross :: fs) := by
   obtain ⟨hn, hl, har⟩ := rep_bounds R1
   have c31 : ∀ i : UInt64, i.toNat ≠ 31 → bget (bset g 31 z) i = bget g i := fun i a => bget_bset' _ _ _ _ (by simp; omega)
-  have R2 : Rep (bset g 31 z) ts st fs := rep_scratch R1 (fun i _ a => c31 i a) (drop_bset _ _ _ (by decide))
+  have R2 : Rep (bset g 31 z) ts st fs := rep_scratch R1 (fun i _ a => c31 i a) (drop_bset0 _ _ _ (by decide))
   have hK' : TokAt (bset g 31 z) p' rest := tokAt_frame ⟨c31 7 (by decide), fun i hi => c31 i (by omega)⟩ hn hK
   have R3 := rep_cursor R2 p' hK'
   have hw' : ShapeCode (bset (bset g 31 z) 3 p') w s :=

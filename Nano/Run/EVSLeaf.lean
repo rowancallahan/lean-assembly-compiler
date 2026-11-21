@@ -10,7 +10,7 @@ theorem push_wok {KL : LayW} {hb E0 p nl : Nat} {s : St} {H : Hp} (L : Lay KL hb
   have := R.2.1; have := L.top; have := L.a31; obtain ⟨o1, o2, o3⟩ := O
   exact L.wok (by omega) (by omega) (by omega)
 
-theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
+theorem leafX {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
     {V : Env → UInt64}
     (hI : InvOKH hb p Inv) (hst : ∀ env env', (∀ k, R k → env k = env' k) → V env = V env')
     (hgo : ∀ (s : St) (env : Env), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s →
@@ -45,10 +45,10 @@ theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → 
     · intro a ha _; rw [hm]; apply upd_other; omega
 
 /-- CONST v -/
-theorem constXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {v : UInt64}
+theorem constX {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {v : UInt64}
     (hI : InvOKH hb p Inv) (hC : At C pc (constT 1 pc v)) :
     EVHwS KL C pc ((liT 5 v).length + 4) p nl Inv hb E0 R W 1 (leafS (fun _ => v)) :=
-  leafXS hI (fun _ _ _ => rfl) (fun s env _ hx0 _ _ room hw _ _ => by
+  leafX hI (fun _ _ _ => rfl) (fun s env _ hx0 _ _ room hw _ _ => by
     obtain ⟨s', hr, hx, hm, hb⟩ := const_srun (K := KL) s hx0 hC room hw
     have lt64 := (s.x 31).toNat_lt
     refine ⟨s', hr, ?_, hm, ?_, ?_, ?_, ?_, ?_⟩
@@ -56,10 +56,10 @@ theorem constXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Pro
     all_goals rw [hx]; simp [upd_ne])
 
 /-- ISIZE / LEN -/
-theorem lenXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {c29 : UInt64}
+theorem lenX {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {c29 : UInt64}
     (hI : InvOKH hb p Inv) (hInv : ∀ s, Inv s → s.x 29 = c29) (hC : At C pc (lenT 1 pc)) :
     EVHwS KL C pc 4 p nl Inv hb E0 R W 1 (leafS (fun _ => c29)) :=
-  leafXS hI (fun _ _ _ => rfl) (fun s env I0 hx0 _ _ room hw _ _ => by
+  leafX hI (fun _ _ _ => rfl) (fun s env I0 hx0 _ _ room hw _ _ => by
     have lt64 := (s.x 31).toNat_lt
     have hr := len_srun (K := KL) s hC room hw
     refine ⟨_, hr, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -76,10 +76,10 @@ theorem slot_wok {KL : LayW} {hb E0 p nl k : Nat} {s : St} (L : Lay KL hb E0 p s
   split <;> exact L.wok (by omega) (by omega) (by omega)
 
 /-- LOCAL k, width 1 -/
-theorem local1XS {KL : LayW} {C : List J} {pc p nl hb E0 k : Nat} {Inv : St → Prop} {W : Nat → Prop}
+theorem local1X {KL : LayW} {C : List J} {pc p nl hb E0 k : Nat} {Inv : St → Prop} {W : Nat → Prop}
     (hI : InvOKH hb p Inv) (hp : p < 2 ^ 20) (hnl : nl < 251) (hk : k < nl) (hC : At C pc (localT 1 p k pc 1)) :
     EVHwS KL C pc 5 p nl Inv hb E0 (fun j => j = k) W 1 (leafS (fun env => env k)) :=
-  leafXS hI (fun env env' h => h k rfl) (fun s env _ hx0 hF hO room hpw L0 h30 => by
+  leafX hI (fun env env' h => h k rfl) (fun s env _ hx0 hF hO room hpw L0 h30 => by
     have hsw := slot_wok (k := k) L0 hO h30 room hk
     obtain ⟨o1, o2, o3⟩ := hO
     have hv : CallProbe.slotAddr p k (s.x 8).toNat = slotAddr p (s.x 8).toNat k := slotAddr_eq (by omega) o2 hk

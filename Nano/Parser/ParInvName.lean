@@ -8,13 +8,13 @@ namespace ParInv
 open C BufL ParSpec ParRun
 
 theorem v85_drop : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 184384 = h.drop 184384
-  | 0, h, a, b => by rw [v85]; exact drop_bset _ _ _ (by decide)
+  | 0, h, a, b => by rw [v85]; exact drop_bset0 _ _ _ (by decide)
   | n + 1, h, a, b => by
     rw [v85]
     simp only []
     repeat' split
     all_goals first
-      | exact drop_bset _ _ _ (by decide)
+      | exact drop_bset0 _ _ _ (by decide)
       | exact v85_drop n h _ _
 
 theorem v8_drop (h : Buf) (j x : UInt64) : (v8 h j x).drop 184384 = h.drop 184384 := drop_v8 h j x
@@ -52,14 +52,14 @@ theorem rep_same {r : Nat} {h h' ts : Buf} {st : St} {fs : List Frame} (R : Rep 
 
 /-! ## binding lookup: v7 ↔ `findB` -/
 theorem v7_drop : ∀ (n : Nat) (h : Buf) (j x : UInt64), (v7 n h j x).drop 184384 = h.drop 184384
-  | 0, h, j, x => by rw [v7]; exact drop_bset _ _ _ (by decide)
+  | 0, h, j, x => by rw [v7]; exact drop_bset0 _ _ _ (by decide)
   | n + 1, h, j, x => by
     rw [v7]
     simp only []
     repeat' split
     all_goals first
-      | exact drop_bset _ _ _ (by decide)
-      | (rw [drop_bset _ _ _ (by decide)]; exact v85_drop _ _ _ _)
+      | exact drop_bset0 _ _ _ (by decide)
+      | (rw [drop_bset0 _ _ _ (by decide)]; exact v85_drop _ _ _ _)
       | (rw [v7_drop n]; exact v85_drop _ _ _ _)
 
 theorem findB_snoc (l : List Bd) (d : Bd) (x : List Nat) : findB (l ++ [d]) x = if d.name = x then some d else findB l x := by

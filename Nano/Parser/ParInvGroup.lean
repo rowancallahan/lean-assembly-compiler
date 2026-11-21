@@ -39,8 +39,8 @@ theorem v6_eff (g : Buf) (x s w : UInt64) (n : Nat) (hn : bget g 4 = n.toUInt64)
   · intro i i4 hi
     rw [bget_bset' _ _ _ _ (by rw [u4]; omega), bget_bset' _ _ _ _ (by rw [c3]; omega), bget_bset' _ _ _ _ (by rw [c2]; omega),
       bget_bset' _ _ _ _ (by rw [c1]; omega), bget_bset' _ _ _ _ (by rw [c0]; omega)]
-  · rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [c3]; omega), drop_bset _ _ _ (by rw [c2]; omega),
-      drop_bset _ _ _ (by rw [c1]; omega), drop_bset _ _ _ (by rw [c0]; omega)]
+  · rw [drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by rw [c3]; omega), drop_bset0 _ _ _ (by rw [c2]; omega),
+      drop_bset0 _ _ _ (by rw [c1]; omega), drop_bset0 _ _ _ (by rw [c0]; omega)]
 
 theorem v6_ok (g : Buf) (x s w : UInt64) (hl : 0 < g.length) (hs : bget (v6 g x s w) 0 ≠ 0) : (bget g 4).toNat < 1024 := by
   by_cases hc : bget g 4 < d14

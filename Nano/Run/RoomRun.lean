@@ -9,7 +9,7 @@ theorem push_oom_srun {K : LayW} {C : List J} {pc tgt : Nat} {r : Nat} {s : St}
     (hC : At C pc (push r ((tgt : Int) - ((pc : Int) + 2)))) (h16 : 16 ≤ (s.x 31).toNat)
     (hh : (s.x 31).toNat < (s.x 30).toNat + 8) (ht : tgt < C.length) (hC18 : C.length < 2 ^ 18)
     (hpc : pc + 3 < C.length) :
-    SStarX K C (pc, s) (tgt, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b, s.wk⟩) := by
+    SStarX K C (pc, s) (tgt, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b, s.ly⟩) := by
   have r := push_oom (s := s) hC (by omega) hh
   rw [show ((pc : Int) + 2 + ((tgt : Int) - ((pc : Int) + 2))).toNat = tgt by omega] at r
   refine sstar_of_run r ?_
@@ -90,7 +90,7 @@ theorem local1Room {KL : LayW} {C : List J} {pc p nl hb E0 k : Nat} {Inv G : St 
     have l0 := hA.left.left.at 0 (by simp); simp at l0
     have hP : At C (pc + 1) (push 5 ((1 : Int) - ((pc + 1 : Nat) + 2))) := by simpa [pushA] using hA.left.right
     have ea0 : ea (s.x 8) (offOf p k) = CallProbe.slotAddr p k (s.x 8).toNat := ea_slot p k _ (by omega) hp hkp _ rfl
-    let s1 : St := ⟨upd s.x 5 (s.m (CallProbe.slotAddr p k (s.x 8).toNat)), s.m, s.b, s.wk⟩
+    let s1 : St := ⟨upd s.x 5 (s.m (CallProbe.slotAddr p k (s.x 8).toNat)), s.m, s.b, s.ly⟩
     have st1 : CallProbe.step C (pc, s) = some (pc + 1, s1) := by simp [CallProbe.step, l0, CallProbe.wr, ea0, s1]
     have sf1 : SafeX KL C (pc, s) := by
       simp only [SafeX, l0]; refine ⟨by decide, by decide, ?_, ?_, ?_, by rw [ea0]; exact hsw⟩ <;> unfold offOf <;>
@@ -109,7 +109,7 @@ theorem localRoom {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv G : St → Pr
   | 0, k, pc, _, _, _ => noCap (fun _ _ _ => by simp [localF, nilF]) (fun _ _ _ _ _ => rfl)
   | w + 1, k, pc, hk, hC, hl => by
     rw [localT_succ] at hC
-    have hs1 := local1XS (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
+    have hs1 := local1X (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
     rw [← oW_leaf] at hs1
     have c1 := local1Room (KL := KL) (E0 := E0) hI hG hp hnl (by omega) hC.left h1 hC18 (by omega)
     have c2 := localRoom (KL := KL) (E0 := E0) hI hG hp hnl h1 hC18 w (k + 1) (pc + 5) (by omega)
@@ -160,7 +160,7 @@ theorem bnew_oom_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : A
   have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
   -- 1: t0 := t5
   have h1 := p1.at 0 (by simp); simp at h1
-  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.wk⟩
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.ly⟩
   have r1 : CallProbe.run C 1 (pc, s) = some (pc + 1, s1) := by
     simp [CallProbe.run, CallProbe.step, h1, CallProbe.wr, ea, e30, s1]
   have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
@@ -174,7 +174,7 @@ theorem bnew_oom_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : A
   have mm2 : s2.m = s.m := hm2
   -- 3: t1 := t1 + t5
   have h3 := p3.at 0 (by simp); simp at h3
-  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.wk⟩
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.ly⟩
   have r3 : CallProbe.run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
     simp [CallProbe.run, CallProbe.step, h3, CallProbe.wr, aluf, a6, a30, s3]
   have q1 : SR L C 1 (pc, s) := SR.one (by simp [SafeX, h1]; have := (s.x 30).toNat_lt; omega)
@@ -207,7 +207,7 @@ theorem bnew_oom_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : A
     simp at h6 h7 h8
     have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
     have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
-    let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.wk⟩
+    let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.ly⟩
     have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
     have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
     have r678 : CallProbe.run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
@@ -314,7 +314,7 @@ theorem pro_oom_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C
   · have r := push_oom_srun (K := K) (s := s) A1 (by omega) (by omega) ht hC18 (by omega)
     exact ⟨_, r, by simp [upd], by simp [upd], by simp [upd], rfl, fun a _ => rfl⟩
   have r1 := push_srun (K := K) (s := s) A1 (by decide) (by decide) (by decide) c1 (w8 c1)
-  generalize hs1 : (⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.wk⟩ : St) = s1 at r1
+  generalize hs1 : (⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.ly⟩ : St) = s1 at r1
   have y31 : (s1.x 31).toNat = (s.x 31).toNat - 8 := by rw [← hs1]; simp [upd_same, t8]
   have y30 : s1.x 30 = s.x 30 := by rw [← hs1]; simp [upd]
   have ym : ∀ a, a ≠ (s.x 31).toNat - 8 → s1.m a = s.m a := by intro a ha; rw [← hs1]; simp [upd, ha]
@@ -327,7 +327,7 @@ theorem pro_oom_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C
     simp only; exact ym a (by omega)
   have r2 := push_srun (K := K) (s := s1) A2 (by decide) (by decide) (by decide) (by rw [y31, y30]; omega)
     (by rw [y31, show (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 by omega]; exact w16 c2)
-  generalize hs2 : (⟨upd s1.x 31 (UInt64.ofNat ((s1.x 31).toNat - 8)), upd s1.m ((s1.x 31).toNat - 8) (s1.x 8), s1.b, s1.wk⟩ : St) = s2 at r2
+  generalize hs2 : (⟨upd s1.x 31 (UInt64.ofNat ((s1.x 31).toNat - 8)), upd s1.m ((s1.x 31).toNat - 8) (s1.x 8), s1.b, s1.ly⟩ : St) = s2 at r2
   have z31 : (s2.x 31).toNat = (s.x 31).toNat - 16 := by rw [← hs2]; simp [upd_same, y31]; omega
   have z30 : s2.x 30 = s.x 30 := by rw [← hs2]; simp [upd, y30]
   have zm : ∀ a, a ≠ (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 16 → s2.m a = s.m a := by
@@ -337,10 +337,10 @@ theorem pro_oom_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C
   have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp); have b3 := A3.at 3 (by simp)
   simp at b0 b1 b2 b3
   have e0 : ea (s2.x 31) 0 = (s.x 31).toNat - 16 := by simp [ea, z31]
-  let s3 : St := ⟨upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16)), s2.m, s2.b, s2.wk⟩
+  let s3 : St := ⟨upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16)), s2.m, s2.b, s2.ly⟩
   have e3 : ea (s3.x 31) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
     simp [s3, upd, ea, z31]; omega
-  let s4 : St := ⟨upd s3.x 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)), s2.m, s2.b, s2.wk⟩
+  let s4 : St := ⟨upd s3.x 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)), s2.m, s2.b, s2.ly⟩
   have t4 : (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)).toNat = (s.x 31).toNat - 16 - 8 * r := by simp; omega
   have cb : ¬ (s4.x 30).toNat ≤ (s4.x 31).toNat := by simp [s4, s3, upd, z30, t4]; omega
   have hc' : ¬ ((upd (upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31

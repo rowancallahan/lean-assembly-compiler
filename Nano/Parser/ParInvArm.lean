@@ -72,7 +72,7 @@ theorem rep_arm {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (a
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
     fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    bget_bset_eq _ _ _ _ rfl (by rw [u]; omega), by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    bget_bset_eq _ _ _ _ rfl (by rw [u]; omega), by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
 /-- the state-slot counter h[32] -/
@@ -91,7 +91,7 @@ theorem rep_sslot {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) 
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
     fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    by rw [e 30 (by decide)]; exact r30, by rw [bget_bset_eq _ _ _ _ rfl (by rw [u]; omega)], out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [e 30 (by decide)]; exact r30, by rw [bget_bset_eq _ _ _ _ rfl (by rw [u]; omega)], out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
 /-- dropping all bindings: h[4] := 0 -/
@@ -110,7 +110,7 @@ theorem rep_binds_clear {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts s
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
     fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset0 _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
 /-! ## task 77: `zeroDone` (v139), in stages -/
@@ -190,7 +190,7 @@ theorem zd3_ok {h ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (hs
     · rw [if_pos c1] at hs ⊢
       have hv1 : v = 1 := u_one hv (c := 1) (by decide) c1
       subst hv1
-      have R2 : Rep (bset h 31 (1 : Nat).toUInt64) ts st fs := rep_scratch R (fun j _ a => c31 j a) (drop_bset _ _ _ (by decide))
+      have R2 : Rep (bset h 31 (1 : Nat).toUInt64) ts st fs := rep_scratch R (fun j _ a => c31 j a) (drop_bset0 _ _ _ (by decide))
       have tr' : TokAt (bset h 31 (1 : Nat).toUInt64) (bget h 3 + 9) t4 :=
         tokAt_frame ⟨c31 7 (by decide), fun j hj => c31 j (by omega)⟩ hn tr
       have R3 := rep_arm (rep_cursor R2 (bget h 3 + 9) tr') true
@@ -382,7 +382,7 @@ theorem rep_flag {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (
     fun s' hs' => by rw [cc 25 (by decide)]; exact (r25 s' hs').frame es,
     fun y hy => by rw [cc 29 (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
     by rw [cc 30 (by decide)]; exact r30, by rw [cc 32 (by decide)]; exact r32,
-    out_frame rO (by rw [← hG]; exact drop_bset _ _ _ (by rw [ci]; omega)),
+    out_frame rO (by rw [← hG]; exact drop_bset0 _ _ _ (by rw [ci]; omega)),
     tasks_frame rK (cc 5 (by decide)) (fun i a b => e i (by have := rK.2.1; omega)) et hn7 es (fun i a b => e i (by omega)) har⟩
   simp only [List.length_append, List.length_singleton] at hi
   by_cases hin : i < bs.length
@@ -469,7 +469,7 @@ theorem ab1_ok {h ts : Buf} {st : St} {fs : List Frame} {p s wc n1c a b z : UInt
     have R7 := rep_nxss (h' := bset (bset G5 31 (cw (some w)).toUInt64) 32 (s + (cw (some w)).toUInt64 - (cw (some w)).toUInt64 * b01 n1))
       R5 st.nx (if n1 then st.sslot else st.sslot + w.width)
       (fun i _ _ i31 i32 => by rw [bget_bset' _ _ _ _ (fun x => i32 x.symm), bget_bset' _ _ _ _ (fun x => i31 x.symm)])
-      (by rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)])
+      (by rw [drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide)])
       (by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)]; exact R5.2.2.2.2.1)
       (by rw [bget_bset_eq _ _ _ _ rfl (by simp [length_bset]; omega)]; exact h32)
     obtain ⟨t, r, fr, et, hfr, R8⟩ := ab2_ok R7 ha hb hz hb4 hs

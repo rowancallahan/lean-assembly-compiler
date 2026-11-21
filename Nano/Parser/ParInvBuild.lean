@@ -241,7 +241,7 @@ theorem rep_set3 {h ts : Buf} {st : St} {fs : List Frame} {q : UInt64} {toks' : 
   have u3 : (3 : UInt64).toNat = 3 := rfl
   have c : ∀ i : UInt64, i.toNat ≠ 3 → bget (bset h 3 q) i = bget h i := fun i hi => bget_bset' _ _ _ _ (by rw [u3]; omega)
   have et : TokAgree h (bset h 3 q) := ⟨c 7 (by decide), fun i hi => c i (by omega)⟩
-  refine rep_tok r (length_bset _ _ _) (fun i _ h3 _ => c i h3) (drop_bset _ _ _ (by decide))
+  refine rep_tok r (length_bset _ _ _) (fun i _ h3 _ => c i h3) (drop_bset0 _ _ _ (by decide))
     (by rw [bget_bset_eq _ _ _ _ rfl (by rw [u3]; omega)]; exact tokAt_frame et hn hq) ?_ rfl
   exact tasks_frame r.2.2.2.2.2.2.2.2.2.2.2.2.2 (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn
     (fun i a _ => c i (by omega)) (fun i a _ => c i (by omega)) har

@@ -139,7 +139,7 @@ theorem h_argAtom {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.ar
         rw [← hP, show (2 : UInt64) = 1 + 1 from rfl]; ac_rfl
       have R2 := rep_cursor R1' P (by rw [epos]; exact tokAt_frame et1 hn tr)
       have R3 : Rep (bset (bset g1 3 P) 31 (cw (st.binds[i]'hilt).sh).toUInt64) ts { st with toks := rest } fs :=
-        rep_scratch R2 (fun j _ a => c3g j a) (drop_bset _ _ _ (by decide))
+        rep_scratch R2 (fun j _ a => c3g j a) (drop_bset0 _ _ _ (by decide))
       have es3 : ShTabAgree g (bset (bset g1 3 P) 31 (cw (st.binds[i]'hilt).sh).toUInt64) :=
         fun j a b => by rw [c3g j (by omega)]; exact es2 j a b
       obtain ⟨st', hm, R4⟩ := rep_v5g R3 hnf 0 2 (st.binds[i]'hilt).slot (if (st.binds[i]'hilt).inp then 0 else cw (st.binds[i]'hilt).sh)

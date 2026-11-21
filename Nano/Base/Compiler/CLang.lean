@@ -75,7 +75,4 @@ theorem CExec.mono {P : Prog} {k p σ σ'} (h : CExec P k p σ σ') : ∀ {k'}, 
   | loopT hc _ _ ih₁ ih₂ => intro _ hk; exact .loopT hc (ih₁ hk) (ih₂ hk)
   | call hf ha hk hb _ => intro _ hk'; exact .call hf ha (Nat.le_trans hk hk') hb
 
-/-- the fuel-free, bound-free run -/
-def CRuns (P : Prog) (p : CStmt) (σ σ' : BState) : Prop := ∃ k, CExec P k p σ σ'
-
 end Proven.Mach
