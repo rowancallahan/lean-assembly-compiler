@@ -152,9 +152,10 @@ def alen (t : NTm) : Nat := (t.a (fun _ => 0) 0 0).length
 /-- a mapped J register other than x0 -/
 def mr (r : Nat) : Bool := mapped r && decide (r ≠ 0)
 
-/-- the per-atom side conditions (registers, immediate ranges) -/
+/-- the per-atom side conditions (registers, immediate ranges); `li` only into t0 / t1 / t2 as in GenArm, so that
+an `addi a0, x0, _` / `addi a1, x0, 0` (error status, `vis_err`) is always an `addi` atom -/
 def ok : NTm → Bool
-  | .li d _ => mr d
+  | .li d _ => mr d && (d == 5 || d == 6 || d == 7)
   | .addi d n imm => mr d && mapped n && decide (-4096 < imm ∧ imm < 4096) &&
       decide (n = 0 → -2048 ≤ imm ∧ imm < 2048)
   | .alu _ d x y => mr d && mr x && mr y

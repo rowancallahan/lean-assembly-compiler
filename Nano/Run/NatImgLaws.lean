@@ -346,4 +346,140 @@ theorem at_tgt {tl pre suf : List NAt} {x : NAt} (W : NWf tl) (e : tl = pre ++ x
   have h := W.tgt pre x suf e p hp
   ⟨h.1, vis_le h.1, h.2⟩
 
+/-! ## the static laws of `GTarget.Laws` for `NatV` -/
+
+/-- the atom that holds J pc `n` -/
+theorem jOf_at : ∀ (tl : List NAt) (n : Nat), n < (jOf tl).length →
+    ∃ pre x suf i, tl = pre ++ x :: suf ∧ n = (jOf pre).length + i ∧ i < x.t.j.length
+  | [], n, h => by simp [jOf] at h
+  | x :: l, n, h => by
+    by_cases hn : n < x.t.j.length
+    · exact ⟨[], x, l, n, rfl, by simp [jOf], hn⟩
+    · rw [jOf_cons, List.length_append] at h
+      obtain ⟨pre, y, suf, i, e, e2, hi⟩ := jOf_at l (n - x.t.j.length) (by omega)
+      exact ⟨x :: pre, y, suf, i, by rw [e]; rfl, by rw [jOf_cons, List.length_append]; omega, hi⟩
+
+theorem liB_mem (d v : Nat) : ∀ (k : Nat) (jj : J), jj ∈ liB d v k → (∃ s, jj = .slli d d s) ∨ ∃ c, jj = .addi d d c
+  | 0, jj, h => by simp [liB] at h
+  | k + 1, jj, h => by
+    simp only [liB, List.mem_append] at h
+    rcases h with h | h
+    · exact liB_mem d v k jj h
+    · simp only [liJ, List.mem_cons, List.mem_nil_iff, or_false] at h
+      rcases h with rfl | rfl
+      · exact .inl ⟨_, rfl⟩
+      · exact .inr ⟨_, rfl⟩
+
+theorem liT_mem {d : Nat} {v : UInt64} {jj : J} (h : jj ∈ liT d v) :
+    (∃ s, jj = .slli d d s) ∨ ∃ n c, jj = .addi d n c := by
+  unfold liT at h
+  split at h
+  · simp only [List.mem_cons, List.mem_nil_iff, or_false] at h
+    exact .inr ⟨_, _, h⟩
+  · simp only [List.mem_cons] at h
+    rcases h with rfl | h
+    · exact .inr ⟨_, _, rfl⟩
+    · rcases liB_mem _ _ _ _ h with ⟨s, rfl⟩ | ⟨c, rfl⟩
+      · exact .inl ⟨s, rfl⟩
+      · exact .inr ⟨_, _, rfl⟩
+
+/-- a call (`jal` with a link register) or a `jalr` is an atom of its own -/
+theorem NTm.j_single {t : NTm} {jj : J} (h : jj ∈ t.j)
+    (hk : (∃ rd off, rd ≠ 0 ∧ jj = .jal rd off) ∨ ∃ a b, jj = .jalr a b) : t.j.length = 1 := by
+  rcases hk with ⟨rd, off, hrd, rfl⟩ | ⟨a, b, rfl⟩ <;> cases t <;> simp only [NTm.j] at h ⊢ <;>
+    first
+    | rfl
+    | (rcases liT_mem h with ⟨_, e⟩ | ⟨_, _, e⟩ <;> cases e)
+    | (cases ‹NCmp› <;> simp_all)
+    | (split at h <;> simp at h)
+    | simp_all
+
+/-- an `addi a0, x0, _` / `addi a1, x0, _` is an atom of its own -/
+theorem NTm.j_addi0 {t : NTm} {a : Nat} {imm : Int} (hok : t.ok = true) (ha : a = 10 ∨ a = 11)
+    (h : J.addi a 0 imm ∈ t.j) : t.j.length = 1 := by
+  cases t <;> simp only [NTm.j] at h ⊢ <;>
+    first
+    | rfl
+    | (rcases liT_mem h with ⟨_, e⟩ | ⟨_, _, e⟩
+       · cases e
+       · cases e; simp [NTm.ok] at hok; omega)
+    | (cases ‹NCmp› <;> simp_all)
+    | (split at h <;> simp at h)
+    | simp_all
+
+theorem natV_entry (C : List J) (I : Img) (h : NatV C I) : I.vis 0 ∧ I.off 0 = 0 := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  have hv : nVis tl 0 := ⟨0, bnd_head tl 0 0⟩
+  refine ⟨hv, ?_⟩
+  rw [vis_off hv W.size, widx_eq (bnd_head tl 0 0) fun _ h => bnd_fun _ _ _ _ _ _ h (bnd_head tl 0 0)]
+
+theorem natV_off_le (C : List J) (I : Img) (h : NatV C I) (n : Nat) (_ : n ≤ C.length) (hv : I.vis n) :
+    I.off n ≤ I.code.length := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  have hv' : nVis tl n := hv
+  have := vis_le hv'
+  rw [vis_off hv' W.size, imgOf_code_len]; omega
+
+/-- a single-instruction atom at J pc `n`: `n` and `n + 1` are anchors -/
+theorem single_vis {tl : List NAt} {n : Nat} {jj : J} (h : (jOf tl)[n]? = some jj)
+    (hs : ∀ t : NTm, jj ∈ t.j → t.j.length = 1) : nVis tl n ∧ nVis tl (n + 1) := by
+  obtain ⟨pre, x, suf, i, e, en, hi⟩ := jOf_at tl n (List.getElem?_eq_some_iff.1 h).1
+  have hx := at_j e hi
+  rw [← en, h] at hx
+  have l1 := hs x.t (List.mem_of_getElem? hx.symm)
+  have i0 : i = 0 := by omega
+  subst i0
+  have e0 : n = (jOf pre).length := by omega
+  have v1 := at_vis_end e
+  rw [l1, ← e0] at v1
+  exact ⟨e0 ▸ at_vis e, v1⟩
+
+theorem natV_vis_link (C : List J) (I : Img) (n : Nat) (off : Int) (h : NatV C I)
+    (hC : C[n]? = some (.jal 1 off)) : I.vis (n + 1) := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  exact (single_vis hC fun t ht => NTm.j_single ht (.inl ⟨1, off, by decide, rfl⟩)).2
+
+theorem natV_vis_ret (C : List J) (I : Img) (pc : Nat) (h : NatV C I) (hC : C[pc]? = some (.jalr 0 1)) :
+    I.vis pc := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  exact (single_vis hC fun t ht => NTm.j_single ht (.inr ⟨0, 1, rfl⟩)).1
+
+theorem natV_live_ret (C : List J) (I : Img) (pc : Nat) (h : NatV C I) :
+    ∀ j, I.dead pc j → Templates.keepR j = false ∧ j ≠ 8 ∧ j ≠ 10 ∧ j ≠ 11 := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  rintro j ⟨x, -, hd⟩
+  simp only [NAt.dead, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq] at hd
+  rcases hd with ⟨rfl, -⟩ | ⟨rfl, -⟩ <;> exact ⟨by decide, by decide, by decide, by decide⟩
+
+theorem natV_vis_err (C : List J) (I : Img) (pc : Nat) (imm : Int) (h : NatV C I)
+    (h1 : C[pc]? = some (.addi 10 0 imm)) (h2 : C[pc + 1]? = some (.addi 11 0 0)) :
+    I.vis pc ∧ I.vis (pc + 1) ∧ I.vis (pc + 2) := by
+  obtain ⟨tl, rfl, rfl, W⟩ := h
+  have okAt : ∀ (n : Nat) (jj : J) (a : Nat) (c : Int), (jOf tl)[n]? = some jj → jj = .addi a 0 c → (a = 10 ∨ a = 11) →
+      nVis tl n → nVis tl n ∧ nVis tl (n + 1) := by
+    intro n jj a c hn ej ha vn
+    obtain ⟨pre, x, suf, i, e, en, hi⟩ := jOf_at tl n (List.getElem?_eq_some_iff.1 hn).1
+    have i0 : i = 0 := by
+      rcases Nat.eq_zero_or_pos i with h | h
+      · exact h
+      · exact absurd (en ▸ vn) (at_inner e h hi)
+    subst i0
+    have hx := at_j e hi
+    rw [← en, hn, ej] at hx
+    have l1 := NTm.j_addi0 (W.ok x (by rw [e]; simp)) ha (List.mem_of_getElem? hx.symm)
+    have e0 : n = (jOf pre).length := by omega
+    have v1 := at_vis_end e
+    rw [l1, ← e0] at v1
+    exact ⟨vn, v1⟩
+  -- pc is an anchor: the atom at pc is hit at its first instruction, because `addi 10 0 _` is an atom of its own
+  obtain ⟨pre, x, suf, i, e, en, hi⟩ := jOf_at tl pc (List.getElem?_eq_some_iff.1 h1).1
+  have hx := at_j e hi
+  rw [← en, h1] at hx
+  have l1 := NTm.j_addi0 (W.ok x (by rw [e]; simp)) (.inl rfl) (List.mem_of_getElem? hx.symm)
+  have e0 : pc = (jOf pre).length := by omega
+  have v0 : nVis tl pc := e0 ▸ at_vis e
+  have v1 := (okAt pc _ 10 imm h1 rfl (.inl rfl) v0).2
+  have v2 := (okAt (pc + 1) _ 11 0 h2 rfl (.inr rfl) v1).2
+  exact ⟨v0, v1, v2⟩
+
 end JT
