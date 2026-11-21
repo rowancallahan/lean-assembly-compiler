@@ -17,9 +17,11 @@ W=$(mktemp -d); F=$W/LeanSide.lean; names=()
     i=$((i+1))
   done
   echo "def srcDefs : List Lean.Name := [$(IFS=,; echo "${names[*]}")]"
+  echo "def xOut : Bool := ${XOUT:-false}"
   cat "$D/lean_expr.lean"; } > "$F"
 export PATH=$HOME/.elan/bin:$PATH
 lean -DmaxErrors=0 "$F" > "$W/out" 2>&1 || true
 grep -v '^[DX] ' "$W/out" > "$O.log" || true
-grep '^[DX] ' "$W/out" > "$O"
+grep '^[DX] ' "$W/out" | grep -v $'^X [^ ]*\t' > "$O"
+grep $'^X [^ ]*\t' "$W/out" > "$O.x" || true
 test "$(wc -l < "$O")" = "${#names[@]}" || { tail -5 "$O.log"; echo "lean_side: missing output"; exit 1; }

@@ -39,6 +39,17 @@ where
     && n.getRoot != n then n.replacePrefix n.getRoot .anonymous else n
   lvl (l : Level) : String := match l.toNat with | some k => toString k | none => panic! s!"level {l}"
 
+/-- the same normal form as an `ExprSpec.X` literal (for the kernel-checked comparison, Nano/Expr/CLean.lean) -/
+partial def toX : Expr → String
+  | .bvar i => s!"(.bv {i})"
+  | .const n ls => s!"(.c \"{ser.strip n}\" [{",".intercalate (ls.map ser.lvl)}])"
+  | .app f a => s!"(.app {toX f} {toX a})"
+  | .lam _ t b bi => assert! bi == .default; s!"(.lam {toX t} {toX b})"
+  | .forallE _ t b bi => assert! bi == .default; s!"(.pi {toX t} {toX b})"
+  | .letE _ t v b nd => s!"(.lt {nd} {toX t} {toX v} {toX b})"
+  | .lit (.natVal k) => s!"(.nat {k})"
+  | e => panic! s!"outside the fragment: {e}"
+
 -- `srcDefs` (the source's def names, in order) is written by run_check.sh
 #eval show MetaM Unit from do
   for n in srcDefs do
@@ -46,3 +57,4 @@ where
     let e ← Core.betaReduce (← unfoldMatchers (← instantiateMVars (← rhsOf n)))
     if e.hasSorry then IO.println s!"X {n}"; continue  -- elaborated with errors
     IO.println s!"D {n} {ser (← getConstInfo n).type} {ser e}"
+    if xOut then IO.println s!"X {n}\t{toX (← getConstInfo n).type}\t{toX e}"
