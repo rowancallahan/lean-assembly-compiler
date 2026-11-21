@@ -56,6 +56,9 @@ variable {M : Machine} {X W : M.State → Nat → Prop}
 
 /-- **the nano native generator meets the general generator interface** -/
 theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun x hx => by
+  -- the output as an opaque list (no unfolding of the generator in definitional checks)
+  obtain ⟨Bx, hBx⟩ : ∃ Bx, Bx = genNano x := ⟨_, rfl⟩
+  rw [← hBx]
   by_cases ha : (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31
   case neg => exact absurd (by unfold genNano; rw [if_neg ha]) hx
   have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.s10 x))) := by unfold genNano; rw [if_pos ha]
@@ -130,10 +133,10 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
       have hwA' : C.e64 (Cj.map encG) = A.map Nat.toUInt64 := hwA
       rw [he71, hwA', e49_wordBytes x _ 16777216 (by rw [List.length_map]; omega) (by rw [List.length_map]; omega),
         wordBytes_tU]
-    refine ⟨hmne, I, by rw [hI, hcode], fun c' Cj' h1 h2 h3 => ?_⟩
+    refine ⟨hmne, I, by rw [hI, hBx, hcode], fun c' Cj' h1 h2 h3 => ?_⟩
     have : Cj' = Cj := cjUnique c' c Cj' Cj h1 hl h2 hj (h3.symm.trans e)
     rw [this]; exact hV
-  · exact ⟨hmne, ⟨genNano x, CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
+  · exact ⟨hmne, ⟨Bx, CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
       fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩
 
 /-- **the nano native compiler is correct on AArch64** (any machine with the A64 steps) -/
