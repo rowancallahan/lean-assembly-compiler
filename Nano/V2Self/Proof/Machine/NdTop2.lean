@@ -192,14 +192,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
           (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
         (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
           OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
-          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres) ∧
-        ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
-          (∀ s, IG s → s.b + s.w * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
-          At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
-          (∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
-            ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
-          ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
-            (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
+          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
   obtain ⟨_, hs, T, o, D, hD, hW, hne, l2, l5, hg, hol0, hc18⟩ := gen41_full c (serialize ds) hXl h
   refine ⟨hs, T, o, hD, hne, hg, l2, l5, hol0, hc18, fun hol => ?_⟩
   have cw := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
@@ -235,10 +228,6 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     have ewd : wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
       ofNat_inj' (by simpa [Nat.toUInt64] using ew) (by omega) (by omega)
     exact ⟨okV_of _ _ wdv hsc, ewd⟩
-  refine ⟨cw.1, by simpa using cw.2.2.1, by simpa using cw.2.2.2, cw.2.1, perK, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
-  exact gen_defs_run _ ds C IG E0 c28 hs.length (g34 bnew).length hig he hcb hinp hC cw.2.1
-    (fun k' hk' => by
-      obtain ⟨hpw', hpn', hsc', hrd'⟩ := hpar k' hk'
-      exact ⟨hpw', hpn', (perK k' hk' hsc').1, (perK k' hk' hsc').2, hrd'⟩) k hk
+  refine ⟨cw.1, by simpa using cw.2.2.1, by simpa using cw.2.2.2, cw.2.1, perK⟩
 
 end Templates

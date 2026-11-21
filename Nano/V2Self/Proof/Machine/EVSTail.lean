@@ -48,7 +48,7 @@ theorem contTS {KL : LayW} {C : List J} {pc le p nl hb E0 w X Hd : Nat} {Inv : S
       (fun j i hj hi => by
         rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := 1 + j) (nl := nl) (by omega) o2 (by omega); omega)
     have L1 : Lay KL hb E0 p s1 := L0.post e81 r1.star.b p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
-    have ss2 : SStarX KL C (pc + le, s1) (pc + le + 3 * (p - 1), s2) := SStarX.of (popN_srun (p - 1) (pc + le) s1 hS
+    have ss2 : SStarX KL C (pc + le, s1) (pc + le + 3 * (p - 1), s2) := (popN_srun (p - 1) (pc + le) s1 hS
       (by omega)
       (fun j hj => by
         have hk : 1 + j < nl := by omega
@@ -140,7 +140,7 @@ theorem ifPreS {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : S
     (by have := L0.top; omega) (by have := L1.a31; omega)
   have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
     (by have := L0.top; omega) (by have := L1.a31; omega)
-  have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstarX_of_run r2 (fun j hj c hc => by
+  have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstar_of_run r2 (fun j hj c hc => by
     rcases j with _ | _ | _ | j
     · simp [run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
       exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩
@@ -269,7 +269,7 @@ theorem letPreS {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St
     (fun j i hj hi => by
       rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
   have L1 : Lay KL hb E0 p s1 := L0.post e81 r1.star.b p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
-  have ss2 : SStarX KL C (pc + lv, s1) (pc + lv + 3 * w, s2) := SStarX.of (popN_srun w (pc + lv) s1 hS (by omega)
+  have ss2 : SStarX KL C (pc + lv, s1) (pc + lv + 3 * w, s2) := (popN_srun w (pc + lv) s1 hS (by omega)
     (fun j hj => by
       have hk : k0 + j < nl := by omega
       obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := k0 + j) L1 ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩

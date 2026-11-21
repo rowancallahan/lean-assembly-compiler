@@ -26,7 +26,14 @@ end Bridge
 namespace SimW
 open Proven Nano.V2B
 
-structure LayW.Ok (K : LayW) : Prop where
+/-- the RISC-V layout: a `LayW` with the code words (one RV64 word per J instruction).  RISC-V-private: the generic
+layer (`JTarget`, `Rel`, the J runs) sees only the `LayW`. -/
+structure LayRv extends LayW where
+  W : List Nat
+
+instance : Coe LayRv LayW := ⟨LayRv.toLayW⟩
+
+structure LayRv.Ok (K : LayRv) : Prop where
   b4 : K.base % 4 = 0
   blo : 0x80000000 ≤ K.base
   bhi : K.base + 4 * K.W.length ≤ 0x100000000
@@ -39,7 +46,7 @@ structure LayW.Ok (K : LayW) : Prop where
   obh : K.ob + K.ol ≤ 0x100000000
   oc : K.ob + K.ol ≤ K.base ∨ K.base + 4 * K.W.length ≤ K.ob
 
-structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
+structure RelW (K : LayRv) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   cfg : Proven.Cfg t
   pc : t.regs.get? .PC = some (BitVec.ofNat 64 (K.base + 4 * p.1))
   code : ∀ i (h : i < K.W.length), instrAt t (BitVec.ofNat 64 (K.base + 4 * i)) (BitVec.ofNat 32 K.W[i])
@@ -52,22 +59,22 @@ structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   bw : ∀ a, io K a → t.mem[a]? = some ((p.2.m (a - a % 8)).toBitVec.extractLsb' (8 * (a % 8)) 8)
   fr : ∀ a, ¬ wok K (a - a % 8) → ¬ outB K a → t.mem[a]? = K.m0 a
 
-theorem RelW.w4 {K : LayW} {p : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K p t) : p.2.w = 4 := by
+theorem RelW.w4 {K : LayRv} {p : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K p t) : p.2.w = 4 := by
   unfold CallProbe.St.w; rw [hR.ww]
 
-theorem pcOKW {K : LayW} (hK : K.Ok) {pc : Nat} (h : pc < K.W.length) : pcOK (BitVec.ofNat 64 (K.base + 4 * pc)) := by
+theorem pcOKW {K : LayRv} (hK : K.Ok) {pc : Nat} (h : pc < K.W.length) : pcOK (BitVec.ofNat 64 (K.base + 4 * pc)) := by
   have := hK.bhi; have := hK.blo; have := hK.b4
   have hlt : K.base + 4 * pc < 2 ^ 64 := by omega
   simp only [pcOK, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hlt]; omega
 
-theorem codeW {K : LayW} {p : Nat × CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K p t) {w : Nat}
+theorem codeW {K : LayRv} {p : Nat × CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K p t) {w : Nat}
     (hC : K.W[p.1]? = some w) :
     instrAt t (BitVec.ofNat 64 (K.base + 4 * p.1)) (BitVec.ofNat 32 w) ∧ pcOK (BitVec.ofNat 64 (K.base + 4 * p.1)) := by
   obtain ⟨h1, h2⟩ := List.getElem?_eq_some_iff.1 hC
   exact ⟨h2 ▸ hR.code _ h1, pcOKW hK h1⟩
 
 /-- a retired instruction that writes `rd` (J's `wr`) and steps the pc -/
-theorem rel_regW {K : LayW} {pc : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR : RelW K (pc, s) t) (rd : Fin 32)
+theorem rel_regW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR : RelW K (pc, s) t) (rd : Fin 32)
     (v : UInt64) (hN : Next t t' (BitVec.ofNat 64 (K.base + 4 * pc) + 4) rd v.toBitVec t.mem) :
     RelW K (pc + 1, CallProbe.wr s rd.val v) t' where
   cfg := hN.cfg
@@ -107,7 +114,7 @@ theorem addi_val (b : UInt64) (imm : Int) (h0 : 0 ≤ (b.toNat : Int) + imm) (h1
   omega
 
 /-- **addi** -/
-theorem sim_addi {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_addi {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a : Nat} {imm : Int} (hC : K.W[pc]? = some (I.i .addi rd a imm).enc) (hrd : rd < 32) (ha : a < 32)
     (hi1 : -2048 ≤ imm) (hi2 : imm < 2048)
     (h0 : 0 ≤ ((s.x a).toNat : Int) + imm) (h1 : ((s.x a).toNat : Int) + imm < 2 ^ 64) :
@@ -124,14 +131,14 @@ theorem sim_addi {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
   exact ⟨t', hN.ret, rel_regW hR RD _ hN⟩
 
 /-- the hardware effective address is J's `ea` when it does not wrap -/
-theorem eaW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hR : RelW K (pc, s) t) (A : Fin 32) (off : Int)
+theorem eaW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hR : RelW K (pc, s) t) (A : Fin 32) (off : Int)
     (h1 : -2048 ≤ off) (h2 : off < 2048) (h0 : 0 ≤ ((s.x A.val).toNat : Int) + off)
     (hl : ((s.x A.val).toNat : Int) + off < 2 ^ 64) :
     getX t A + (BitVec.ofNat 12 (bits off 12)).signExtend 64 = BitVec.ofNat 64 (CallProbe.ea (s.x A.val) off) := by
   rw [hR.x A, sext_bits off h1 h2, ← UInt64.toBitVec_add, ← addi_val _ _ h0 hl]; rfl
 
 /-- **ld** (the address is a work cell) -/
-theorem sim_ld {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_ld {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a : Nat} {off : Int} (hC : K.W[pc]? = some (I.ld rd a off).enc) (hrd : rd < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
     (hw : wok K (CallProbe.ea (s.x a) off)) :
@@ -155,7 +162,7 @@ theorem sim_ld {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.
   exact ⟨t', hN.ret, rel_regW hR RD _ hN⟩
 
 /-- **sd** (the address is a work cell; code and other cells unchanged) -/
-theorem sim_sd {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_sd {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {b a : Nat} {off : Int} (hC : K.W[pc]? = some (I.sd b a off).enc) (hb : b < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
     (hw : wok K (CallProbe.ea (s.x a) off)) :
@@ -217,7 +224,7 @@ theorem sim_sd {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.
       · rw [store8_out _ _ _ _ (by omega)]; exact hR.fr c h1 h2 }
 
 /-- a retired control transfer that changes only the pc (and possibly writes `rd` with `v`) -/
-theorem rel_jumpW {K : LayW} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR : RelW K (pc, s) t)
+theorem rel_jumpW {K : LayRv} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR : RelW K (pc, s) t)
     (rd : Fin 32) (v : UInt64) (hN : Next t t' (BitVec.ofNat 64 (K.base + 4 * pc')) rd v.toBitVec t.mem) :
     RelW K (pc', CallProbe.wr s rd.val v) t' where
   cfg := hN.cfg
@@ -247,7 +254,7 @@ theorem rel_jumpW {K : LayW} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St
   fr := fun a h1 h2 => by rw [hN.mem]; exact hR.fr a h1 h2
 
 /-- **bgeu a, b, +8** (C's checked push: skip the OOM `jal` when t6 ≥ t5); J's offset is 2 instructions -/
-theorem sim_bgeu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_bgeu8 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .bgeu a b 8).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧
       RelW K (if (s.x b).toNat ≤ (s.x a).toNat then ((pc : Int) + 2).toNat else pc + 1, s) t' := by
@@ -289,7 +296,7 @@ theorem pc_plus16 (b pc : Nat) : BitVec.ofNat 64 (b + 4 * pc) + 16#64 = BitVec.o
   apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
 
 /-- **bgeu a, b, +12** (RD's range check) -/
-theorem sim_bgeu12 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_bgeu12 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .bgeu a b 12).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧
       RelW K (if (s.x b).toNat ≤ (s.x a).toNat then ((pc : Int) + 3).toNat else pc + 1, s) t' := by
@@ -314,7 +321,7 @@ theorem sim_bgeu12 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK 
     rw [if_pos (by omega), show ((pc : Int) + 3).toNat = pc + 3 by omega]; exact ⟨t', hN.ret, this⟩
 
 /-- **bgeu a, b, +16** (BGET / BSET range checks) -/
-theorem sim_bgeu16 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_bgeu16 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .bgeu a b 16).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧
       RelW K (if (s.x b).toNat ≤ (s.x a).toNat then ((pc : Int) + 4).toNat else pc + 1, s) t' := by
@@ -339,7 +346,7 @@ theorem sim_bgeu16 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK 
     rw [if_pos (by omega), show ((pc : Int) + 4).toNat = pc + 4 by omega]; exact ⟨t', hN.ret, this⟩
 
 /-- **beq a, b, +8** (IF on `==`) -/
-theorem sim_beq8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_beq8 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .beq a b 8).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧ RelW K (if s.x a = s.x b then ((pc : Int) + 2).toNat else pc + 1, s) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -363,7 +370,7 @@ theorem sim_beq8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
     rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
 
 /-- **bltu a, b, +8** (IF on `<`) -/
-theorem sim_bltu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_bltu8 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .bltu a b 8).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧ RelW K (if (s.x a).toNat < (s.x b).toNat then ((pc : Int) + 2).toNat else pc + 1, s) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -387,7 +394,7 @@ theorem sim_bltu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK :
     rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
 
 /-- **jal rd, off** (C's `g5 d (4·off)`; J offsets are in instructions): writes the byte return address -/
-theorem sim_jal {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_jal {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {d : Nat} {off : Int} (hd : d < 32) (hC : K.W[pc]? = some (C.g5 (UInt64.ofNat d) (UInt64.ofInt (4 * off))).toNat)
     (ho1 : -2 ^ 18 ≤ off) (ho2 : off < 2 ^ 18) (ht0 : 0 ≤ (pc : Int) + off) (ht1 : ((pc : Int) + off) < K.W.length) :
     ∃ t', Retires t t' ∧
@@ -414,7 +421,7 @@ theorem sim_jal {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
   exact ⟨t', hN.ret, this⟩
 
 /-- **jalr x0, 0(rs)** (C's return `g2 103 0 0 a 0`): to the byte address in `rs`, which is `base + 4·j` -/
-theorem sim_jalr {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_jalr {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a j : Nat} (ha : a < 32) (hC : K.W[pc]? = some (C.g2 C.g_103 0 0 (UInt64.ofNat a) 0).toNat)
     (hra : (s.x a).toNat = K.base + 4 * j) :
     ∃ t', Retires t t' ∧ RelW K (j, s) t' := by
@@ -441,7 +448,7 @@ theorem sim_jalr {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
 /-! ## ALU, slli, lbu (expression templates) -/
 
 /-- **R-type** (any `ROp`; `add`/`or` with rd = 0 decode as hints, so rd ≠ 0 there) -/
-theorem sim_rW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_rW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {f : ROp} {rd a b : Nat} (hC : K.W[pc]? = some (I.r f rd a b).enc) (hrd : rd < 32) (ha : a < 32) (hb : b < 32)
     (hadd : (f = .add ∨ f = .or) → rd ≠ 0) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (f.eval (s.x a) (s.x b))) t' := by
@@ -482,14 +489,14 @@ theorem sim_rW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.
     rw [xa, xb, ← sltu_bv] at hN; exact ⟨t', hN.ret, rel_regW hR RD _ hN⟩
 
 /-- **alu** (Gen's BIN numbering 1..8) -/
-theorem sim_aluW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_aluW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {op rd a b : Nat} (hC : K.W[pc]? = some (I.r (ropOf op) rd a b).enc) (hrd : rd < 32) (ha : a < 32) (hb : b < 32)
     (hop : 1 ≤ op ∧ op ≤ 8) (hrd0 : rd ≠ 0) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (CallProbe.aluf op (s.x a) (s.x b))) t' := by
   rw [aluf_eval op _ _ hop]; exact sim_rW hK hR hC hrd ha hb (fun _ => hrd0)
 
 /-- **slli** -/
-theorem sim_slliW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_slliW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a sh : Nat} (hC : K.W[pc]? = some (I.i .slli rd a (sh : Int)).enc) (hrd : rd < 32) (ha : a < 32) (hsh : sh < 64) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (s.x a <<< sh.toUInt64)) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -516,7 +523,7 @@ theorem lbm_bv (m : UInt64) (k : Nat) (hk : k < 8) :
   exact Nat.mod_eq_of_lt (by omega : m.toNat / 2 ^ (8 * k) % 2 ^ 8 < 2 ^ 64)
 
 /-- **lbu**: the byte at the effective address, from the aligned cell that contains it (a work cell) -/
-theorem sim_lbuW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_lbuW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a : Nat} {off : Int} (hC : K.W[pc]? = some (I.lbu rd a off).enc) (hrd : rd < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
     (hw : bok K (CallProbe.ea (s.x a) off)) :
@@ -544,79 +551,5 @@ theorem sim_lbuW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
   have e8 : (8 * (CallProbe.ea (s.x a) off % 8)).toUInt64 = (8 * (CallProbe.ea (s.x a) off % 8) : Nat).toUInt64 := rfl
   exact ⟨t', hN.ret, rel_regW hR RD _ (by unfold CallProbe.lbm; exact hN)⟩
 
-
-/-! ## whole runs: a J run on code whose words are the J instructions' encodings is a Sail run -/
-
-/-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
-theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)
-    {a b : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K a t) (hS : Safe K C a) (hs : CallProbe.step C a = some b) :
-    ∃ t', Retires t t' ∧ RelW K b t' := by
-  obtain ⟨pc, s⟩ := a
-  have hWpc : ∀ i, C[pc]? = some i → K.W[pc]? = some (encJ i) := by intro i h; rw [hW]; simp [h]
-  simp only [Safe] at hS
-  simp only [CallProbe.step] at hs
-  cases hc : C[pc]? with
-  | none => rw [hc] at hS; exact hS.elim
-  | some i =>
-    rw [hc] at hS hs
-    cases i with
-    | addi rd rs imm =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_addi hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | ld rd rs off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_ld hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | sd b' a' off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_sd hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | bgeu a' b' o =>
-      obtain ⟨h1, h2, ho⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs
-      rcases ho with rfl | rfl | rfl
-      · exact sim_bgeu8 hK hR (hWpc _ hc) h1 h2
-      · exact sim_bgeu12 hK hR (hWpc _ hc) h1 h2
-      · exact sim_bgeu16 hK hR (hWpc _ hc) h1 h2
-    | jal rd off =>
-      obtain ⟨h1, h2, h3, h4, h5⟩ := hS
-      have hl : C.length = K.W.length := by rw [hW]; simp
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_jal hK hR h1 (hWpc _ hc) h2 h3 h4 (by rw [← hl]; exact h5)
-    | jalr rd rs =>
-      obtain ⟨rfl, h2, j, hj⟩ := hS
-      have hb : s.b = K.base := hR.bb
-      simp only [Option.some.injEq] at hs; subst hs
-      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) (by rw [hj, hR.w4])
-      refine ⟨t', ht, ?_⟩
-      have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
-      simp [this, CallProbe.wr]; exact hr
-    | beq a' b' o =>
-      obtain ⟨h1, h2, rfl⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_beq8 hK hR (hWpc _ hc) h1 h2
-    | bltu a' b' o =>
-      obtain ⟨h1, h2, rfl⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_bltu8 hK hR (hWpc _ hc) h1 h2
-    | alu op rd a' b' =>
-      obtain ⟨h1, h2, h3, h4, h5⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_aluW hK hR (hWpc _ hc) h1 h2 h3 h4 h5
-    | slli rd rs sh =>
-      obtain ⟨h1, h2, h3⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_slliW hK hR (hWpc _ hc) h1 h2 h3
-    | lbu rd rs off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_lbuW hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | srli _ _ _ => exact hS.elim
-    | bne _ _ _ => exact hS.elim
-    | sb _ _ _ => exact hS.elim
-
-/-- **runs**: a safe J run on C's words is a run of retired Sail instructions, keeping `RelW` -/
-theorem sim_starW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)
-    {a b : Nat × CallProbe.St} (h : SStar K C a b) :
-    ∀ {t : Proven.St}, RelW K a t → ∃ n t', Steps n t t' ∧ RelW K b t' := by
-  induction h with
-  | refl a => intro t hR; exact ⟨0, t, rfl, hR⟩
-  | head hS hs _ ih =>
-    intro t hR
-    obtain ⟨t1, hr, hR1⟩ := sim_stepW hK hW hR hS hs
-    obtain ⟨n, t', hst, hR'⟩ := ih hR1
-    exact ⟨n + 1, t', ⟨t1, hr, hst⟩, hR'⟩
 
 end SimW

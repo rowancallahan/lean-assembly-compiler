@@ -1,5 +1,7 @@
 # Low-level proof cleanup plan (Nano/V2Self/Proof/{Gen,Machine,Main})
 
+§0–§4 are the phase-1 survey (pre-cleanup state); current status in §5.
+
 Phase 1 survey (read-only, against origin/main f06eecb4). Paths are relative to `Nano/V2Self/Proof/` and may move
 with reorg-nano (to re-check after the merge). Goal: cheap proofs for later optimizations and for a native
 ARM `JTarget`. Rules kept throughout: no Spec/ change, no new axioms/sorry/native_decide/bv_decide, REVIEW statements
@@ -110,3 +112,19 @@ Native-ARM recommendation: first native backend = Gen emitting `ArmEnc.blk` per 
 layout, offsets ×4 words) — reuses armTarget; needs steps 7 + 9. ARM-specific template optimizations (fused
 compare-branch, wider immediates) are then added as new J instructions (step 8 makes that one law per target)
 rather than as non-uniform blocks; non-uniform `addr` is not recommended now.
+
+## 5. Status (PR 1, branch cleanup-pr1)
+
+Done: step 1 (GenRef `r6_get`), step 4 (shared layer on `SafeX`/`SStarX`; `Safe`/`SStar` kept only in the RV Sail
+lift `SimW`), step 7 (`GenOK`/`compileGen`; `EncOK → GenOK` via `genOK_of_enc`; ARM statements unchanged), step 8a
+(`LayW.W`/`JTarget.words` removed; RV-private `SimW.LayRv`; `JTarget.inv` takes the program), step 8b (`StepLaws`,
+one field per J constructor; `Laws.step_ok` derived), step 5 slice a (plain tail/loop/node/def/program run chain
+deleted: it only fed a conjunct `gen_runS` discarded).
+Deferred: steps 2 and 3. On closer reading the OOM exits already go through one generic `leafRoom` + `push_oom_srun`
+(≈2 repeated lines per leaf), and offset helpers would rewrite template definitions in ~30 files for little gain.
+Revisit when a second native target adds templates.
+Next: step 5 slices b/c (dead plain fragments, S-suffix rename), step 6, step 9 (prototype: branch proto-genemit,
+Testing/notes/GEN_EMIT_PROTO.md there).
+x86-64 note (owner constraint): nothing fixed-width was added to the generic layer. Existing fixed-width points are
+`JTarget.addr` (uniform blocks) and the J link value `base + w·pc` (`JLay`, `Rel.ww`); a variable-length target
+either pads blocks to a uniform size or needs a layout function in their place (step 9 prototype notes).

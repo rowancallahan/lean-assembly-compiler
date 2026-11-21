@@ -1,5 +1,5 @@
-/- Safe retrofit (EVS) P6: the node theorem with SafeX runs (Opus box E): `runVS` / `runTS` / `runLS` = NdRun's
-runV / runT / runL over the safe contracts.  Extra per-node premises: `OpV` (Gen's BIN op range, exported from CG) and
+/- Safe retrofit (EVS) P6: the node theorem with SafeX runs (Opus box E): `runVS` / `runTS` / `runLS`, by induction
+on the node, over the safe contracts (side conditions `OkV`/`OkT`/`OkL` from NdRun).  Extra per-node premises: `OpV` (Gen's BIN op range, exported from CG) and
 "the node's code ends inside C" (the epilogue follows every body).  Global facts: `RunCxS`. -/
 import Nano.V2Self.Proof.Machine.EVSCall
 import Nano.V2Self.Proof.Machine.EVSLoop

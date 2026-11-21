@@ -1,12 +1,22 @@
-/- C's top-level theorems for ANY target (`JT.JTarget` with its `Laws`): `C_correct_on : CompileCorrect T.M (compileOn enc)`
-and `C_runs_on : CompileRuns T.M (compileOn enc)`, for a re-encoding `enc` of Gen's bytes into the target's code bytes
-(`EncOK`: Gen's program `Cj` becomes `tbytes T Cj`).  The target's RAM must start at or above 2^31 (`hwin`: the exact
+/- C's top-level theorems for ANY target (`JT.JTarget` with its `Laws`): `C_correct_on : CompileCorrectP T.M T.loader (compileGen gen)`
+and `C_runs_on : CompileRunsP T.M T.loader (compileGen gen)`, for any code generator `gen` from source text to the target's
+code bytes that meets `GenOK`: when it emits code for a source `x`, that code is `tbytes T Cj` for the J program `Cj` of
+`x` (the one C's driver `mC` derives).  `GenOK` asks nothing about instruction widths or jump ranges of the target
+(those are `T`'s business, in `tbytes`/`valid`).  Still RISC-V-shaped in it (until Gen's proof is factored over an
+abstract emitter): `Cj` is identified through Gen's RV words (`mC x = g40 … (Cj.map encG)`), and `gen x ≠ []` must
+imply `mC x ≠ []`.  A post-translator `enc` of Gen's RV bytes (`EncOK`, e.g. rv2arm) is the instance `enc ∘ mC`
+(`genOK_of_enc`, `compileOn enc = compileGen (enc ∘ mC)`).  The target's RAM must start at or above 2^31 (`hwin`: the exact
 work bound `Msp` and `ShiftInv` are stated for work blocks there). -/
 import Nano.V2Self.Proof.Machine.HostOom
 import Nano.V2Self.Proof.Main.ParCapBnd
 import Nano.V2Self.Proof.Bridge.MainShift4
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc ParSpec Templates JT
+
+/-- a compiler whose code bytes are `gen` of the source text (memory bound: C's `spaceC`) -/
+noncomputable def compileGen (gen : List UInt8 → List UInt8) (s : SrcC) : Option CompiledA :=
+  if gen s.text ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨gen s.text, 1, fun inp => [.alloc (spaceC s.text inp)]⟩
+  else none
 
 /-- C as a compiler whose code bytes are `enc` of Gen's bytes -/
 noncomputable def compileOn (enc : List UInt8 → List UInt8) (s : SrcC) : Option CompiledA :=
@@ -20,6 +30,21 @@ def EncOK (T : JTarget) (enc : List UInt8 → List UInt8) : Prop :=
     (∀ j ∈ Cj, SimW.JOK j) →
     enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) ≠ [] →
     enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) = tbytes T Cj ∧ T.valid Cj
+
+/-- `gen` emits, for a source `x` it accepts, the target's code bytes of `x`'s J program `Cj` (the program whose RV
+words are C's output `mC x`).  `Cj.length < 2^18` and `JOK` are facts Gen provides (usable by a `gen`), not demands. -/
+def GenOK (T : JTarget) (gen : List UInt8 → List UInt8) : Prop :=
+  ∀ x, gen x ≠ [] → mC x ≠ [] ∧
+    ∀ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 → (∀ j ∈ Cj, SimW.JOK j) →
+      mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] → gen x = tbytes T Cj ∧ T.valid Cj
+
+theorem compileOn_gen (enc : List UInt8 → List UInt8) : compileOn enc = compileGen (enc ∘ mC) := rfl
+
+/-- a post-translator of Gen's bytes is a generator -/
+theorem genOK_of_enc {T : JTarget} {enc : List UInt8 → List UInt8} (hE : EncOK T enc) : GenOK T (enc ∘ mC) :=
+  fun x h => ⟨fun e => h (by rw [Function.comp_apply, e]; exact hE.1), fun c Cj hc hw hg => by
+    rw [Function.comp_apply, hg]
+    exact hE.2 c Cj hc hw (by rw [← hg]; exact h)⟩
 
 /-- the facts codegen provides for Gen's bytes `B` of program `p` -/
 def GenFacts (B : List UInt8) (p : List DefA) : Prop :=
@@ -39,9 +64,6 @@ theorem src_facts {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20
   change srcRun ⟨x⟩ (encodeInput argument) = _ at this
   simp only [srcRun, hpo, Option.bind_some] at this
   exact toOption_some this
-
-theorem mC_ne {T : JTarget} {enc : List UInt8 → List UInt8} (hE : EncOK T enc) {x : List UInt8}
-    (h : enc (mC x) ≠ []) : mC x ≠ [] := fun e => h (by rw [e]; exact hE.1)
 
 theorem ok_ne_oom (y : List UInt8) : (if y = [] then (1 : UInt64) else 0) ≠ oomFlag := by
   split <;> decide
@@ -98,9 +120,9 @@ theorem cr_of_P {P : Type} [Program P] {machine : Machine} {compile : P → Opti
   fun program compiled f eI eO a s call h1 h2 h3 h4 => h program compiled f eI eO a s call h1 h2 h3 trivial h4
 
 /-- the normal return when the work block holds at least `Msp` bytes -/
-theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart)
-    {B : List UInt8} {p : List DefA} (hG : GenFacts B p) {s : T.M.State} {call : Call} {x y : List UInt8}
-    (hne : enc B ≠ []) (sc : StartCorrect T.M s call (enc B) x) (hld : T.loader s call (enc B) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
+theorem run_ok (L : T.Laws) {gen : List UInt8 → List UInt8} (hE : GenOK T gen) (hwin : 2 ^ 31 ≤ T.M.ramStart)
+    {src : List UInt8} {p : List DefA} (hG : GenFacts (mC src) p) {s : T.M.State} {call : Call} {x y : List UInt8}
+    (hne : gen src ≠ []) (sc : StartCorrect T.M s call (gen src) x) (hld : T.loader s call (gen src) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (hmem : max 16 (Msp p x) ≤ call.workLength) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
       (T.M.observe s').register T.M.mapping.status ≠ oomFlag ∧
@@ -109,7 +131,7 @@ theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc)
       (∀ a, Outside a (call.outputAddress, y.length) → Outside a (call.workAddress, call.workLength) →
         (T.M.observe s').memory a = (T.M.observe s).memory a) ∧
       KeptRegisters T.M s s' ∧ T.M.configured s' := by
-  obtain ⟨c, ts, rfl, hP, hts, hL, h⟩ := hG
+  obtain ⟨c, ts, hB, hP, hts, hL, h⟩ := hG
   obtain ⟨Ks, hO, hK2⟩ := hL
   obtain ⟨-, -, -, -, c1, c2, -, -, -, -, -, -, -, -, -⟩ := blocks_of L sc
   have r32 := L.ram.2
@@ -121,39 +143,39 @@ theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc)
   · rw [hSem] at hS'; cases hS'
     obtain ⟨s', r, pc, st, ol, rd, fr, kp, cf⟩ := host_ok L c hP Ks hO hK2 (ParSerLen.ser_lt hP hts) h
       (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _
-      (fun Cj hc hg hw => by rw [hg]; exact hE.2 c Cj hc hw (by rw [← hg]; exact hne)) sc hld y hSem hy (by omega) hS
+      (fun Cj hc hg hw => (hE src hne).2 c Cj hc hw (hB.trans hg)) sc hld y hSem hy (by omega) hS
     exact ⟨s', r, pc, by rw [st]; exact ok_ne_oom y, rd, ol, fr, kp, cf⟩
   · rw [hSem] at hS'; cases hS'
   · omega
 
 /-- **C is correct on any target** (owner's `CompileCorrect`) -/
-theorem C_correct_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
-    CompileCorrectP T.M T.loader (compileOn enc) := by
+theorem C_correct_on (L : T.Laws) (gen : List UInt8 → List UInt8) (hE : GenOK T gen) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
+    CompileCorrectP T.M T.loader (compileGen gen) := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight loads
     outputFits enough
   obtain ⟨x⟩ := program
-  unfold compileOn at compiles
+  unfold compileGen at compiles
   split at compiles
   · rename_i hc
     cases Option.some.inj compiles
-    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (mC_ne hE hc.1) hc.2 computes argument
+    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (hE x hc.1).1 hc.2 computes argument
     have hmem : max 16 (Msp p (encodeInput argument)) ≤ call.workLength := by
       have := enough; simp only [memoryNeeded, peak, inUse, hsp] at this; simpa using this
     exact run_ok L hE hwin hG hc.1 startsRight loads hSem outputFits hmem
   · cases compiles
 
 /-- **C runs correctly on any target, with any work block** (owner's `CompileRuns`) -/
-theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
-    CompileRunsP T.M T.loader (compileOn enc) := by
+theorem C_runs_on (L : T.Laws) (gen : List UInt8 → List UInt8) (hE : GenOK T gen) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
+    CompileRunsP T.M T.loader (compileGen gen) := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight loads
     outputFits
   obtain ⟨x⟩ := program
-  unfold compileOn at compiles
+  unfold compileGen at compiles
   split at compiles
   · rename_i hc
     cases Option.some.inj compiles
-    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (mC_ne hE hc.1) hc.2 computes argument
-    have hMN : memoryNeeded ⟨enc (mC x), 1, fun inp => [.alloc (spaceC x inp)]⟩ (encodeInput argument) =
+    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (hE x hc.1).1 hc.2 computes argument
+    have hMN : memoryNeeded ⟨gen x, 1, fun inp => [.alloc (spaceC x inp)]⟩ (encodeInput argument) =
         max 16 (Msp p (encodeInput argument)) := by simp [memoryNeeded, peak, inUse, hsp]
     unfold OutOfMemory; rw [hMN]
     by_cases hlt : call.workLength < max 16 (Msp p (encodeInput argument))
@@ -162,8 +184,8 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
       obtain ⟨Ks, hO, hK2⟩ := hL
       have hBe : ∀ Cj : List CallProbe.J, Cj.length < 2 ^ 18 →
           C.g41 c (serialize p) = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] →
-          (∀ j ∈ Cj, SimW.JOK j) → enc (mC x) = tbytes T Cj ∧ T.valid Cj :=
-        fun Cj hc' hg hw => by rw [hB, hg]; exact hE.2 c Cj hc' hw (by rw [← hg, ← hB]; exact hc.1)
+          (∀ j ∈ Cj, SimW.JOK j) → gen x = tbytes T Cj ∧ T.valid Cj :=
+        fun Cj hc' hg hw => (hE x hc.1).2 c Cj hc' hw (hB.trans hg)
       obtain ⟨-, -, -, -, c1, c2, -, -, -, -, -, -, -, -, -⟩ := blocks_of L startsRight
       have r32 := L.ram.2
       have wa := startsRight.workAligned
