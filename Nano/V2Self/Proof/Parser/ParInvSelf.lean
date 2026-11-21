@@ -13,7 +13,7 @@ theorem ShOpt.nt_iff {h : Buf} {c : UInt64} {o : Option Sh} (r : ShOpt h c o) : 
     simp only [ShOpt] at r
     constructor
     · intro e; subst e; exact congrArg some (ShapeCode.det r .nt)
-    · intro e; cases e; exact r.nt_eq
+    · intro e; cases e; exact r.nt_code
 
 /-- **task 46** (self-call arguments) -/
 theorem h_selfArgs {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.selfArgs :: fs)) (hfs : inDefF fs = true)

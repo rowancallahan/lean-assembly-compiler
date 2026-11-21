@@ -5,11 +5,8 @@ import Nano.V2Self.Proof.Parser.ParInvIte
 namespace ParInv
 open C BufL ParSpec ParRun
 
-theorem stat0' (h : Buf) : bget (bset h 0 0) 0 = 0 := by
-  rw [bget_bset]; by_cases hl : 0 < h.length <;> simp [hl, bget, List.getD]
-
 theorem v2_stat : ∀ (N : Nat) (h : Buf) (j z c : UInt64), bget h 0 = 0 → bget (v2 N h j z c) 0 = 0
-  | 0, h, j, z, c, h0 => stat0' h
+  | 0, h, j, z, c, h0 => status_bset0 h
   | N + 1, h, j, z, c, h0 => by
     rw [v2]
     by_cases c0 : c = 0
@@ -43,9 +40,9 @@ theorem v5_stat (h : Buf) (c a b w t n : UInt64) (h0 : bget h 0 = 0) : bget (v5 
         rw [bget_bset' _ _ _ _ (ne 6 (by decide)), bget_bset' _ _ _ _ (ne 5 (by decide)), bget_bset' _ _ _ _ (ne 4 (by decide)),
           bget_bset' _ _ _ _ (ne 3 (by decide)), bget_bset' _ _ _ _ (ne 2 (by decide)), bget_bset' _ _ _ _ (ne 1 (by decide)),
           bget_bset' _ _ _ _ (by simpa using ne 0 (by decide)), h0]
-      · simp only [g1, g2, g3, if_true, if_false]; exact stat0' h
-    · simp only [g1, g2, if_true, if_false]; exact stat0' h
-  · simp only [g1, if_false]; exact stat0' h
+      · simp only [g1, g2, g3, if_true, if_false]; exact status_bset0 h
+    · simp only [g1, g2, if_true, if_false]; exact status_bset0 h
+  · simp only [g1, if_false]; exact status_bset0 h
 
 /-! ## task 42: `mkPair` (v107) -/
 theorem h_mkPair {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkPair :: fs))
@@ -85,7 +82,7 @@ theorem h_mkPair {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkP
   have sX := fX.2.2.2.1; have sY := fY.2.2.2.1
   rw [hxl] at sX; rw [hyr] at sY
   simp only [ShOpt] at sX sY
-  have dead : bget (bset h1 0 0) 0 = 0 := stat0' h1
+  have dead : bget (bset h1 0 0) 0 = 0 := status_bset0 h1
   cases hpx : vx.pend
   · cases hpy : vy.pend
     · have zx : pX = 0 := by rw [fX.2.2.2.2, hpx]; rfl

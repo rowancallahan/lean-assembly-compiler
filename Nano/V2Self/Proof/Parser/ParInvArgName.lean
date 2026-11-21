@@ -119,7 +119,7 @@ theorem h_argName {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.ar
     rw [ev] at hs ⊢
     obtain ⟨rest, et, tr⟩ := tok_kw r3 rT rts c43 (by decide) (by decide) (by decide)
     have c31 : ∀ i : UInt64, i.toNat ≠ 31 → bget (bset g 31 5) i = bget g i := fun i a => bget_bset' _ _ _ _ (by simp; omega)
-    have R2 : Rep (bset g 31 5) ts st fs := rep_scratch R1 (fun i _ a => c31 i a) (drop_bset _ _ _ (by decide))
+    have R2 : Rep (bset g 31 5) ts st fs := rep_scratch R1 (fun i _ a => c31 i a) (drop_bset0 _ _ _ (by decide))
     have tr' : TokAt (bset g 31 5) (bget g 3 + 1) rest := tokAt_frame ⟨c31 7 (by decide), fun i hi => c31 i (by omega)⟩ hn tr
     have R3 := rep_cursor R2 (bget g 3 + 1) tr'
     obtain ⟨st', hm, R4⟩ := rep_v5 R3 hnf 0 9 5 0 (some .bf) false 2 ShapeCode.bf (by decide) (by decide) (by decide) (by decide) hs

@@ -74,8 +74,8 @@ theorem alloc_eff (g : Buf) (x y zx zy : UInt64) (n : Nat) (hcap : n < 8192) (hl
   · rw [bget_bset' _ _ _ _ (by rw [u25, b2]; omega), bget_bset' _ _ _ _ (by rw [u26, b2]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [b2]; omega)]
   · intro j j25 j26 j31 jrow
     rw [bget_bset' _ _ _ _ (by rw [u25]; omega), bget_bset' _ _ _ _ (by rw [u26]; omega), bget_bset' _ _ _ _ (by rw [b2]; omega), bget_bset' _ _ _ _ (by rw [b1]; omega), bget_bset' _ _ _ _ (by rw [b0]; omega), bget_bset' _ _ _ _ (by rw [u31]; omega), bget_bset' _ _ _ _ (by rw [u31]; omega)]
-  · rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [b2]; omega), drop_bset _ _ _ (by rw [b1]; omega),
-      drop_bset _ _ _ (by rw [b0]; omega), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)]
+  · rw [drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by rw [b2]; omega), drop_bset0 _ _ _ (by rw [b1]; omega),
+      drop_bset0 _ _ _ (by rw [b0]; omega), drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide)]
 
 theorem pairCode {h : Buf} {i : Nat} (hi : i < 8192) {x y : UInt64} {l r : Sh}
     (e0 : bget h (d7 + 8192 + 3 * i.toUInt64) = x) (e1 : bget h (d7 + 8192 + 3 * i.toUInt64 + 1) = y)
