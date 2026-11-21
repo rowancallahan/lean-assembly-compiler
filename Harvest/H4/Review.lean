@@ -19,3 +19,8 @@ import Harvest.H4.TrimAscii
 #print axioms H4.Inf.arrayLit_shape
 #print axioms H4.trimAscii_copy
 #print axioms H4.anon_token
+#print axioms H4.colon_trim
+#print axioms H4.with_token
+#print axioms H4.fun_tokens
+#print axioms H4.larrow_tokens
+#print axioms H4.arrow_firstTokens
