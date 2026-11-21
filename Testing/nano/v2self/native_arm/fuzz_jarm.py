@@ -5,6 +5,7 @@ Per case: B2 compiles the text (RISC-V bytes rv); the translator turns rv into A
 the RISC-V translator jarm_rv.bin under qemu-riscv64; JA_ARM=1: the native one jarm_arm.bin under qemu-aarch64);
 GA_arm (GenArm, the oracle) compiles the text to ga.  Checks: the translator accepts every rv B2 emits, ga accepted
 iff rv; every input: rv (RISC-V), ja and ga (A64) give the same status and output bytes (arith: also the Python model).
+RVDIR=dir: also keep every accepted rv there (input for the spec comparison spec_cmp.lean).
 Needs in $NA: shim_rv shim_arm GA_arm.bin jarm_rv.bin (JA_ARM: jarm_arm.bin)."""
 import os, re, sys, random, shutil, subprocess, collections, concurrent.futures as cf
 HERE = os.path.dirname(os.path.abspath(__file__)); V2 = os.path.abspath(os.path.join(HERE, '..'))
@@ -40,6 +41,7 @@ def case(i, text, ins, want=None):
         c3, ja = run(JA, rv)
         if not isinstance(c3, int): return ('jarm_hang_or_crash', i, text, b'')
         if not ja: return ('jarm_reject', i, text, b'')
+        if os.environ.get('RVDIR'): open(os.path.join(os.environ['RVDIR'], f'{FAM}{SEED}_{i}.rv'), 'wb').write(rv)
     if (len(rv) == 0) != (len(a64) == 0): return ('accept', i, text, b'')
     if not rv: return ('rejected', i, None, None)
     d = os.path.join(WORK, f'c{i}'); os.makedirs(d, exist_ok=True)

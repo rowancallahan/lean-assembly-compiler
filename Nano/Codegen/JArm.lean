@@ -173,9 +173,7 @@ def e35 (c : Buf) (n i : UInt64) : UInt64 :=
         (if e60 (e21 c (i + 1)) (e21 c i) * e60 (e22 c (i + 1)) (e21 c i) == 1 then 15 else 3) else 3) else 3)
      else 3)
   else if k == 2 then
-    (if e26 c n i 2 6 6 3 * e28 c n (i + 1) 1 5 5 6 * e26 c n (i + 2) 4 14 5 16 == 1 then 16
-     else if e26 c n i 2 6 6 3 * e28 c n (i + 1) 1 6 5 6 * e26 c n (i + 2) 5 14 6 16 == 1 then 17
-     else if e26 c n i 2 15 7 3 * e28 c n (i + 1) 1 15 15 5 == 1 then 18 else 0)
+    (if e26 c n i 2 15 7 3 * e28 c n (i + 1) 1 15 15 5 == 1 then 18 else 16)
   else if k == 3 then
     (if e23 c i == 3 then (if k2 == 2 then (if e23 c (i + 1) == 3 then
       (if e60 (e21 c (i + 1)) (e21 c i) * e60 (e22 c (i + 1)) (e21 c i) == 1 then 19 else 0) else 0) else 0) else 0)
@@ -186,7 +184,7 @@ def e35 (c : Buf) (n i : UInt64) : UInt64 :=
 /-- the J length of atom t at i -/
 def e36 (c : Buf) (n i t : UInt64) : UInt64 :=
   if t == 1 then (if e32 c n i < 2048 then 1 else 17)
-  else if t == 16 then 3 else if t == 17 then 3
+  else if t == 16 then 1
   else if t == 6 then 2 else if t == 7 then 2 else if t == 8 then 2 else if t == 9 then 2 else if t == 10 then 2
   else if t == 11 then 2 else if t == 15 then 2 else if t == 18 then 2 else if t == 19 then 2 else 1
 /-- the A64 register of J register r (`armReg`; 18 outside the map) -/
@@ -219,18 +217,24 @@ def e37 (c : Buf) (n i t : UInt64) : UInt64 :=
   else if t == 12 then e39 a * e39 b
   else if t < 15 then e39 a
   else if t == 15 then e39 a * e39 b * e39 x
-  else if t < 19 then 1
+  else if t == 16 then e39 a * e39 b * (if x == 0 then 0 else if x < 64 then 1 else 0)
+  else if t == 18 then 1
   else if t == 19 then e39 a * e39 b
   else if t == 20 then (if a < 2 then 1 else 0)
   else if t == 21 then (if b == 1 then 1 else e60 b 14)
   else if t == 22 then e39 a * e39 b
   else 0
-/-- the J pc atom t at i jumps to (`tg`), e_14 if none -/
+/-- the J pc atom t at i jumps to, raw (no wrap check) -/
 def e43 (c : Buf) (n i t : UInt64) : UInt64 :=
   if t == 8 then i + 1 + e23 c (i + 1) else if t == 9 then i + 1 + e23 c (i + 1)
   else if t == 10 then i + 1 + e23 c (i + 1) else if t == 11 then i + 1 + e23 c (i + 1)
   else if t == 12 then i + e23 c i else if t == 13 then i + e23 c i else if t == 14 then i + e23 c i
-  else if t == 20 then i + e23 c i else e_14
+  else if t == 20 then i + e23 c i else e_0
+/-- a negative J pc as 0 (`Int.toNat`) -/
+def e66 (v : UInt64) : UInt64 := if e14 v == 1 then 0 else v
+/-- `jt`: the J pc atom t at i jumps to (`tg`), e_14 if none -/
+def e65 (c : Buf) (n i t : UInt64) : UInt64 :=
+  if t < 8 then e_14 else if t < 15 then e66 (e43 c n i t) else if t == 20 then e66 (e43 c n i t) else e_14
 
 /-! ## A64 words (64-bit forms) -/
 /-- c ||| v << 10 ||| n << 5 ||| d (add/sub imm, uimm ldr/str, strb) -/
@@ -283,7 +287,7 @@ def e40 (c : Buf) (n : UInt64) (z o : Buf) (i t : UInt64) : Buf :=
   let a := e42 (e21 c i);
   let b := e42 (e22 c i);
   let x := e23 c i;
-  let g := e59 z (e43 c n i t);
+  let g := e59 z (e65 c n i t);
   if t == 1 then e56 o a (e32 c n i)
   else if t == 2 then
     (if e22 c i == 0 then e56 o a x
@@ -305,8 +309,7 @@ def e40 (c : Buf) (n : UInt64) (z o : Buf) (i t : UInt64) : Buf :=
   else if t == 20 then bpush o (e63 (if e21 c i == 0 then 335544320 else 2483027968) (g - h))
   else if t == 21 then bpush o (e50 3592355840 0 b 0)
   else if t == 15 then bpush o (e51 945842176 a b (e42 x))
-  else if t == 16 then bpush (bpush o (e51 2332036096 16 5 6)) (e50 4181721088 14 16 2)
-  else if t == 17 then bpush (bpush o (e51 2332036096 16 5 6)) (e50 4177526784 14 16 2)
+  else if t == 16 then bpush o (e50 3544186880 a b (63 - x) ||| (((64 - x) &&& e_4) <<< 16))
   else if t == 18 then bpush o (e51 2332036096 15 5 7)
   else if t == 19 then bpush (bpush (bpush o (e52 3531603968 16 3 0)) (e51 2596283392 a b 16)) (e51 2596282368 a a 16)
   else bpush o (e50 956301312 a b 0)
@@ -327,10 +330,10 @@ def e46 : Nat → Buf → UInt64 → UInt64 → Buf → Buf → Buf × Buf
       let z1 := bset z i (bsize o + 1);
       let o1 := e40 c n z1 o i t;
       e46 k c n (i + e36 c n i t) z1 o1
-    else if i == n then (bset z n (bsize o + 1), o) else (bnew, o)
+    else if i == n then (if bsize o < 262144 then (bset z n (bsize o + 1), o) else (bnew, o)) else (bnew, o)
 /-- 1 iff the jump target of atom t at i is a boundary (or there is none) -/
 def e48 (c : Buf) (n : UInt64) (z : Buf) (i t : UInt64) : UInt64 :=
-  let g := e43 c n i t;
+  let g := e65 c n i t;
   if g == e_14 then 1 else if g < n + 1 then e61 (bget z g) 0 else 0
 /-- **pass 2**: the words; EMPTY on reject -/
 def e47 : Nat → Buf → UInt64 → Buf → UInt64 → Buf → Buf
