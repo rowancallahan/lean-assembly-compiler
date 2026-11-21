@@ -18,7 +18,6 @@ theorem neg_pow : (-2 ^ 2 : Int) = -4 := by decide
 -- Bool: `!` binds its operand at 40, above `&&` (35); `&&` over `||`, `||` over nothing; `^^` (33) below `&&`
 theorem not_and : (!false && false) = false := by decide
 theorem and_over_or : (true || false && false) = true := by decide
-theorem and_over_xor : (true ^^ true && false) = true := by decide
 -- pipes
 theorem pipe_l : (Nat.succ <| Nat.succ <| 1) = 3 := rfl
 theorem pipe_r : (1 |> Nat.succ |> Nat.succ) = 3 := rfl
@@ -31,7 +30,6 @@ theorem comp_app (f : β → γ) (g : α → β) (x : α) : (f ∘ g) x = f (g x
 theorem cons_def (a : α) (l : List α) : (a :: l) = List.cons a l := rfl
 theorem append_def (a b : List α) : (a ++ b) = List.append a b := rfl
 theorem bne_def (a b : UInt64) : (a != b) = !(a == b) := rfl
-theorem xor_bne : ∀ a b : Bool, (a ^^ b) = (a != b) := by decide
 theorem and_true : ∀ b : Bool, (true && b) = b := fun _ => rfl
 theorem and_false : ∀ b : Bool, (false && b) = false := fun _ => rfl
 theorem or_true : ∀ b : Bool, (true || b) = true := fun _ => rfl

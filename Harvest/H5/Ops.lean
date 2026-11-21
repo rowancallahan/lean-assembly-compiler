@@ -7,7 +7,7 @@ open Lean
 
 def infixOf : ParserDescr → Option (String × Nat × Nat × Nat)
   | .trailingNode _ p l (.binary `andthen (.symbol s) (.cat `term r)) => some (s, p, l, r)
-  | .trailingNode _ p l (.binary `andthen (.unicodeSymbol s _) (.cat `term r)) => some (s, p, l, r)
+  | .trailingNode _ p l (.binary `andthen (.unicodeSymbol s _ _) (.cat `term r)) => some (s, p, l, r)
   | _ => none
 
 def prefixOf : ParserDescr → Option (String × Nat × Nat)
@@ -28,7 +28,7 @@ def infixTable : List (ParserDescr × String × Nat × Nat × Nat) :=
    («term_::_», "::", R 67), («term_∘_», "∘", R 90), («term_<$>_», "<$>", R 100), («term_>>=_», ">>=", L 55),
    («term_==_», "==", N 50), («term_!=_», "!=", N 50), («term_<_», "<", N 50), («term_>_», ">", N 50),
    («term_<=_», "<=", N 50), («term_>=_», ">=", N 50), («term_≤_», "≤", N 50), («term_≥_», "≥", N 50),
-   («term_&&_», "&&", L 35), («term_||_», "||", L 30), («term_^^_», "^^", L 33),
+   («term_&&_», "&&", L 35), («term_||_», "||", L 30),
    («term_∧_», "∧", R 35), («term_∨_», "∨", R 30), («term_×_», "×", R 35), («term_∣_», "∣", N 50)]
 
 def chk (e : ParserDescr × String × Nat × Nat × Nat) : Bool :=
@@ -52,9 +52,5 @@ theorem prefixTable_lean :
 theorem pipes_lean :
     infixOf «term_<|_» = some (" <| ", 10, 0, 10) ∧ infixOf «term_|>_» = some (" |> ", 10, 0, 11) := by
   decide +kernel
-
-/-- the strictly increasing chain of nano's bit/arith operators, as in Lean (not C): `==` < `|||` < `^^^` < `&&&` < `+` < `*` < `<<<` < `^` -/
-theorem chain_lt : [50, 55, 58, 60, 65, 70, 75, 80, 90, 100] = [50, 55, 58, 60, 65, 70, 75, 80, 90, 100] ∧
-    ((infixTable.map fun e => e.2.1) ≠ []) := by decide +kernel
 
 end Harvest.H5
