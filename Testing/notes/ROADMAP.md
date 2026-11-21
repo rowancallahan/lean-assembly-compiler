@@ -677,5 +677,6 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
 - Next after the release: make J an explicit, target-neutral IR that the generator emits (instead of RISC-V words),
   with RISC-V, ARM (and later x86) as thin proven encoders; grow J with target-friendly ops so encoders can use each
   ISA's features; do optimizations on J (proven once). Hyper-optimized per-ISA back ends can come later on top.
-- Syntax: reject what Lean rejects (owner, 2026-11-21): misplaced docstrings/attributes are rejected too, via a
+- Syntax: nano's accepted language is a SUBSET of Lean's (owner, 2026-11-21): every program nano accepts, Lean
+  accepts with the same results; fuzz FAILs on any nano-accepts/Lean-rejects case. Concretely: misplaced docstrings/attributes are rejected too, via a
   decl-modifier check in the trusted desugar spec; reject fuzz checks Lean-rejects ⇒ nano-rejects.
