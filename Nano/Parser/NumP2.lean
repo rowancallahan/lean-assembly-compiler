@@ -255,4 +255,103 @@ theorem l_zip {x d : Buf} {Q : LO → Prop} (hQ : QE Q) {b bs v W A B t ts a2 c}
   · simp only [show (ok == 1) = false by simpa using hok, Bool.false_eq_true, if_false]
     exact hQ _ (show u 0 ≠ 1 by decide)
 
+theorem k_ne {k j : Nat} (hk : k < 16) (hj : j < 16) (h : k ≠ j) : ((u k : UInt64) == u j) = false := by
+  rw [ueq (by omega) (by omega)]; simp [h]
+
+theorem encB_prefix {bs0 bs : List (Nat × List Bool)} (h : bs0 <+: bs) : encB bs0 <+: encB bs := by
+  obtain ⟨r, rfl⟩ := h; simp [encB]
+
+/-- BIND slot s0: the region from s0 is pushed as a binding of the slot -/
+theorem l_bind {x d : Buf} {Q : LO → Prop} (hQ : QE Q) {b bs v W t ts c} {lb : List Bool} {sl : Nat}
+    (hsl : sl < 2 ^ 32)
+    (hI : LI b bs v (W ++ lb.map w2) t (ts ++ [(5, u sl, u W.length)]))
+    (hP : LP x d Q (bs ++ [(sl, lb)]) W ts c) :
+    GL x d Q b (u (encB bs).length) v (u (W ++ lb.map w2).length) t (u (ts.length + 1)) (u c) := by
+  apply gl_top hQ hI
+  intro hv ht hb n
+  have hvp := hI.pv.length_le; simp at hvp
+  have hts := hI.lts; simp at hts
+  have hbp := hI.pb.length_le
+  simp only [L28, show (u 5 == 0) = false from rfl, show (u 5 == 1) = false from rfl,
+    show (u 5 == 2) = false from rfl, show (u 5 == 3) = false from rfl, show (u 5 == 4) = false from rfl,
+    show (u 5 == 5) = true from rfl, Bool.false_eq_true, if_false, if_true,
+    show ((5 : UInt64) == 0) = false from rfl, show ((5 : UInt64) == 1) = false from rfl,
+    show ((5 : UInt64) == 2) = false from rfl, show ((5 : UInt64) == 3) = false from rfl, show ((5 : UInt64) == 4) = false from rfl,
+    show ((5 : UInt64) == 5) = true from rfl]
+  have e1 : (W ++ lb.map w2).length = W.length + (lb.map w2).length := by simp
+  rw [e1]
+  have hL : (lb.map w2).length = lb.length := by simp
+  have hWL : W.length + lb.length ≤ v.length := by have := hI.pv.length_le; simp at this; omega
+  have hb26 := u26_ok (L := lb.map w2) hI.pv hI.pb (by omega) (by omega) (by omega) (u sl)
+  generalize u26 b _ v _ _ _ = R at hb26 ⊢
+  obtain ⟨b1, bt1, ok⟩ := R
+  simp only at hb26 ⊢
+  by_cases hok : ok = 1
+  · subst hok
+    obtain ⟨p1, p2, p3⟩ := hb26 rfl
+    simp only [show ((1 : UInt64) == 1) = true from rfl, if_true]
+    rw [pop_e ts (by omega)]
+    have e2 : bt1 = u (encB (bs ++ [(sl, lb)])).length := by
+      rw [p2, encB_snoc, List.length_append, encR_len]; simp only [List.length_map]; exact congrArg u (by omega)
+    rw [e2]
+    have hbp2 := hI.pb.length_le
+    refine hP _ _ _ ⟨?_, by omega, prefix_of_app hI.pv, by omega, hI.pop, hI.lt, ?_⟩ n
+    · rw [encB_snoc]; simpa [encR] using p1
+    · intro r hr; rcases List.mem_append.1 hr with hr | hr
+      · exact hI.sb r hr
+      · simp at hr; subst hr; exact hsl
+  · simp only [show (ok == 1) = false by simpa using hok, Bool.false_eq_true, if_false]
+    exact hQ _ (show u 0 ≠ 1 by decide)
+
+/-- UNBIND bt: back to an outer chain -/
+theorem l_unbind {x d : Buf} {Q : LO → Prop} (hQ : QE Q) {b bs bs0 v vs t ts a2 c}
+    (h0 : bs0 <+: bs) (hI : LI b bs v vs t (ts ++ [(6, u (encB bs0).length, a2)]))
+    (hP : LP x d Q bs0 vs ts c) :
+    GL x d Q b (u (encB bs).length) v (u vs.length) t (u (ts.length + 1)) (u c) := by
+  apply gl_top hQ hI
+  intro hv ht hb n
+  have hts := hI.lts; simp at hts
+  simp only [L28, show ((6 : UInt64) == 0) = false from rfl, show ((6 : UInt64) == 1) = false from rfl,
+    show ((6 : UInt64) == 2) = false from rfl, show ((6 : UInt64) == 3) = false from rfl, show ((6 : UInt64) == 4) = false from rfl,
+    show ((6 : UInt64) == 5) = false from rfl, show ((6 : UInt64) == 6) = true from rfl, Bool.false_eq_true, if_false, if_true]
+  rw [pop_e ts (by omega)]
+  exact hP _ _ _ ⟨(encB_prefix h0).trans hI.pb, hI.lb, hI.pv, hI.lv, hI.pop, hI.lt,
+    fun r hr => hI.sb r (h0.subset hr)⟩ n
+
+/-- SEQ m: NODE for the next m nodes -/
+theorem l_seq0 {x d : Buf} {Q : LO → Prop} (hQ : QE Q) {b bs v vs t ts a2 c}
+    (hI : LI b bs v vs t (ts ++ [(7, u 0, a2)])) (hP : LP x d Q bs vs ts c) :
+    GL x d Q b (u (encB bs).length) v (u vs.length) t (u (ts.length + 1)) (u c) := by
+  apply gl_top hQ hI
+  intro hv ht hb n
+  have hts := hI.lts; simp at hts
+  simp only [L28, show ((7 : UInt64) == 0) = false from rfl, show ((7 : UInt64) == 1) = false from rfl,
+    show ((7 : UInt64) == 2) = false from rfl, show ((7 : UInt64) == 3) = false from rfl, show ((7 : UInt64) == 4) = false from rfl,
+    show ((7 : UInt64) == 5) = false from rfl, show ((7 : UInt64) == 6) = false from rfl,
+    show ((7 : UInt64) == 7) = true from rfl, Bool.false_eq_true, if_false, if_true, show (u 0 == 0) = true from rfl]
+  rw [pop_e ts (by omega)]
+  exact hP _ _ _ ⟨hI.pb, hI.lb, hI.pv, hI.lv, hI.pop, hI.lt, hI.sb⟩ n
+
+theorem l_seq1 {x d : Buf} {Q : LO → Prop} (hQ : QE Q) {b bs v vs t ts a2 c} {m : Nat} (hm : m < 2 ^ 32)
+    (hI : LI b bs v vs t (ts ++ [(7, u (m + 1), a2)]))
+    (hP : LP x d Q bs vs (ts ++ [(7, u m, a2), (0, 0, 0)]) c) :
+    GL x d Q b (u (encB bs).length) v (u vs.length) t (u (ts.length + 1)) (u c) := by
+  apply gl_top hQ hI
+  intro hv ht hb n
+  have hts := hI.lts; simp at hts
+  have hm0 : (u (m + 1) == 0) = false := by rw [u0, ueq (by omega) (by omega)]; simp
+  simp only [L28, show ((7 : UInt64) == 0) = false from rfl, show ((7 : UInt64) == 1) = false from rfl,
+    show ((7 : UInt64) == 2) = false from rfl, show ((7 : UInt64) == 3) = false from rfl, show ((7 : UInt64) == 4) = false from rfl,
+    show ((7 : UInt64) == 5) = false from rfl, show ((7 : UInt64) == 6) = false from rfl,
+    show ((7 : UInt64) == 7) = true from rfl, Bool.false_eq_true, if_false, if_true, hm0]
+  obtain ⟨q1, q2⟩ := bset_top hI.pt (by have := hI.lt; omega) (u (m + 1) - 1)
+  have em : u (m + 1) - 1 = u m := by rw [u1, usub (by omega) (by omega)]; rfl
+  rw [em] at q1 q2 ⊢
+  have hp := u27_ok (ts := ts ++ [(7, u m, a2)]) q1 (by have := hI.lt; omega) (by simp; omega) 0 0 0
+  simp only [List.length_append, List.length_singleton] at hp
+  have e2 : u (ts.length + 1) + 1 = u (ts ++ [(7, u m, a2), (0, 0, 0)]).length := by simp [u1, uadd]
+  rw [e2]
+  refine hP _ _ _ ⟨hI.pb, hI.lb, hI.pv, hI.lv, by simpa using hp.1, ?_, hI.sb⟩ n
+  have h2 := hp.2; rw [q2] at h2; have h3 := hI.pt.length_le; simp [encT_len] at h3; omega
+
 end NumP
