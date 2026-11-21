@@ -43,17 +43,19 @@ def GenOK (T : JTarget) (gen : List UInt8 → List UInt8) : Prop :=
       mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] → gen x = tbytes T Cj ∧ T.valid Cj
 
 /-- the general generator interface: `gen` emits, for a source `x` it accepts, the bytes of an image `I` (code, layout,
-anchors; fixed by `x`) that the target accepts as an image of `x`'s J program `Cj` -/
+anchors; fixed by `x`) that the target accepts as an image of `x`'s J program `Cj`.  The image part may assume that
+the AST word list of `x` is shorter than 2^31: a fact of every source the front end accepts within the text bound
+(`src_ast_len`), which a `gen` written in nano cannot test (`bsize` reads the length modulo 2^64). -/
 def GenOKG (T : GTarget) (gen : List UInt8 → List UInt8) : Prop :=
-  ∀ x, gen x ≠ [] → mC x ≠ [] ∧ ∃ I : Img, I.code = gen x ∧
+  ∀ x, gen x ≠ [] → mC x ≠ [] ∧ ((C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 → ∃ I : Img, I.code = gen x ∧
     ∀ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 → (∀ j ∈ Cj, SimW.JOK j) →
-      mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] → T.valid Cj I
+      mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] → T.valid Cj I)
 
 /-- a uniform target's generator is a general one (the image: its bytes, the uniform layout, every pc an anchor) -/
 theorem genOK_toG {T : JTarget} {gen : List UInt8 → List UInt8} (hE : GenOK T gen) : GenOKG T.toG gen :=
-  fun x hx => ⟨(hE x hx).1, ⟨gen x, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True, fun _ _ => False⟩, rfl, fun c Cj h1 h2 h3 => by
+  fun x hx => ⟨(hE x hx).1, fun _ => ⟨⟨gen x, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True, fun _ _ => False⟩, rfl, fun c Cj h1 h2 h3 => by
     obtain ⟨e, hv⟩ := (hE x hx).2 c Cj h1 h2 h3
-    exact ⟨by unfold JTarget.uimg; rw [e], hv⟩⟩
+    exact ⟨by unfold JTarget.uimg; rw [e], hv⟩⟩⟩
 
 theorem compileOn_gen (enc : List UInt8 → List UInt8) : compileOn enc = compileGen (enc ∘ mC) := rfl
 
@@ -81,6 +83,22 @@ theorem src_facts {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20
   change srcRun ⟨x⟩ (encodeInput argument) = _ at this
   simp only [srcRun, hpo, Option.bind_some] at this
   exact toOption_some this
+
+/-- the AST word list of a source that C accepts (within the text bound) is shorter than 2^31: it is `serialize p` of
+the parsed program (the steps of `compiler_correctG`), bounded by `ParSerLen.ser_lt` -/
+theorem src_ast_len {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20) :
+    (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 := by
+  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => hne (by simp only [mC, e, g41_nil])
+  have hoe := o41_ne _ hy0
+  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
+  by_cases h0 : C.s10 x = []
+  · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
+    rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
+  · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
+    have hb := lexes_len hL
+    obtain ⟨p, hp, he⟩ := parStage _ (lexes_tokWF hL) (by omega) hy
+    rw [hoe, he]
+    exact ParSerLen.ser_lt hp (by omega)
 
 theorem ok_ne_oom (y : List UInt8) : (if y = [] then (1 : UInt64) else 0) ≠ oomFlag := by
   split <;> decide
@@ -139,7 +157,7 @@ theorem cr_of_P {P : Type} [Program P] {machine : Machine} {compile : P → Opti
 /-- the normal return when the work block holds at least `Msp` bytes -/
 theorem run_ok (L : T.Laws) {gen : List UInt8 → List UInt8} (hE : GenOKG T gen) (hwin : 2 ^ 31 ≤ T.M.ramStart)
     {src : List UInt8} {p : List DefA} (hG : GenFacts (mC src) p) {s : T.M.State} {call : Call} {x y : List UInt8}
-    (hne : gen src ≠ []) (sc : StartCorrect T.M s call (gen src) x) (hld : T.loader s call (gen src) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
+    (hne : gen src ≠ []) (hlen : src.length ≤ 2 ^ 20) (sc : StartCorrect T.M s call (gen src) x) (hld : T.loader s call (gen src) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (hmem : max 16 (Msp p x) ≤ call.workLength) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
       (T.M.observe s').register T.M.mapping.status ≠ oomFlag ∧
@@ -150,7 +168,7 @@ theorem run_ok (L : T.Laws) {gen : List UInt8 → List UInt8} (hE : GenOKG T gen
       KeptRegisters T.M s s' ∧ T.M.configured s' := by
   obtain ⟨c, ts, hB, hP, hts, hL, h⟩ := hG
   obtain ⟨Ks, hO, hK2⟩ := hL
-  obtain ⟨-, I, hI, hV⟩ := hE src hne
+  obtain ⟨I, hI, hV⟩ := (hE src hne).2 (src_ast_len (hE src hne).1 hlen)
   rw [← hI] at sc hld
   obtain ⟨-, -, -, -, c1, c2, -, -, -, -, -, -, -, -, -⟩ := blocks_of L sc
   have r32 := L.ram.2
@@ -180,7 +198,7 @@ theorem C_correct_g (L : T.Laws) (gen : List UInt8 → List UInt8) (hE : GenOKG 
     obtain ⟨p, hG, hsp, hSem⟩ := src_facts (hE x hc.1).1 hc.2 computes argument
     have hmem : max 16 (Msp p (encodeInput argument)) ≤ call.workLength := by
       have := enough; simp only [memoryNeeded, peak, inUse, hsp] at this; simpa using this
-    exact run_ok L hE hwin hG hc.1 startsRight loads hSem outputFits hmem
+    exact run_ok L hE hwin hG hc.1 hc.2 startsRight loads hSem outputFits hmem
   · cases compiles
 
 /-- **C runs correctly on any general target, with any work block** (owner's `CompileRuns`) -/
@@ -201,7 +219,7 @@ theorem C_runs_g (L : T.Laws) (gen : List UInt8 → List UInt8) (hE : GenOKG T g
     · -- below the bound: out of memory
       obtain ⟨c, ts, hB, hP, hts, hL, h⟩ := hG
       obtain ⟨Ks, hO, hK2⟩ := hL
-      obtain ⟨-, I, hI, hV⟩ := hE x hc.1
+      obtain ⟨I, hI, hV⟩ := (hE x hc.1).2 (src_ast_len (hE x hc.1).1 hc.2)
       have hBe : ∀ Cj : List CallProbe.J, Cj.length < 2 ^ 18 →
           C.g41 c (serialize p) = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] →
           (∀ j ∈ Cj, SimW.JOK j) → T.valid Cj I :=
@@ -235,7 +253,7 @@ theorem C_runs_g (L : T.Laws) (gen : List UInt8 → List UInt8) (hE : GenOKG T g
             unfold RS at this; rw [e]; exact this)
         exact ⟨s', r, pc, (fin s' st fr).2, (fin s' st fr).1, kp, cf⟩
     · -- at or above the bound: the normal return
-      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG hc.1 startsRight loads hSem outputFits (by omega)
+      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG hc.1 hc.2 startsRight loads hSem outputFits (by omega)
       exact ⟨s', r, pc, fr, ⟨fun h => absurd h st, fun h => absurd h hlt⟩, kp, cf⟩
   · cases compiles
 

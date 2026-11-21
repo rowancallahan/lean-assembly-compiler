@@ -8,9 +8,40 @@ Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RIS
    same results (fuzz: nano-accepts ⇒ Lean-accepts and agrees; any violation is a FAIL).
 2. Strict self-hosting: the compiler (all stages, every target incl. native ARM) is written in nano's bootstrap
    subset and compiles itself; Testing/scripts/selfhost_gate.sh must pass on every merge.
+   Self-hosting is the PRIMARY goal (owner, 2026-11-21): the aim is a Lean proof about the compiler itself. New
+   features (con-leche's inductives, casesOn, recursion, classes, big Nat, Expr input) are implemented in
+   bootstrap-subset nano. The bootstrap subset grows only slowly and in proven steps: each step regenerates the
+   self-hosted binaries, re-proves the fixpoints and passes the gate.
 3. No @[implemented_by] / @[extern] (or other attributes/keywords that let run-time code differ from the logical
    definition: export, csimp, unsafe, opaque): attributes are a whitelist of meaning-preserving ones only. (Owner: implemented_by may be supported LATER —
    then nano compiles the implementation, as Lean's runtime does; banned for now.)
+
+## LONG-TERM GOAL (owner, 2026-11-21): close the loop with con-leche
+Compile con-leche (the CONsistent LEan CHEcker, proven: accepts ⇒ the declarations have a ZFC+inaccessibles model)
+with self-hosted nano to proved ARM and RISC-V code. Then: con-leche's consistency proof + nano's compiler theorem ⇒
+the BINARY only accepts consistent developments, with no trust in Lean's compiler or runtime. Next, use that binary to
+re-check nano's own proofs and con-leche's proofs, so Lean's C++ kernel is no longer the only checker. Remaining trust:
+the ISA models (Sail / DeepMind) + hardware, ZFC + inaccessibles, the mixHashLean port (see con-leche hashing below),
+and the first kernel check of the bootstrap. Steps:
+- after the release, re-check the release theorems with con-leche;
+- an Expr spot check: nano emits Expr, compared with Lean's elaborated Expr; then an evaluator proof tied to
+  con-leche's model;
+- syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
+  end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
+
+## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
+1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
+2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
+   output = Lean's output. Proof: evaluator for nano's Expr fragment, eval(emit a) = nano semantics of a, and the
+   existing compiler theorem. When they don't match, nothing is claimed (elaboration differs), so only fuzz applies.
+3. Expr entry point: a second front door that takes elaborated Expr (e.g. exported from Lean). It is written in
+   nano and self-hosted, an optional input, not the shelved Lean-hosted compile mode. Users who don't trust nano's
+   parser/elaborator can use Lean's elaborator and rely only on the back-end theorem (Expr fragment ⊆ Lean,
+   same Expr ⇒ same output).
+4. Self-consistency check: the compiler compiled by Lean's toolchain (B1) vs. compiled by itself (B2 = B3), plus
+   comparing nano's Expr of its own source with Lean's Expr of it (extends SrcLink). If equal, nano's parser /
+   elaborator don't change the meaning of nano's own code.
+Reuse the earlier Expr-level work in Legacy/Riscv/Frontx (kernel-checked equation per function) where it fits.
 
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |

@@ -81,7 +81,8 @@ the J runs (`SStarX`, EVS*/Cap*).
 Design decisions:
 * One host lift, over `GTarget`. Rejected: keeping the `JTarget` lift beside it (two proofs of `host_ok` / `host_tiny`
   / `host_room` and the top theorems to keep in step).
-* The image is fixed before the J program in `host_*` and `GenOKG` (`∃ I, I.code = gen x ∧ ∀ Cj, … → T.valid Cj I`):
+* The image is fixed before the J program in `host_*` and `GenOKG` (`mC x ≠ [] ∧ (AST of x shorter than 2^31 →
+  ∃ I, I.code = gen x ∧ ∀ Cj, … → T.valid Cj I)`; the AST bound is `src_ast_len`, a nano `gen` cannot test it):
   J's start view needs the image's link layout before `gen_mainN` yields `Cj`. Rejected: `∀ Cj, ∃ I`.
 * The anchors the lift needs come from `Laws` by instruction shape (`vis_ret`, `vis_err`), not by position. Rejected:
   "stub pcs 1..10 are anchors" (the start code's size check at `S+4..S+6` is not at a fixed pc).
@@ -110,3 +111,51 @@ has no word size, block size or `addr` (`SafeX`'s ranges and `ram` remain).
 
 Build / check: `lake build Nano.Run.RvTarget Nano.Run.ArmTarget
 Nano.Run.HostOom`, then `Nano.Main.REVIEW` and `Testing/scripts/review_axioms.sh`.
+
+
+## Native AArch64 target (`NatImg`, `NatEnc`, `NatTarget`, `NatSeg`, `JArm*`, `CjUnique`)
+
+What it does: the variable-length AArch64 back end as a `GTarget`. The native code of a J program is the encoding of
+its ATOMS; the generator is the nano J → AArch64 translator `Nano/Codegen/JArm.lean` (`C.e64`), run by the compiler
+path `C.e71` (`Codegen/JArmTop.lean`) on Gen's word buffer. Top: `Main/NativeNano.lean` (`C_correct_nano`),
+`Main/NativeRelease.lean` (no premise), `Arm/apc/Blocks/ArmDMRelease.lean` (DeepMind model).
+
+* `NatImg.lean` — `NTm` (atom = minimal J group with an A64 boundary at both ends; `.j` its J instructions, `.a π q h`
+  its words, `ok` its side conditions), `bnd` / `widx` (boundaries, word index of a J pc), `wordsOf`, `imgOf` (bytes,
+  layout, anchors = boundaries), `NWf`, `NatV C I := ∃ tl, C = jOf tl ∧ I = imgOf tl ∧ NWf tl`. `NatImgLaws.lean` — the
+  atom at a position, anchors, the static `GTarget` laws for `NatV`.
+* `NatEnc.lean` — the encoder as a Lean SPEC over `List J`: the view `jk / jA / jB / jC / jop` (kind code and fields as
+  machine words), `candC` (atom code at the head of a list; mirrors the translator's `e35` line for line), `mkAtom`,
+  `atomize` (greedy parse, each atom checked against the list), `NChk` (size, `ok`, targets are boundaries),
+  `natEncJ`, `natEncJ_img` (its output is an image: `NatV` by construction).
+* `NatTarget.lean` / `NatSeg.lean` / `NatA/` — `natTarget M X W V`, `natLaws`; the segment law per atom (`asim_*`) and
+  `natLawsOK : A64SemN M X W → NatLawsOK M X W NatV`.
+* `CjUnique.lean` — Gen's bytes determine the J program (`encG` injective on `JOK`), needed because the image is fixed
+  before the J program.
+* Translator proof (`e64` on Gen's words = `natEncJ`): `JArmView` (`JArmBits`: bytes ↔ words, accessor layer, word
+  encoders; instance `JArmInst.jArmBits`), `JArmCand` (accessors = the view, `e35 = candC`), `JArmStep` (`StepAt t`,
+  one obligation per atom code; `JArmStepA/B/C`, `JArmStepAll.stepOK`), `JArmPass` (pass 1: trace `Tr`, boundary
+  table), `JArmCore` (pass 2, `e64_core`, `e64_natEncJ`), `JArmGen` (Gen's buffer: `g42_e70`, `e70_len`).
+
+Design decisions:
+* The generator is an encoder of Gen's J program, not a second code generator in lockstep with Gen (`Codegen/GenArm.lean`
+  is a test oracle only). Rejected: proving GenArm against Gen (only the node-level invariant of Gen's proof is generic
+  over the encoders; and GenArm accepts sources Gen rejects, so `gen x ≠ [] → mC x ≠ []` fails).
+* The spec's atom selection is written on the view, as the translator computes it, so "translator = spec" there is a
+  rewrite of the accessors; the atom itself is rebuilt from the instructions and checked against the list, so the spec
+  does not depend on `candC` being right.
+* Register-exact: no J register is ever unrelated at an anchor (BGET / BSET tails are `lsl; add; ldr/str`, one word
+  longer than the fused form). `Img.dead`, `NAt`'s flags and `bgetI` / `bsetI` remain for a later fused form; the
+  encoder never produces them.
+* The compiler path checks every word of Gen's buffer below 2^32 (`e72`): the J program is identified through Gen's
+  bytes, which determine the words only modulo 2^32.
+* Proof hygiene: no `rfl` / `exact` whose definitional check can unfold `e71`, `e64`, `e46`, `e47`, `e72`, `g42`, `mC`
+  (fuel literal 16777216 on a symbolic buffer: `whnf` timeout); unfold and rewrite, or generalize the term first.
+
+Assumes: `A64SemN M X W` (the A64 steps of a model: DeepMind `a64DMN`; Sail: to do). Guarantees:
+`C_correct_native_release`, `C_runs_native_release` for `compileNano`.
+
+Known limits: one extra word per array get / set vs the fused form; `ld x n 0; ld y n 8` is always one `ldp`; li is
+re-encoded from Gen's 17-word byte chain; accept set = Gen's minus the encoder's checks (2^18 A64 words).
+
+Build / check: `lake build Nano.Main.NativeRelease Nano.Tests.NatEncTemplates`; `Arm/apc`: `Blocks.AxiomsDMRelease`.
