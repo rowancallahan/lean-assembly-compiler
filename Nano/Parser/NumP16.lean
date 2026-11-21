@@ -108,4 +108,52 @@ theorem m_lit_loc {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
   refine (hP rfl b t g _ ?_ (GA.nil g)).cast rfl rfl (by simp [Nd.ser, u3, uadd]) rfl rfl
   simpa using h1
 
+theorem MI.castS {b bs t ts g s S S'} (h : MI b bs t ts g s S) (e : S = S') : MI b bs t ts g s S' := e ▸ h
+
+/-- LIT at an operator: the group does arithmetic; LIT on both operands -/
+theorem m_lit_bin {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hLIT : MLIT x d np ks ws f)
+    {op : Nat} {a bb : Nd}
+    {Q : MO → Prop} {bs : List (Nat × List Bool)} {ts : List T3} {c : Nat} {rest b t g s : Buf}
+    {S0 : List UInt64} {a0 : Bool} {SL : List UInt64} (hH : LH x d np f (.bin op a bb) Q c rest)
+    (hI : MI b bs t (ts ++ [(1, 0, 0)]) g s (S0 ++ w2 a0 :: SL))
+    (hP : MLp x d Q bs ts g S0 a0 SL (c + (Nd.bin op a bb).ser.length) (NumSpec.litG (f + 1) ks ws (envOf bs) (.bin op a bb))) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
+  apply m_lit_read hH.hQ hI
+  intro hsz R hR hok
+  have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
+  rw [u44_3 (tag_rd hH.hx hxl)] at hR
+  subst hR
+  dsimp only
+  rw [litG_succ] at hP; dsimp only at hP
+  have hnb := hH.hnb; simp only [NB] at hnb
+  obtain ⟨-, na, nb⟩ := hnb
+  have hf := hH.hf; simp [Nd.ser] at hf
+  have hx1 : x.drop (c + 2) = a.ser ++ (bb.ser ++ rest) := by
+    have h0 : x.drop c = [3, u op] ++ (a.ser ++ (bb.ser ++ rest)) := by rw [hH.hx]; simp [Nd.ser, toU]
+    simpa using drop_shift h0
+  have hx2 := drop_shift hx1
+  have hts := hI.lts; simp at hts
+  have hI0 := hI.pop
+  have hSl := hI0.ps.length_le
+  have hs1 : bset s (u S0.length) 1 = s.set S0.length 1 := bset_u _ (by have := hI0.ls; simp at hSl; omega) _
+  have hI1 : MI b bs t ts g (s.set S0.length 1) (S0 ++ w2 true :: SL) :=
+    ⟨hI0.pb, hI0.lb, hI0.sb, hI0.pt, hI0.lt, hI0.lg, set_prefix hI0.ps _, by simpa using hI0.ls⟩
+  obtain ⟨k1, l1⟩ := hI1.pushw rfl (by have := hsz.2.1; omega) 1 0 0
+  obtain ⟨k2, -⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 1 0 0
+  rw [hs1]
+  refine (hLIT a Q bs (ts ++ [(1, 0, 0)]) (c + 2) (bb.ser ++ rest) b _ g _ S0 true SL (by omega) na hH.hQ hx1 (by omega)
+    (by simpa using k2) ?_).cast rfl (by simp [u2, uadd]) (by simp [u2, uadd]) (by simp) rfl
+  intro hA b2 t2 g2 s2 hI2 hga
+  refine (hLIT bb Q bs ts (c + 2 + a.ser.length) rest b2 t2 g2 s2 S0 _ _ (by omega) nb hH.hQ hx2 (by omega)
+    (by simpa using hI2) ?_).cast rfl (by simp) rfl rfl rfl
+  intro hB b3 t3 g3 s3 hI3 hgb
+  have e : c + 2 + a.ser.length + bb.ser.length = c + (Nd.bin op a bb).ser.length := by simp [Nd.ser]; omega
+  rw [e]
+  have hS : S0 ++ w2 (true || (NumSpec.litG f ks ws (envOf bs) a).1.2 || (NumSpec.litG f ks ws (envOf bs) bb).1.2) ::
+      (SL ++ List.map u (NumSpec.litG f ks ws (envOf bs) a).1.1 ++ List.map u (NumSpec.litG f ks ws (envOf bs) bb).1.1) =
+      S0 ++ w2 (a0 || true) :: (SL ++ List.map u ((NumSpec.litG f ks ws (envOf bs) a).1.1 ++
+        (NumSpec.litG f ks ws (envOf bs) bb).1.1)) := by simp
+  rw [hS] at hI3 ⊢
+  exact hP (by simp [NumSpec.R.app, hA, hB]) b3 t3 g3 s3 hI3 (hga.trans hgb)
+
 end NumP
