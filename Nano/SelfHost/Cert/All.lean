@@ -52,6 +52,17 @@ import Nano.SelfHost.Cert.Defs48
 import Nano.SelfHost.Cert.Defs49
 import Nano.SelfHost.Cert.Defs50
 import Nano.SelfHost.Cert.Defs51
+import Nano.SelfHost.Cert.Defs52
+import Nano.SelfHost.Cert.Defs53
+import Nano.SelfHost.Cert.Defs54
+import Nano.SelfHost.Cert.Defs55
+import Nano.SelfHost.Cert.Defs56
+import Nano.SelfHost.Cert.Defs57
+import Nano.SelfHost.Cert.Defs58
+import Nano.SelfHost.Cert.Defs59
+import Nano.SelfHost.Cert.Defs60
+import Nano.SelfHost.Cert.Defs61
+import Nano.SelfHost.Cert.Defs62
 set_option maxRecDepth 100000
 namespace Cert
 open NanoMain ParSpec
@@ -332,11 +343,60 @@ theorem all_ok (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Al
    fun ms G => ⟨_, rfl, ok_272 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_273 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_274 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_275 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_276 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_277 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_278 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_279 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_280 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_281 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_282 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_283 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_284 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_285 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_286 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_287 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_288 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_289 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_290 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_291 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_292 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_293 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_294 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_295 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_296 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_297 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_298 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_299 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_300 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_301 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_302 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_303 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_304 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_305 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_306 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_307 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_308 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_309 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_310 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_311 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_312 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_313 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_314 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_315 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_316 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_317 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_318 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_319 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_320 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_321 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_322 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_323 inp ms hin G⟩,
    trivial⟩
 
 /-- **the meaning of C's source text** (ParSpec's parse `PC.all`, `Sem`) is the Lean function `mLean`, up to the buffer capacity -/
 theorem sem_C (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Ref (Sem κC PC.all inp) (Sh.mLean inp) := by
   have G := means_all inp κC (specs inp) PC.all [] 0 ⟨rfl, by simp⟩ (all_ok inp hin)
-  have h := sem_of_good (n := 274) (S := Spec274 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
+  have h := sem_of_good (n := 323) (S := Spec323 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
   rwa [Sh.m_map] at h
 end Cert

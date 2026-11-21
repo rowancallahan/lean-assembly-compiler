@@ -19,6 +19,27 @@ theorem nl273 : x273.getLast? = some 10 := by decide +kernel
 theorem chk273 : chkDef (pDef F D273 T273) di273 d273 T274 = true := by decide +kernel
 theorem lex274 : lexAll (x274.length + 1) x274 = some w274 := by decide +kernel
 theorem tok274 : tokens w274 = some S274 := by decide +kernel
+theorem nl274 : x274.getLast? = some 10 := by decide +kernel
 theorem chk274 : chkDef (pDef F D274 T274) di274 d274 T275 = true := by decide +kernel
+theorem lex275 : lexAll (x275.length + 1) x275 = some w275 := by decide +kernel
+theorem tok275 : tokens w275 = some S275 := by decide +kernel
+theorem nl275 : x275.getLast? = some 10 := by decide +kernel
+theorem chk275 : chkDef (pDef F D275 T275) di275 d275 T276 = true := by decide +kernel
+theorem lex276 : lexAll (x276.length + 1) x276 = some w276 := by decide +kernel
+theorem tok276 : tokens w276 = some S276 := by decide +kernel
+theorem nl276 : x276.getLast? = some 10 := by decide +kernel
+theorem chk276 : chkDef (pDef F D276 T276) di276 d276 T277 = true := by decide +kernel
+theorem lex277 : lexAll (x277.length + 1) x277 = some w277 := by decide +kernel
+theorem tok277 : tokens w277 = some S277 := by decide +kernel
+theorem nl277 : x277.getLast? = some 10 := by decide +kernel
+theorem chk277 : chkDef (pDef F D277 T277) di277 d277 T278 = true := by decide +kernel
+theorem lex278 : lexAll (x278.length + 1) x278 = some w278 := by decide +kernel
+theorem tok278 : tokens w278 = some S278 := by decide +kernel
+theorem nl278 : x278.getLast? = some 10 := by decide +kernel
+theorem chk278 : chkDef (pDef F D278 T278) di278 d278 T279 = true := by decide +kernel
+theorem lex279 : lexAll (x279.length + 1) x279 = some w279 := by decide +kernel
+theorem tok279 : tokens w279 = some S279 := by decide +kernel
+theorem nl279 : x279.getLast? = some 10 := by decide +kernel
+theorem chk279 : chkDef (pDef F D279 T279) di279 d279 T280 = true := by decide +kernel
 
 end SrcGen
