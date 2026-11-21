@@ -12,19 +12,21 @@ theorem m_col_lit {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
     (hI : MI b bs t (ts ++ [(0, u dd, 0)]) g s S) (hl : NumSpec.isL f ws (envOf bs) e = true)
     (hP : MCp x d Q bs ts g S gb (c + e.ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd e)) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
-  apply m_read hQ (Or.inl rfl) hI _ (fun _ => rfl)
-  intro hsz
-  have hU := u32_ok hK.lc hf hnb hx hc hI.pb (by have := hsz.1; omega) hI.sb
-  generalize hUe : u32 x d b (u (encB bs).length) (u c) = U at hU
-  obtain ⟨b1, r⟩ := U
+  apply m_read hQ (Or.inl rfl) hI
+  intro hsz y y1 y2 hsc R hR
+  subst hR
+  have hU := u32_ok hK.lc hf hnb hx hc hI.pb (by have := hsz.1; omega) hI.sb hsc.1 hsc.2.1
+  generalize hUe : u32 x d b (u (encB bs).length) y y1 (u c) = U at hU
+  obtain ⟨b1, r, y3, y4⟩ := U
   rw [u49_0, u41_eq hUe]
   by_cases hr2 : r = 2
   · subst hr2; rw [if_pos (keq rfl)]; intro h; exact absurd h (show (0 : UInt64) ≠ 1 by decide)
-  obtain ⟨hr, hb1, hbl1⟩ := hU hr2
-  simp only at hr hb1 hbl1
+  obtain ⟨hr, hb1, hbl1, hy3, hy4⟩ := hU hr2
+  simp only at hr hb1 hbl1 hy3 hy4
   rw [hl] at hr; subst hr
   rw [if_neg (kne (show (w2 true == 2) = false from rfl)), if_pos (keq (show (w2 true == 1) = true from rfl))]
   intro _
+  refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
   dsimp only
   have hts := hI.lts; simp at hts
   obtain ⟨h1, l1⟩ := hI.pop.pushw rfl (by have := hsz.2.1; omega) 4 (u dd) gb

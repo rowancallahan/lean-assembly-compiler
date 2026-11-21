@@ -117,18 +117,28 @@ theorem u54_ok (k : UInt64) : ∀ (m : Nat) (L W g f : Buf), W ++ L <+: g → g.
       rw [u54_ok k m L (W ++ [w]) g _ (by simpa using hv) hl h]
       simp [mk54, hw]
 
-/-- `u57`: n zero words -/
-theorem u57_ok : ∀ (m : Nat) (b : Buf) (n : Nat), n < 2 ^ 62 → b.length ≤ n → (∀ w ∈ b, w = 0) →
-    (u57 m b (u n)).2 = 1 → (u57 m b (u n)).1 = List.replicate n 0
-  | 0, _, _, _, _, _, h => by simp [u57] at h
-  | m + 1, b, n, hn, hb, hz, h => by
-    have hc : (bsize b < u n) = (b.length < n) := by rw [bsize_u, ult (by omega) (by omega)]
+/-- `u57`: zero words j .. n -/
+theorem u57_ok : ∀ (m : Nat) (b : Buf) (j n : Nat), j ≤ n → n < 2 ^ 62 → b.length < 2 ^ 62 → j ≤ b.length →
+    (∀ i, i < j → b.getD i 0 = 0) → (u57 m b (u j) (u n)).2 = 1 →
+    n ≤ (u57 m b (u j) (u n)).1.length ∧ (u57 m b (u j) (u n)).1.length ≤ max b.length n ∧
+      ∀ i, i < n → (u57 m b (u j) (u n)).1.getD i 0 = 0
+  | 0, _, _, _, _, _, _, _, _, h => by simp [u57] at h
+  | m + 1, b, j, n, hjn, hn, hb, hjb, hz, h => by
+    have hc : (u j < u n) = (j < n) := ult (by omega) (by omega)
     simp only [u57, hc] at h ⊢
-    by_cases hlt : b.length < n
+    by_cases hlt : j < n
     · rw [if_pos hlt] at h ⊢
-      exact u57_ok m (bpush b 0) n hn (by simp [bpush]; omega)
-        (by intro w hw; simp [bpush] at hw; rcases hw with hw | hw; exact hz w hw; exact hw) h
+      have e1 : u j + 1 = u (j + 1) := by rw [u1, uadd]
+      have hw : u20 b (u j) 0 = OwnP.wr b j 0 := u20_eq b (by omega) (by omega) 0
+      rw [e1, hw] at h ⊢
+      have hl := OwnP.wr_length hjb (0 : UInt64)
+      have ih := u57_ok m (OwnP.wr b j 0) (j + 1) n (by omega) hn (by omega) (by omega)
+        (by intro i hi; rw [OwnP.wr_getD hjb]; split
+            · rfl
+            · exact hz i (by omega)) h
+      exact ⟨ih.1, by have := ih.2.1; omega, ih.2.2⟩
     · rw [if_neg hlt]
-      exact List.eq_replicate_iff.2 ⟨by simp only; omega, hz⟩
+      dsimp only
+      exact ⟨by omega, by omega, fun i hi => hz i (by omega)⟩
 
 end NumP

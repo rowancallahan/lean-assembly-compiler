@@ -37,7 +37,7 @@ theorem u41_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {
   unfold u41; rw [h]
 
 /-- the scratch buffers of a tree task's result -/
-def SCR (R : R12) : Prop := SC R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2
+abbrev SCR (R : R12) : Prop := SC R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2
 
 /-- a task that reads the tree, by its u49 result -/
 theorem m_read {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S} {k a a2 c gb : UInt64}

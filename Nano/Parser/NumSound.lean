@@ -89,25 +89,26 @@ theorem lk_tbl {x : Buf} (hxl : x.length < 2 ^ 23) (p : List DefA) (hp : p.lengt
     simpa using (hdb p[i] (List.getElem_mem hi)).2.2.2.1
 
 /-- `u61`: every def passes -/
-theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat) (q : List DefA) (i : Nat),
-    x.drop i = q.flatMap DefA.ser → (∀ df ∈ q, Templates.DB df) → 0 < i →
-    u61 n x d (u i) = 1 → ∀ df ∈ q, NumSpec.numOkD ks ws df = true
-  | 0, _, _, _, _, _, h => by simp [u61] at h
-  | n + 1, [], _, _, _, _, _ => by simp
-  | n + 1, df :: q, i, hx, hdb, hi, h => by
+theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat) (q : List DefA) (i : Nat)
+    (b t g s y y1 y2 : Buf) (A : List NumSpec.G),
+    x.drop i = q.flatMap DefA.ser → (∀ df ∈ q, Templates.DB df) → 0 < i → BI b t g s y y1 y2 → g = encG A →
+    u61 n x d (u i) b t g s y y1 y2 = 1 → ∀ df ∈ q, NumSpec.numOkD ks ws df = true
+  | 0, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, h => by simp [u61] at h
+  | n + 1, [], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ => by simp
+  | n + 1, df :: q, i, b, t, g, s, y, y1, y2, A, hx, hdb, hi, hB, hgA, h => by
     obtain ⟨hx1, hx2⟩ := drop_defs hx
     have hxl := hK.lc.xl
     have hcl := drop_len hx1 (by simp [DefA.ser])
     have hlt : u i < bsize x := by rw [bsize_u, ult (by omega) (by omega)]; simp [DefA.ser] at hcl; omega
-    have hd := def_ok hK (hdb df (by simp)) hx1 hi
+    have hd := def_ok hK (hdb df (by simp)) hx1 hi hB hgA
     rw [u61, if_pos hlt] at h
-    generalize u48 x d (u i + 6) (bget x (u i + 3)) = W at h hd
-    obtain ⟨e, ok⟩ := W
+    generalize u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2 = W at h hd
+    obtain ⟨e, g1, b1, t1, s1, y5, ok, f1, h1⟩ := W
     iota_only at h
     by_cases hok : ok = 1
     · subst hok
-      obtain ⟨he, hnum⟩ := hd rfl
-      simp only at he
+      obtain ⟨he, hnum, A', hg1, hB1⟩ := hd rfl
+      simp only at he hg1 hB1
       subst he
       rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at h
       by_cases h21 : (bget x (u (i + 6 + df.body.ser.length)) == 21) = true
@@ -115,7 +116,7 @@ theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat
         have e1 : u (i + 6 + df.body.ser.length) + 1 = u (i + df.ser.length) := by
           rw [u1, uadd, ser_def_len]; congr 1; omega
         rw [e1] at h
-        have ih := u61_ok hK n q _ hx2 (fun d hd => hdb d (by simp [hd])) (by omega) h
+        have ih := u61_ok hK n q _ b1 t1 g1 s1 f1 h1 y5 A' hx2 (fun d hd => hdb d (by simp [hd])) (by omega) hB1 hg1 h
         intro df' hdf'
         simp at hdf'; rcases hdf' with rfl | hdf'
         · exact hnum
@@ -156,7 +157,9 @@ theorem u11_ok (p : List DefA) (hdb : ∀ d ∈ p, Templates.DB d) (hlen : (seri
     have e : (serialize p).length = (p.flatMap DefA.ser).length + 1 := rfl
     omega
   have hK := lk_tbl hxl p hpl hdb
-  have := u61_ok hK 16777216 p 1 hx1 hdb (by omega) (by rw [u1e]; exact h)
+  have := u61_ok hK 16777216 p 1 bnew bnew bnew bnew bnew bnew bnew [] hx1 hdb (by omega)
+    ⟨by simp [bnew], by simp [bnew], by simp [bnew], by simp [bnew], by simp [bnew], by simp [bnew], by simp [bnew]⟩
+    (by simp [encG, bnew]) (by rw [u1e]; exact h)
   unfold NumSpec.numOkP
   simp only [List.all_eq_true]
   exact this

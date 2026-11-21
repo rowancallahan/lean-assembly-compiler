@@ -14,9 +14,10 @@ theorem m_col_loop {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MCp x d Q bs ts g S gb (c + (Nd.loop z sv).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.loop z sv))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR _
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR _
   rw [u42_10 (by rw [hH.tag (by have := hK.lc.xl; omega)]; rfl)] at hR
   subst hR
+  refine ⟨hsc, ?_⟩
   rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
   have hts := hI.lts; simp at hts
   obtain ⟨h1, l1⟩ := (hI.pop.withb hb1 hbl1).pushw rfl (by have := hsz.2.1; omega) 0 1 0
@@ -54,10 +55,11 @@ theorem m_col_pair {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MCp x d Q bs ts g S gb (c + (Nd.pair cs).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.pair cs))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR _
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR _
   rw [u42_6 (by rw [hH.tag (by have := hK.lc.xl; omega)]; rfl), tag1 hH.hx (by have := hK.lc.xl; omega) (by simp [hdr])] at hR
   simp only [hdr, List.getD_cons_succ, List.getD_cons_zero] at hR
   subst hR
+  refine ⟨hsc, ?_⟩
   rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
   rw [colL_attach] at hP
   have hts := hI.lts; simp at hts
@@ -78,12 +80,13 @@ theorem m_col_prim {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MCp x d Q bs ts g S gb (c + (Nd.prim pn cs).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.prim pn cs))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR _
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR _
   have hnb := hH.hnb; simp only [NB] at hnb
   have hg : g33 (u pn) = u cs.length := by rw [hnb.2.1]; simp only [toU]; unfold u; simp
   rw [u42_9 (by rw [hH.tag (by have := hK.lc.xl; omega)]; rfl), tag1 hH.hx (by have := hK.lc.xl; omega) (by simp [hdr])] at hR
   simp only [hdr, List.getD_cons_succ, List.getD_cons_zero, hg] at hR
   subst hR
+  refine ⟨hsc, ?_⟩
   rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
   rw [colL_attach] at hP
   have hts := hI.lts; simp at hts
@@ -140,7 +143,7 @@ theorem m_col_call {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MCp x d Q bs ts g S gb (c + (Nd.call id cs).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.call id cs))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR hok
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR hok
   have hnb := hH.hnb; simp only [NB] at hnb
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u42_8 (by rw [hH.tag hxl]; rfl), tag1 hH.hx hxl (by simp [hdr]), tag2 hH.hx hxl (by simp [hdr])] at hR
@@ -155,12 +158,14 @@ theorem m_col_call {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
   | nil =>
     rw [if_pos (keq (show (u ([] : List Nd).length == 0) = true from rfl))] at hR
     subst hR
+    refine ⟨hsc, ?_⟩
     exact (hP rfl b1 t g s hI0 (GA.nil g)).cast rfl rfl (by simp [Nd.ser, serL, u3, uadd]) rfl rfl
   | cons a as =>
     have h0 : (u (a :: as).length == 0) = false := by
       rw [u0, ueq (by have := hnb.2.1; omega) (by omega)]; simp
     rw [if_neg (kne h0), dem_eq hK hnb.1, show u (a :: as).length - 1 = u as.length from upred _ (by have := hnb.2.1; simp at this; omega)] at hR
     subst hR
+    refine ⟨hsc, ?_⟩
     rw [call_spec] at hP
     obtain ⟨h1, l1⟩ := hI0.pushw rfl (by have := hsz.2.1; omega) 7 (u as.length) 0
     obtain ⟨h2, -⟩ := h1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0

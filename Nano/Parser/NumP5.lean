@@ -69,7 +69,7 @@ theorem u40_eq (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (
 def QM (Q : MO → Prop) : Prop := ∀ r : MO, r.2.2.1 ≠ 1 → Q r
 
 /-- the scratch buffers' sizes -/
-def SC (y y1 y2 : Buf) : Prop := y.length < 2 ^ 62 ∧ y1.length < 2 ^ 62 ∧ y2.length < 2 ^ 62
+abbrev SC (y y1 y2 : Buf) : Prop := y.length < 2 ^ 62 ∧ y1.length < 2 ^ 62 ∧ y2.length < 2 ^ 62
 
 def GM (x d : Buf) (Q : MO → Prop) (b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) : Prop :=
   ∀ y y1 y2, SC y y1 y2 → ∀ n, Q (u40 n x d b bt t tt c g s st gb y y1 y2)

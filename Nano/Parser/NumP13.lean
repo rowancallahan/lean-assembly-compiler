@@ -8,27 +8,32 @@ open Templates (NB NBL)
 macro "iota_only" loc:(Lean.Parser.Tactic.location)? : tactic =>
   `(tactic| dsimp (config := {zeta := false, proj := false, etaStruct := .none, eta := false}) only $(loc)?)
 
-theorem u42_3 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb e : UInt64} (hg : bget x c = 3)
-    (R : R9) (hR : u42 x d b bt t tt c s st gb e = R) :
+theorem u42_3 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb e : UInt64} {y y1 y2 : Buf}
+    (hg : bget x c = 3) (R : R12) (hR : u42 x d b bt t tt c s st gb e y y1 y2 = R) :
     ((if u34 x c == 1 then
-      (match u32 x d b bt (c + 2) with
-       | (b1, r) =>
-         if r == 0 then
-           (if u17 x (c + 2) == 0 then
-             (b1, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, 1))))))))
-            else (b1, (bt, (t, (tt, (c, (s, (st, (gb, 0)))))))))
-         else (b1, (bt, (t, (tt, (c, (s, (st, (gb, 0)))))))))
+      (let (b1, z) := u32 x d b bt y y1 (c + 2);
+       let (r, z1) := z;
+       let (y3, y4) := z1;
+       if r == 0 then
+         (let (y5, h) := u17 x y4 (c + 2);
+          if h == 0 then
+           (b1, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, (1, (y3, (y5, y2)))))))))))
+          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, y2))))))))))))
+       else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2))))))))))))
      else
-      (match u16 x bnew c with
-       | (p, ok) =>
-         if ok == 1 then
-           (match u33 16777216 x d b bt p 0 (bsize p) 0 with
-            | (b1, h) =>
-              if h == 1 then
-                (match u43 16777216 t tt p (bsize p) with
-                 | (t1, z) => match z with | (tt1, ok1) => (b1, (bt, (t1, (tt1, (c, (s, (st, (gb, ok1)))))))))
-              else (b1, (bt, (t, (tt, (c, (s, (st, (gb, 0)))))))))
-         else (b, (bt, (t, (tt, (c, (s, (st, (gb, 0)))))))))) : R9) = R := by
+      (let (p, z) := u16 x y2 0 y1 c;
+       let (pt, z1) := z;
+       let (y4, ok) := z1;
+       if ok == 1 then
+         (let (b1, z2) := u33 16777216 x d b bt p 0 pt 0 y y4;
+          let (h, z3) := z2;
+          let (y3, y5) := z3;
+          if h == 1 then
+            (let (t1, z4) := u43 16777216 t tt p pt;
+             let (tt1, ok1) := z4;
+             (b1, (bt, (t1, (tt1, (c, (s, (st, (gb, (ok1, (y3, (y5, p))))))))))))
+          else (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y5, p))))))))))))
+       else (b, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y, (y4, p))))))))))))) : R12) = R := by
   rw [← hR]; unfold u42; rw [hg]; zeta_only
   rw [if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
 
@@ -41,7 +46,7 @@ theorem m_col_shift {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws
     (hP : MCp x d Q bs ts g S gb (c + (Nd.bin op a bb).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.bin op a bb))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR hok
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   have hR' := u42_3 (by rw [hH.tag hxl]; rfl) R hR
   rw [u34_ok hH.hx hxl hH.hnb, show shN (.bin op a bb) = true from hsh,
@@ -54,24 +59,29 @@ theorem m_col_shift {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws
   have hf := hH.hf; simp [Nd.ser] at hf
   have e2 : u c + 2 = u (c + 2) := by rw [u2, uadd]
   rw [e2] at hR'
-  have hU := u32_ok hK.lc (f := f) (by omega) hnb.2.1 hx1 (by omega) hb1 hbl1 hI.sb
-  generalize hUe : u32 x d b1 (u (encB bs).length) (u (c + 2)) = U at hU hR'
-  obtain ⟨b2, r⟩ := U
+  have hU := u32_ok hK.lc (f := f) (by omega) hnb.2.1 hx1 (by omega) hb1 hbl1 hI.sb hsc.1 hsc.2.1
+  generalize hUe : u32 x d b1 (u (encB bs).length) y y1 (u (c + 2)) = U at hU hR'
+  obtain ⟨b2, r, y3, y4⟩ := U
   simp only at hU
   dsimp only at hR'
   by_cases hr2 : r = 2
   · subst hr2; rw [if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
     subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
-  obtain ⟨hr, hb2, hbl2⟩ := hU hr2
+  obtain ⟨hr, hb2, hbl2, hy3, hy4⟩ := hU hr2
   subst hr
   cases hla : NumSpec.isL f ws (envOf bs) a
   · rw [hla, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
-    rcases u17_ok (f := f) (by have := hK.lc.xl; omega) hx1 (by omega) hnb.2.1 (by omega) with h17 | h17
+    obtain ⟨hy5, h17⟩ := u17_ok (f := f) (by have := hK.lc.xl; omega) hx1 (by omega) hnb.2.1 (by omega) (w := y4) (by omega)
+    generalize hVe : u17 x y4 (u (c + 2)) = V at hy5 h17 hR'
+    obtain ⟨y5, hv⟩ := V
+    dsimp only at hR' hy5 h17
+    rcases h17 with h17 | h17
     · rw [h17, if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
       subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
     cases hsa : NumSpec.spineLet f a
     · rw [h17, hsa, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
       subst hR'
+      refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
       rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
       rw [if_pos hsh, hla, hsa] at hP
       have hts := hI.lts; simp at hts
@@ -110,60 +120,66 @@ theorem m_col_tree {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MCp x d Q bs ts g S gb (c + (Nd.bin op a bb).ser.length) (NumSpec.col (f + 1) ks ws (envOf bs) dd (.bin op a bb))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
   apply m_col_nl hK hH.hf hH.hnb hH.hQ hH.hx hH.hc hI hl
-  intro b1 hb1 hbl1 hsz R hR hok
+  intro b1 hb1 hbl1 hsz y y1 y2 hsc R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   have hR' := u42_3 (by rw [hH.tag hxl]; rfl) R hR
   rw [u34_ok hH.hx hxl hH.hnb, show shN (.bin op a bb) = false from hsh,
     if_neg (kne (show (w2 false == 1) = false from rfl))] at hR'
   have hf := hH.hf
-  have hV := u16_ok (f := f) (by have := hK.lc.xl; omega) bnew hH.hx hf hH.hnb hH.hc
-  generalize hVe : u16 x bnew (u c) = V at hV hR'
-  obtain ⟨p, ok⟩ := V
+  have hV := u16_ok (f := f) (by have := hK.lc.xl; omega) (P := []) (p := y2) (w := y1) hH.hx hf hH.hnb hH.hc
+    List.nil_prefix hsc.2.2 hsc.2.1
+  have hVl := u16_len x y2 0 y1 (u c) hsc.2.2 hsc.2.1
+  rw [show u ([] : Buf).length = (0 : UInt64) from rfl] at hV
+  generalize hVe : u16 x y2 0 y1 (u c) = V at hV hVl hR'
+  obtain ⟨p, pt, y4, ok⟩ := V
   iota_only at hR' hV
+  dsimp only at hVl
   by_cases hok1 : ok = 1
   rotate_left
   · rw [if_neg (by simpa using hok1)] at hR'; subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
   subst hok1
   rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at hR'
-  have hp := hV rfl
-  simp only [bnew, List.nil_append] at hp
-  subst hp
+  obtain ⟨hp, hpt⟩ := hV rfl
+  simp only [List.nil_append] at hp hpt
   generalize hls : lvP f (Nd.bin op a bb) c = ls at *
+  have hpt' : pt = u ls.length := by rw [hpt, List.length_map]
+  subst hpt'
   have hsp := lvP_sp (x := x) (np := np) f (Nd.bin op a bb) c rest hH.hx hH.hnb hH.hc
   rw [hls] at hsp
   have hlen : ls.length ≤ (Nd.bin op a bb).ser.length := by rw [← hls]; exact lvP_len _ _ _
   have hcl := drop_len hH.hx (ser_pos _)
   have hx23 := hK.lc.xl
-  have h33 := u33_ok hK.lc (f := f) hI.sb 16777216 ls [] false b1 (fun q hq => by
-      obtain ⟨h1, h2, h3, h4⟩ := hsp q hq; exact ⟨h1, by omega, h3, h4⟩) hb1 hbl1 (by simp; omega)
+  have h33 := u33_ok hK.lc (f := f) hI.sb (p := p) hVl.1 16777216 ls [] false b1 y y4 (fun q hq => by
+      obtain ⟨h1, h2, h3, h4⟩ := hsp q hq; exact ⟨h1, by omega, h3, h4⟩) hb1 hbl1 (by simp; omega) (by simpa using hp)
+      hsc.1 hVl.2
   simp only [List.nil_append, List.length_nil, Nat.zero_add] at h33
-  have e0 : (0 : UInt64) = u 0 := rfl
-  have ew : (0 : UInt64) = w2 false := rfl
-  have eb : bsize (ls.map fun q => u q.2) = u ls.length := by rw [bsize_u, List.length_map]
-  rw [eb] at hR'
-  generalize hWe : u33 16777216 x d b1 (u (encB bs).length) (ls.map fun q => u q.2) 0 (u ls.length) 0 = W at hR'
-  have hW : u33 16777216 x d b1 (u (encB bs).length) (ls.map fun q => u q.2) (u 0) (u ls.length) (w2 false) = W := hWe
+  generalize hWe : u33 16777216 x d b1 (u (encB bs).length) p 0 (u ls.length) 0 y y4 = W at hR'
+  have hW : u33 16777216 x d b1 (u (encB bs).length) p (u 0) (u ls.length) (w2 false) y y4 = W := hWe
   rw [hW] at h33
-  obtain ⟨b2, h⟩ := W
+  obtain ⟨b2, h, y3, y5⟩ := W
   iota_only at hR' h33
   by_cases hh : h = 1
   rotate_left
   · rw [if_neg (by simpa using hh)] at hR'; subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
   subst hh
-  obtain ⟨hshp, hb2, hbl2⟩ := h33 rfl
-  simp only at hb2 hbl2
+  obtain ⟨hshp, hb2, hbl2, hy3, hy5⟩ := h33 rfl
+  simp only at hb2 hbl2 hy3 hy5
   rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at hR'
   have hts := hI.pop.pt.length_le; rw [encT_len] at hts
-  have h43 := u43_ok (ls.map fun q => u q.2) (by simp; omega) 16777216 ls.length ts t (by simp) (by omega) hI.pop.pt
+  have hpl := hp.length_le; simp only [List.length_map] at hpl
+  have h43 := u43_ok p hVl.1 16777216 ls.length ts t hpl (by omega) hI.pop.pt
     (by have := hsz.2.1; omega) (by have := hsz.2.1; omega)
-  generalize hXe : u43 16777216 t (u ts.length) (ls.map fun q => u q.2) (u ls.length) = X at h43 hR'
+  have htk : p.take ls.length = ls.map fun q => u q.2 := by
+    have := List.prefix_iff_eq_take.1 hp; rw [List.length_map] at this; exact this.symm
+  rw [htk] at h43
+  generalize hXe : u43 16777216 t (u ts.length) p (u ls.length) = X at h43 hR'
   obtain ⟨t1, tt1, ok1⟩ := X
   iota_only at hR' h43
   obtain ⟨q1, q2, q3, q4⟩ := h43
   dsimp only at q1 q2 q3 q4
   subst q1 q4
   subst hR'
-  rw [List.take_of_length_le (by simp)] at q2
+  refine ⟨⟨by dsimp only; omega, by dsimp only; omega, by dsimp only; omega⟩, ?_⟩
   have hI1 : MI b2 bs t1 (ts ++ colat (ls.map fun q => u q.2)) g s S :=
     ⟨hb2, by omega, hI.sb, q2, by have := q3 (2 ^ 41) (by have := hsz.2.1; omega) (by have := hsz.2.1; omega); omega,
       hI.lg, hI.ps, hI.ls⟩

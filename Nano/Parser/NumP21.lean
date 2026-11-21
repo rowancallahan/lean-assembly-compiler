@@ -135,9 +135,10 @@ def rndsN (q : UInt64) (X : List NumSpec.G) : Nat → Buf → Nat → Buf
   | 0, f, _ => f
   | n + 1, f, K => rndsN q X n (rnd q (u K) f X) (K + 1)
 
-theorem u56_ok {g : Buf} {X : List NumSpec.G} (hg : g = encG X) (hl : g.length < 2 ^ 62) (q : UInt64) (R : Nat)
+theorem u56_ok {g : Buf} {A X : List NumSpec.G} (hg : g = encG (A ++ X)) (hl : g.length < 2 ^ 62) (q : UInt64) (R : Nat)
     (hR : R < 2 ^ 62) : ∀ (m K : Nat) (f : Buf), K ≤ R + 1 →
-    (u56 m f g q (u K) (u R)).2 = 1 → (u56 m f g q (u K) (u R)).1 = rndsN q X (R + 1 - K) f K
+    (u56 m f g (u (encG A).length) q (u K) (u R)).2 = 1 →
+      (u56 m f g (u (encG A).length) q (u K) (u R)).1 = rndsN q X (R + 1 - K) f K
   | 0, _, _, _, h => by simp [u56] at h
   | m + 1, K, f, hK, h => by
     rw [u56] at h ⊢
@@ -146,11 +147,8 @@ theorem u56_ok {g : Buf} {X : List NumSpec.G} (hg : g = encG X) (hl : g.length <
       rw [if_pos this]; rw [show R + 1 - K = 0 by omega]; rfl
     · have : ¬ u R < u K := by rw [ult (by omega) (by omega)]; exact hlt
       rw [if_neg this] at h ⊢
-      have h55 := u55_ok q (u K) hl 16777216 [] X f (by simpa using hg)
-      simp only [encG, List.flatMap_nil, List.length_nil] at h55
-      rw [show (0 : UInt64) = u 0 from rfl]
-      rw [show (0 : UInt64) = u 0 from rfl] at h
-      generalize u55 16777216 f g (u 0) q (u K) = U at h h55 ⊢
+      have h55 := u55_ok q (u K) hl 16777216 A X f hg
+      generalize u55 16777216 f g (u (encG A).length) q (u K) = U at h h55 ⊢
       obtain ⟨f1, ok⟩ := U
       iota_only at h ⊢
       by_cases hok : ok = 1

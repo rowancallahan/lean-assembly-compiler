@@ -4,55 +4,61 @@ namespace NumP
 open C ParSpec OwnP
 open Templates (NB NBL)
 
-theorem u49_1 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) :
-    u49 x d b bt t tt c s st gb 1 a a2 = u44 x b bt t tt c s st gb := by
+theorem u49_1 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    u49 x d b bt t tt c s st gb 1 a a2 y y1 y2 = u44 x b bt t tt c s st gb y y1 y2 := by
   unfold u49; rw [if_neg (kne (show ((1 : UInt64) == 0) = false from rfl)), if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))]
 
 section
-variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64}
+variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64} {y y1 y2 : Buf}
 
 theorem u44_2 (hg : bget x c = 2) :
-    u44 x b bt t tt c s st gb = (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, 1)))))))) := by
+    u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))]
 
 theorem u44_3 (hg : bget x c = 3) :
-    u44 x b bt t tt c s st gb = (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, 1)))))))) := by
+    u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((3 : UInt64) == 2) = false from rfl)), if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
 
 theorem u44_4 (hg : bget x c = 4) :
-    u44 x b bt t tt c s st gb =
-      (b, (bt, (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, 1)))))))) := by
+    u44 x b bt t tt c s st gb y y1 y2 =
+      (b, (bt, (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((4 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((4 : UInt64) == 3) = false from rfl)),
     if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
 
 theorem u44_5 (hg : bget x c = 5) :
-    u44 x b bt t tt c s st gb =
+    u44 x b bt t tt c s st gb y y1 y2 =
       (b, (bt, (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 1 0 0) (tt + 2) 6 (bget x (c + 1)) (c + 3)) (tt + 3) 3 (bget x (c + 1)) 0,
-       (tt + 4, (c + 3, (s, (st, (gb, 1)))))))) := by
+       (tt + 4, (c + 3, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((5 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((5 : UInt64) == 3) = false from rfl)),
     if_neg (kne (show ((5 : UInt64) == 4) = false from rfl)), if_pos (keq (show ((5 : UInt64) == 5) = true from rfl))]
 
 theorem u44_skip {k : UInt64} (hg : bget x c = k) (h2 : (k == 2) = false) (h3 : (k == 3) = false) (h4 : (k == 4) = false)
     (h5 : (k == 5) = false) :
-    u44 x b bt t tt c s st gb = (b, (bt, (t, (tt, (u15 x c, (s, (st, (gb, (if u15 x c == 0 then 0 else 1))))))))) := by
+    u44 x b bt t tt c s st gb y y1 y2 = (b, (bt, (t, (tt, (u15 x c, (s, (st, (gb, ((if u15 x c == 0 then 0 else 1), (y, (y1, y2))))))))))) := by
   unfold u44; rw [hg]; zeta_only
-  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5), u62_id]
+  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5)]; simp only [u62_id]
+
+theorem u44_sc (h : SC y y1 y2) : SCR (u44 x b bt t tt c s st gb y y1 y2) := by
+  unfold u44; simp only [u62_id]
+  repeat' split
+  all_goals exact h
 
 end
 
 /-- LIT entry: the u44 result -/
 theorem m_lit_read {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S} {c gb : UInt64}
     (hI : MI b bs t (ts ++ [(1, 0, 0)]) g s S)
-    (H : SZ b t g s → ∀ R : R9, u44 x b (u (encB bs).length) t (u ts.length) c s (u S.length) gb = R →
-      R.2.2.2.2.2.2.2.2 = 1 → GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1) :
+    (H : SZ b t g s → ∀ y y1 y2, ∀ R : R12, u44 x b (u (encB bs).length) t (u ts.length) c s (u S.length) gb y y1 y2 = R →
+      R.2.2.2.2.2.2.2.2.1 = 1 → GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
-  apply m_read hQ (Or.inr (Or.inl rfl)) hI _ (fun _ => rfl)
-  intro hsz
-  rw [u49_1]
-  exact H hsz _ rfl
+  apply m_read hQ (Or.inr (Or.inl rfl)) hI
+  intro hsz y y1 y2 hsc R hR hok
+  subst hR
+  rw [u49_1] at hok ⊢
+  exact ⟨u44_sc hsc, H hsz y y1 y2 _ rfl hok⟩
 
 /-- the common hypotheses of a LIT case at fuel f + 1 -/
 structure LH (x d : Buf) (np : Nat) (f : Nat) (e : Nd) (Q : MO → Prop) (c : Nat) (rest : Buf) : Prop where
@@ -73,7 +79,7 @@ theorem m_lit_skip {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws)
     (hP : MLp x d Q bs ts g S0 a0 SL (c + e.ser.length) (NumSpec.litG (f + 1) ks ws (envOf bs) e)) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
   apply m_lit_read hH.hQ hI
-  intro hsz R hR hok
+  intro hsz y y1 y2 R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u44_skip (tag_rd hH.hx hxl) hk2 hk3 hk4 hk5] at hR
   rcases u15_ok (by omega) hH.hx hH.hnb with h1 | ⟨h1, -⟩
@@ -94,7 +100,7 @@ theorem m_lit_loc {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
     (hP : MLp x d Q bs ts g S0 a0 SL (c + (Nd.loc sl w).ser.length) (NumSpec.litG (f + 1) ks ws (envOf bs) (.loc sl w))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
   apply m_lit_read hH.hQ hI
-  intro hsz R hR hok
+  intro hsz y y1 y2 R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u44_2 (tag_rd hH.hx hxl), tag1 hH.hx hxl (by simp [hdr])] at hR
   simp only [hdr, List.getD_cons_succ, List.getD_cons_zero] at hR
@@ -119,7 +125,7 @@ theorem m_lit_bin {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
     (hP : MLp x d Q bs ts g S0 a0 SL (c + (Nd.bin op a bb).ser.length) (NumSpec.litG (f + 1) ks ws (envOf bs) (.bin op a bb))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
   apply m_lit_read hH.hQ hI
-  intro hsz R hR hok
+  intro hsz y y1 y2 R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u44_3 (tag_rd hH.hx hxl)] at hR
   subst hR
@@ -166,7 +172,7 @@ theorem m_lit_ite {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
       (NumSpec.litG (f + 1) ks ws (envOf bs) (.ite cm a bb tb eb))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
   apply m_lit_read hH.hQ hI
-  intro hsz R hR hok
+  intro hsz y y1 y2 R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u44_4 (tag_rd hH.hx hxl)] at hR
   subst hR
@@ -216,7 +222,7 @@ theorem m_lit_let {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
       (NumSpec.litG (f + 1) ks ws (envOf bs) (.letE sl w v bd))) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u (S0 ++ w2 a0 :: SL).length) (u S0.length) := by
   apply m_lit_read hH.hQ hI
-  intro hsz R hR hok
+  intro hsz y y1 y2 R hR hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   rw [u44_5 (tag_rd hH.hx hxl), tag1 hH.hx hxl (by simp [hdr])] at hR
   simp only [hdr, List.getD_cons_succ, List.getD_cons_zero] at hR

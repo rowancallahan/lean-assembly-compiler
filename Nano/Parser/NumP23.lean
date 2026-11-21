@@ -43,11 +43,11 @@ variable (q' : Nat) (X : List NumSpec.G) (N : Nat)
 
 /-- after K rounds: each slot's word is the round that marked it -/
 def INV (K : Nat) (f : Buf) : Prop :=
-  f.length = N ∧ ∀ v, v < N → ∃ j, j ≤ K ∧ f.getD v 0 = u j ∧ (j ≠ 0 ↔ v ∈ NumSpec.marked q' X K [])
+  (N ≤ f.length ∧ f.length < 2 ^ 62) ∧ ∀ v, v < N → ∃ j, j ≤ K ∧ f.getD v 0 = u j ∧ (j ≠ 0 ↔ v ∈ NumSpec.marked q' X K [])
 
 /-- during round K + 1: S is the set of slots its selected groups so far have -/
 def RI (K : Nat) (f : Buf) (S : Nat → Prop) : Prop :=
-  f.length = N ∧ ∀ v, v < N → ∃ j, j ≤ K + 1 ∧ f.getD v 0 = u j ∧
+  (N ≤ f.length ∧ f.length < 2 ^ 62) ∧ ∀ v, v < N → ∃ j, j ≤ K + 1 ∧ f.getD v 0 = u j ∧
     ((j ≠ 0 ∧ j < K + 1) ↔ v ∈ NumSpec.marked q' X K []) ∧ (j = K + 1 ↔ (v ∉ NumSpec.marked q' X K [] ∧ S v))
 
 end
@@ -93,10 +93,10 @@ theorem rnd_ok (q' : Nat) (hq : q' < 3) (X : List NumSpec.G) (N : Nat) (hN : N <
       · rw [if_pos (by simpa using hs)]
         obtain ⟨m1, m2⟩ := mk54_ok (u (K + 1)) (by
           intro h; have := congrArg UInt64.toNat h; rw [u_toNat (by omega)] at this; simp at this)
-          G.vs f (by intro v hv; rw [hl]; exact hGv v hv) (by omega)
-        refine ⟨by rw [m1, hl], fun v hvN => ?_⟩
+          G.vs f (by intro v hv; have := hGv v hv; have := hl.1; omega) hl.2
+        refine ⟨by rw [m1]; exact hl, fun v hvN => ?_⟩
         obtain ⟨j, hj, hfj, hj1, hj2⟩ := hv v hvN
-        rw [m2 v (by omega), hfj]
+        rw [m2 v (by have := hl.1; omega), hfj]
         by_cases hm : v ∈ G.vs ∧ u j = 0
         · have hj0 : j = 0 := by
             have := congrArg UInt64.toNat hm.2; rw [u_toNat (by omega)] at this; simpa using this
@@ -188,9 +188,10 @@ theorem rndsN_ok (q' : Nat) (hq : q' < 3) (X : List NumSpec.G) (N : Nat) (hN : N
     rw [show K + 1 + n = K + (n + 1) by omega] at this
     exact this
 
-theorem inv_zero (q' : Nat) (X : List NumSpec.G) (N : Nat) : INV q' X N 0 (List.replicate N 0) := by
-  refine ⟨by simp, fun v hv => ⟨0, Nat.le_refl _, ?_, ?_⟩⟩
-  · simp [List.getD_eq_getElem?_getD, hv]; rfl
+theorem inv_zero (q' : Nat) (X : List NumSpec.G) (N : Nat) {f : Buf} (h1 : N ≤ f.length) (h2 : f.length < 2 ^ 62)
+    (hz : ∀ i, i < N → f.getD i 0 = 0) : INV q' X N 0 f := by
+  refine ⟨⟨h1, h2⟩, fun v hv => ⟨0, Nat.le_refl _, ?_, ?_⟩⟩
+  · rw [hz v hv]; rfl
   · simp [NumSpec.marked]
 
 /-- the machine's rule on the final buffers is the spec's rule -/

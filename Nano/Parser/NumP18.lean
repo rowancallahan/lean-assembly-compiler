@@ -4,44 +4,48 @@ namespace NumP
 open C ParSpec OwnP
 open Templates (NB NBL)
 
-theorem u49_3 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) :
-    u49 x d b bt t tt c s st gb 3 a a2 = u46 x d b bt t tt c s st gb a := by
+theorem u49_3 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    u49 x d b bt t tt c s st gb 3 a a2 y y1 y2 = u46 x d b bt t tt c s st gb a y y1 y2 := by
   unfold u49; rw [if_neg (kne (show ((3 : UInt64) == 0) = false from rfl)), if_neg (kne (show ((3 : UInt64) == 1) = false from rfl)),
     if_neg (kne (show ((3 : UInt64) == 2) = false from rfl)), if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
 
-theorem u49_9 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) :
-    u49 x d b bt t tt c s st gb 9 a a2 = u39 x d b bt t tt c s st gb a a2 := by
+theorem u49_9 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    u49 x d b bt t tt c s st gb 9 a a2 y y1 y2 = u39 x d b bt t tt c s st gb a a2 y y1 y2 := by
   unfold u49; rw [if_neg (kne (show ((9 : UInt64) == 0) = false from rfl)), if_neg (kne (show ((9 : UInt64) == 1) = false from rfl)),
     if_neg (kne (show ((9 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((9 : UInt64) == 3) = false from rfl)),
     if_pos (keq (show ((9 : UInt64) == 9) = true from rfl))]
 
 section
-variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64}
+variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64} {y y1 y2 : Buf}
 
 theorem u46_6 {l : UInt64} (hg : bget x c = 6) :
-    u46 x d b bt t tt c s st gb l = (b, (bt, (u27 t tt 9 l (bget x (c + 1)), (tt + 1, (c + 2, (s, (st, (gb, 1)))))))) := by
+    u46 x d b bt t tt c s st gb l y y1 y2 =
+      (b, (bt, (u27 t tt 9 l (bget x (c + 1)), (tt + 1, (c + 2, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u46; rw [hg, if_pos (keq (show ((6 : UInt64) == 6) = true from rfl))]
 
-theorem u46_n {l : UInt64} (hg : (bget x c == 6) = false) (R : R9) (hR : u46 x d b bt t tt c s st gb l = R) :
-    ((match u32 x d b bt c with
-      | (b1, r) =>
-        if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, 0))))))))
-        else if r == 1 then
-          (b1, (bt, (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0, (tt + 2, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, 1))))))))
-        else (b1, (bt, (u27 t tt 0 0 0, (tt + 1, (c, (s, (st, (gb, 1))))))))) : R9) = R := by
+theorem u46_n {l : UInt64} (hg : (bget x c == 6) = false) (R : R12) (hR : u46 x d b bt t tt c s st gb l y y1 y2 = R) :
+    ((let (b1, z) := u32 x d b bt y y1 c;
+      let (r, z1) := z;
+      let (y3, y4) := z1;
+      if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
+      else if r == 1 then
+        (b1, (bt, (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0,
+          (tt + 2, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
+      else (b1, (bt, (u27 t tt 0 0 0, (tt + 1, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
   rw [← hR]; unfold u46; rw [if_neg (kne hg)]
 
-theorem u39_0 {l : UInt64} : u39 x d b bt t tt c s st gb l 0 = (b, (bt, (t, (tt, (c, (s, (st, (gb, 1)))))))) := by
+theorem u39_0 {l : UInt64} : u39 x d b bt t tt c s st gb l 0 y y1 y2 = (b, (bt, (t, (tt, (c, (s, (st, (gb, (1, (y, (y1, y2))))))))))) := by
   unfold u39; rw [if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))]
 
-theorem u39_s {l k : UInt64} (hk : (k == 0) = false) (R : R9) (hR : u39 x d b bt t tt c s st gb l k = R) :
-    ((match u32 x d b bt c with
-      | (b1, r) =>
-        if r == 2 then (b1, (bt, (u27 t tt 9 (l + 1) (k - 1), (tt + 1, (c, (s, (st, (gb, 0))))))))
-        else if r == 1 then
-          (b1, (bt, (u27 (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 4 0 gb) (tt + 2) 1 0 0, (tt + 3, (c,
-            (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, 1))))))))
-        else (b1, (bt, (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, 1))))))))) : R9) = R := by
+theorem u39_s {l k : UInt64} (hk : (k == 0) = false) (R : R12) (hR : u39 x d b bt t tt c s st gb l k y y1 y2 = R) :
+    ((let (b1, z) := u32 x d b bt y y1 c;
+      let (r, z1) := z;
+      let (y3, y4) := z1;
+      if r == 2 then (b1, (bt, (u27 t tt 9 (l + 1) (k - 1), (tt + 1, (c, (s, (st, (gb, (0, (y3, (y4, u62 y2)))))))))))
+      else if r == 1 then
+        (b1, (bt, (u27 (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 4 0 gb) (tt + 2) 1 0 0,
+          (tt + 3, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
+      else (b1, (bt, (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
   rw [← hR]; unfold u39; rw [if_neg (kne hk)]
 
 end
@@ -93,19 +97,22 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
     MCp x d Q bs ts g S gb (c + (serL cs).length) (lpL f ks ws (envOf bs) sl cs i) →
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb
   | [], i, ts, c, rest, b, t, g, s, _, _, _, _, _, hI, hP => by
-    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inr rfl)))) hI _ (fun _ => rfl)
-    intro hsz
+    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inr rfl)))) hI
+    intro hsz y y1 y2 hsc R0 hR0
+    subst hR0
     rw [u49_9, show u ([] : List Nd).length = 0 from rfl, u39_0]
     intro _
+    refine ⟨hsc, ?_⟩
     exact (hP rfl b t g s hI.pop (GA.nil g)).cast rfl rfl (by simp [serL]) rfl rfl
   | e :: cs, i, ts, c, rest, b, t, g, s, hf, hnb, hx, hc, hl, hI, hP => by
-    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inr rfl)))) hI _ (fun _ => rfl)
-    intro hsz
+    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inr rfl)))) hI
+    intro hsz y y1 y2 hsc R0 hR0
+    subst hR0
     rw [u49_9]
     simp only [List.length_cons] at hl
     have hk0 : (u (e :: cs).length == 0) = false := by
       rw [u0, ueq (by simp; omega) (by omega)]; simp
-    generalize hR : u39 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb (u (sl + i)) (u (e :: cs).length) = R
+    generalize hR : u39 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb (u (sl + i)) (u (e :: cs).length) y y1 y2 = R
     intro hok
     have hR' := u39_s hk0 R hR
     rw [show u (sl + i) + 1 = u (sl + (i + 1)) by rw [u1, uadd, Nat.add_assoc],
@@ -114,15 +121,15 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
     have hx2 := drop_shift hx'
     have hfe := hf e (by simp)
     have hne := hnb e (by simp)
-    have hU := u32_ok hK.lc (f := f) (by omega) hne hx' hc hI.pb (by have := hsz.1; omega) hI.sb
-    generalize hUe : u32 x d b (u (encB bs).length) (u c) = U at hU hR'
-    obtain ⟨b1, r⟩ := U
+    have hU := u32_ok hK.lc (f := f) (by omega) hne hx' hc hI.pb (by have := hsz.1; omega) hI.sb hsc.1 hsc.2.1
+    generalize hUe : u32 x d b (u (encB bs).length) y y1 (u c) = U at hU hR'
+    obtain ⟨b1, r, y3, y4⟩ := U
     iota_only at hR'
     simp only at hU
     by_cases hr2 : r = 2
     · subst hr2; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'
       subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
-    obtain ⟨er, hb1, hbl1⟩ := hU hr2
+    obtain ⟨er, hb1, hbl1, hy3, hy4⟩ := hU hr2
     subst er
     rw [if_neg (kne (w2_eq2 _))] at hR'
     rw [lpL_cons] at hP
@@ -140,6 +147,7 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
     cases hle : NumSpec.isL f ws (envOf bs) e
     · rw [hle, if_neg (kne (show (w2 false == 1) = false from rfl))] at hR'
       subst hR'
+      refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
       dsimp only
       obtain ⟨k2, -⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0 1 0
       refine (hCOL e 1 Q bs (ts ++ [(9, u (sl + (i + 1)), u cs.length)]) c (serL cs ++ rest) b1 _ g s S gb hfe hne
@@ -150,6 +158,7 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
         (by simp) rfl rfl rfl
     · rw [hle, if_pos (keq (show (w2 true == 1) = true from rfl))] at hR'
       subst hR'
+      refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
       dsimp only
       obtain ⟨k2, l2⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 4 0 gb
       obtain ⟨k3, -⟩ := k2.pushw (n := u ts.length + 2) (by simp [u2, uadd]) (by have := hsz.2.1; omega) 1 0 0
@@ -190,22 +199,23 @@ theorem m_letg_np {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
             (NumSpec.litG f ks ws (envOf bs) v).2.1, (NumSpec.litG f ks ws (envOf bs) v).2.2)
         else NumSpec.col f ks ws (envOf bs) 0 v)) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
-  apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI _ (fun _ => rfl)
-  intro hsz
+  apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI
+  intro hsz y y1 y2 hsc R0 hR0
+  subst hR0
   rw [u49_3]
-  generalize hR : u46 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb (u sl) = R
+  generalize hR : u46 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb (u sl) y y1 y2 = R
   intro hok
   have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
   have hR' := u46_n (by rw [tag_rd hx hxl]; exact hg) R hR
-  have hU := u32_ok hK.lc (f := f) (by omega) nv hx hc hI.pb (by have := hsz.1; omega) hI.sb
-  generalize hUe : u32 x d b (u (encB bs).length) (u c) = U at hU hR'
-  obtain ⟨b1, r⟩ := U
+  have hU := u32_ok hK.lc (f := f) (by omega) nv hx hc hI.pb (by have := hsz.1; omega) hI.sb hsc.1 hsc.2.1
+  generalize hUe : u32 x d b (u (encB bs).length) y y1 (u c) = U at hU hR'
+  obtain ⟨b1, r, y3, y4⟩ := U
   iota_only at hR'
   simp only at hU
   by_cases hr2 : r = 2
   · subst hr2; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'
     subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
-  obtain ⟨er, hb1, hbl1⟩ := hU hr2
+  obtain ⟨er, hb1, hbl1, hy3, hy4⟩ := hU hr2
   subst er
   rw [if_neg (kne (w2_eq2 _))] at hR'
   have hts := hI.lts; simp at hts
@@ -213,6 +223,7 @@ theorem m_letg_np {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
   cases hle : NumSpec.isL f ws (envOf bs) v
   · rw [hle, if_neg (kne (show (w2 false == 1) = false from rfl))] at hR'
     subst hR'
+    refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
     dsimp only
     rw [hle] at hP
     obtain ⟨k1, -⟩ := hI0.pushw rfl (by have := hsz.2.1; omega) 0 0 0
@@ -220,6 +231,7 @@ theorem m_letg_np {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
       hP).cast rfl (by simp [u1, uadd]) rfl rfl rfl
   · rw [hle, if_pos (keq (show (w2 true == 1) = true from rfl))] at hR'
     subst hR'
+    refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
     dsimp only
     rw [hle] at hP
     obtain ⟨k1, l1⟩ := hI0.pushw rfl (by have := hsz.2.1; omega) 4 0 gb
@@ -249,12 +261,14 @@ theorem m_letg_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws
   rw [letG_succ] at hP
   cases v with
   | pair cs =>
-    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI _ (fun _ => rfl)
-    intro hsz
+    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI
+    intro hsz y y1 y2 hsc R0 hR0
+    subst hR0
     have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
     rw [u49_3, u46_6 (tag_rd hx hxl), tag1 hx hxl (by simp [hdr])]
     simp only [hdr, List.getD_cons_succ, List.getD_cons_zero]
     intro _
+    refine ⟨hsc, ?_⟩
     simp only [NB] at nv
     have hf := hv; simp [Nd.ser] at hf
     have hx1 : x.drop (c + 2) = serL cs ++ rest :=

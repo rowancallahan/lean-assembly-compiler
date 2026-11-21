@@ -576,9 +576,9 @@ def u50 (g : Buf) (g0 n : UInt64) (f h : Buf) : UInt64 × (Buf × Buf) :=
      else (0, (f, h)))
   else (0, (f, h))
 
--- one def: the body at i, n slots (b, t, g, s, y, y1, y2: the buffers): (end, (ok, (g, (b, (t, (s, (y, (y1, y2))))))))
+-- one def: the body at i, n slots (b, t, g, s, y, y1, y2: the buffers): (end, (g, (b, (t, (s, (y2, (ok, (y, y1))))))))
 def u48 (x d : Buf) (i n : UInt64) (b t g s y y1 y2 : Buf) :
-    UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × (Buf × Buf))))))) :=
+    UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × (UInt64 × (Buf × Buf))))))) :=
   let g0 := bsize g;
   let (g1, z) := u40 16777216 x d b 0 (u27 t 0 0 1 0) 1 i g s 0 0 y y1 y2;
   let (e, z1) := z;
@@ -588,11 +588,8 @@ def u48 (x d : Buf) (i n : UInt64) (b t g s y y1 y2 : Buf) :
   let (s1, z5) := z4;
   let (y3, z6) := z5;
   let (y4, y5) := z6;
-  if ok == 1 then
-    (let (r, z7) := u50 g1 g0 n y3 y4;
-     let (f, h) := z7;
-     (e, (r, (g1, (b1, (t1, (s1, (f, (h, y5)))))))))
-  else (e, (0, (g1, (b1, (t1, (s1, (y3, (y4, y5))))))))
+  if ok == 1 then (e, (g1, (b1, (t1, (s1, (y5, u50 g1 g0 n y3 y4))))))
+  else (e, (g1, (b1, (t1, (s1, (y5, (0, (y3, y4))))))))
 
 -- the def table: (kind, nres) per def
 def u60 : Nat → Buf → Buf → UInt64 → Buf × UInt64
@@ -613,13 +610,13 @@ def u61 : Nat → Buf → Buf → UInt64 → Buf → Buf → Buf → Buf → Buf
   | n + 1, x, d, i, b, t, g, s, y, y1, y2 =>
     if i < bsize x then
       (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y y1 y2;
-       let (ok, z1) := z;
-       let (g1, z2) := z1;
-       let (b1, z3) := z2;
-       let (t1, z4) := z3;
-       let (s1, z5) := z4;
-       let (y3, z6) := z5;
-       let (y4, y5) := z6;
+       let (g1, z1) := z;
+       let (b1, z2) := z1;
+       let (t1, z3) := z2;
+       let (s1, z4) := z3;
+       let (y5, z5) := z4;
+       let (ok, z6) := z5;
+       let (y3, y4) := z6;
        if ok == 1 then (if bget x e == 21 then u61 n x d (e + 1) b1 t1 g1 s1 y3 y4 y5 else 0) else 0)
     else 1
 
