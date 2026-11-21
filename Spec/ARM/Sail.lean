@@ -2,7 +2,7 @@
 project, which does not have the ARM model). -/
 import Spec.Top
 import Spec.Machines
-import Armv9
+import Armv9.Fetch
 open Armv9 Armv9.Functions Sail Sail.ConcurrencyInterfaceV1
 
 namespace Proven.Top

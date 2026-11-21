@@ -20,6 +20,7 @@ theorem xget_spec (m : Regs) (r : Nat) (h : r < 31) : xget m r = armSailRegister
   | 0, _ | 1, _ | 2, _ | 3, _ | 4, _ | 5, _ | 6, _ | 7, _ | 8, _ | 9, _ | 10, _ | 11, _ | 12, _ | 13, _ | 14, _
   | 15, _ | 16, _ | 17, _ | 18, _ | 19, _ | 20, _ | 21, _ | 22, _ | 23, _ | 24, _ | 25, _ | 26, _ | 27, _ | 28, _
   | 29, _ | 30, _ => exact map_cast _ _
+  | _ + 31, h => omega
 
 theorem reg_hi (m : Regs) (r : Nat) (h : ¬ r < 31) : armSailRegister m r = none := by
   unfold armSailRegister; split <;> first | rfl | omega
@@ -51,7 +52,6 @@ theorem conf_spec (s : St) : ArmSailConfigured s ↔ (∃ n, ArmFullB s n) ∧ (
 theorem spec_eq : Proven.Top.armSail = ArmSail.armSail := by
   unfold Proven.Top.armSail ArmSail.armSail
   congr 1
-  · funext s; rfl
   · funext s; exact (obs_spec s).symm
   · funext s; exact propext (conf_spec s)
 
