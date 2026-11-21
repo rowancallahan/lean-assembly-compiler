@@ -68,7 +68,8 @@ the J runs (`SStarX`, EVS*/Cap*).
 * `GTarget.lean:Img`, `GTarget`, `GTarget.Rel`, `GTarget.Laws` — the general target: `seg` (from an anchor, along a
   safe J run ending at an anchor, the machine reaches a later anchor of that run), `addi_ok` / `ret_ok` at anchors,
   `entry` (pc 0 is an anchor at offset 0), `off_le` / `vis_link` (return points are anchors and anchors' offsets lie in the code: return addresses do not wrap),
-  `vis_ret` (every `jalr x0, 0(x1)` is an anchor), `vis_err` (the pair `addi a0, x0, imm; addi a1, x0, 0` and its
+  `vis_ret` / `live_ret` (every `jalr x0, 0(x1)` is an anchor with every J register related; elsewhere `Img.dead pc j`
+  exempts dead temporaries from `Rel.x`), `vis_err` (the pair `addi a0, x0, imm; addi a1, x0, 0` and its
   successor are anchors). `gsim` — a safe J run between anchors is a machine run.
 * `GUniform.lean:tbytes`, `JTarget.uimg`, `JTarget.toG`, `laws_toG` — a uniform target's code bytes, its image
   (uniform layout, every pc an anchor), and its general laws.

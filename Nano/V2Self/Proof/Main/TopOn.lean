@@ -51,7 +51,7 @@ def GenOKG (T : GTarget) (gen : List UInt8 → List UInt8) : Prop :=
 
 /-- a uniform target's generator is a general one (the image: its bytes, the uniform layout, every pc an anchor) -/
 theorem genOK_toG {T : JTarget} {gen : List UInt8 → List UInt8} (hE : GenOK T gen) : GenOKG T.toG gen :=
-  fun x hx => ⟨(hE x hx).1, ⟨gen x, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True⟩, rfl, fun c Cj h1 h2 h3 => by
+  fun x hx => ⟨(hE x hx).1, ⟨gen x, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True, fun _ _ => False⟩, rfl, fun c Cj h1 h2 h3 => by
     obtain ⟨e, hv⟩ := (hE x hx).2 c Cj h1 h2 h3
     exact ⟨by unfold JTarget.uimg; rw [e], hv⟩⟩
 

@@ -49,7 +49,7 @@ theorem tbytes_get (L : T.Laws) (C : List J) (i : Nat) (hi : i < C.length) (k : 
 /-! ## every uniform target is a general one -/
 
 /-- the image of a uniform target: its blocks' bytes, the uniform layout, every pc an anchor -/
-def JTarget.uimg (T : JTarget) (C : List J) : Img := ⟨tbytes T C, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True⟩
+def JTarget.uimg (T : JTarget) (C : List J) : Img := ⟨tbytes T C, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True, fun _ _ => False⟩
 
 def JTarget.toG (T : JTarget) : GTarget where
   M := T.M
@@ -114,7 +114,7 @@ theorem rel_toG (L : T.Laws) {K : LayW} {C : List J} {s0 : T.M.State} {p : Nat �
   x0 := h.x0
   bb := h.bb
   lk := h.ww
-  x := h.x
+  x := fun j h0 h32 _ => h.x j h0 h32
   keep := h.keep
   w := h.w
   bw := h.bw
@@ -129,7 +129,7 @@ theorem rel_ofG (L : T.Laws) {K : LayW} {C : List J} {s0 : T.M.State} {p : Nat �
   x0 := h.x0
   bb := h.bb
   ww := h.lk
-  x := h.x
+  x := fun j h0 h32 => h.x j h0 h32 (fun h => h)
   keep := h.keep
   w := h.w
   bw := h.bw
@@ -170,6 +170,7 @@ theorem laws_toG (L : T.Laws) : T.toG.Laws where
     obtain ⟨rfl, -⟩ := hv
     rw [uoff L]; show _ ≤ (tbytes T C).length
     rw [tbytes_len L]; exact Nat.mul_le_mul_left _ hn
+  live_ret C I pc hv _ j := by obtain ⟨rfl, -⟩ := hv; exact fun h => h
   vis_ret C I pc hv _ := by obtain ⟨rfl, -⟩ := hv; exact trivial
   vis_err C I pc imm hv _ _ := by obtain ⟨rfl, -⟩ := hv; exact ⟨trivial, trivial, trivial⟩
 

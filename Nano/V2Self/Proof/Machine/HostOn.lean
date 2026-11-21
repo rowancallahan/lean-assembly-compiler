@@ -58,7 +58,7 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s : T.M.State}
   x0 := by simp [jOfG]
   bb := rfl
   lk := rfl
-  x := fun j h0 h32 => by simp [jOfG, h0, h32]
+  x := fun j h0 h32 _ => by simp [jOfG, h0, h32]
   keep := fun _ _ _ => rfl
   w := fun a ha k hk => by rw [gbM_some (hw a ha k hk)]; simp only [jOfG]; rw [cbyte_wordM s a k hk]
   bw := fun c hc => by
@@ -77,7 +77,8 @@ theorem lbm_cbyte (m : Nat → UInt64) (a : Nat) : CallProbe.lbm m a = (cbyte (m
 /-- **the exit**: at the final `jalr x0, 0(x1)` (J registers kept as Gen keeps them, the result `y` at the output),
 the machine returns to `x1` with x10/x11 as J's, the output bytes, the kept registers and the memory frame -/
 theorem fin_on (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s0 st : T.M.State} {pr : Nat} {s3 : CallProbe.St}
-    (hl : T.lay K C I) (hR : T.Rel K C I s0 (pr, s3) st) (hvis : I.vis pr) (hC : C[pr]? = some (.jalr 0 1))
+    (hl : T.lay K C I) (hR : T.Rel K C I s0 (pr, s3) st) (hvis : I.vis pr) (hlive : ∀ j, ¬ I.dead pr j)
+    (hC : C[pr]? = some (.jalr 0 1))
     (hra : (s3.x 1).toNat % 4 = 0)
     (hkeep : ∀ j, Templates.keepR j = true → s3.x j = (jOfG T s0 K.base I.ly).x j)
     (hx8 : s3.x 8 = (jOfG T s0 K.base I.ly).x 8)
@@ -92,12 +93,13 @@ theorem fin_on (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s0 st : T.M.State
         (T.M.observe s4).memory (UInt64.ofNat a) = (T.M.observe s0).memory (UInt64.ofNat a)) ∧
       T.M.configured s4 := by
   obtain ⟨s4, hr, hpc, hreg, hmem, hcfg⟩ := L.ret_ok hl hR hvis hC hra
-  refine ⟨s4, hr, hpc, by rw [hreg, hR.x 10 (by omega) (by omega)], by rw [hreg, hR.x 11 (by omega) (by omega)],
+  refine ⟨s4, hr, hpc, by rw [hreg, hR.x 10 (by omega) (by omega) (hlive 10)],
+    by rw [hreg, hR.x 11 (by omega) (by omega) (hlive 11)],
     ?_, ?_, ?_, hcfg⟩
   · intro r hr'
     rw [hreg]
     rcases L.kept_map r hr' with ⟨j, h0, h32, rfl, hj⟩ | ⟨hn, hs⟩
-    · rw [hR.x j h0 h32]
+    · rw [hR.x j h0 h32 (hlive j)]
       have e : s3.x j = (jOfG T s0 K.base I.ly).x j := by
         rcases hj with hj | rfl
         · exact hkeep j hj

@@ -118,7 +118,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (cs 1 (by omega)) (cs 2 (by omega)) (cs 3 (by omega)) (cs 4 (by omega)) z2
     (by rw [k12, x12]; simp only [wok, KL, E0]; omega) (by rw [k12, x12]; simp only [wok, KL, E0]; omega)
   have hra : (st5.x 1).toNat % 4 = 0 := by rw [f1, k12, m12, j1]; exact sc.returnAligned
-  obtain ⟨s6, r6, pc6, q10, -, kept, -, frame, cfg⟩ := fin_on L hl R5 v5 (cs 5 (by omega)) hra
+  obtain ⟨s6, r6, pc6, q10, -, kept, -, frame, cfg⟩ := fin_on L hl R5 v5 (L.live_ret Cj I 5 hv (cs 5 (by omega))) (cs 5 (by omega)) hra
     (fun j hj => by
       have : j ≠ 1 ∧ j ≠ 8 ∧ j ≠ 10 ∧ j ≠ 11 := by simp [keepR] at hj; omega
       rw [fo j this.1 this.2.1 this.2.2.1 this.2.2.2]; exact k2 j hj)
@@ -218,7 +218,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
   have x210 : st2.x 10 = UInt64.ofInt (-1) := by rw [← hs2]; simp [CallProbe.wr, CallProbe.upd, z00]
   have r21 : st2.x 1 = s0.x 1 := x2 1 (by decide) (by decide) (by decide) (by decide)
   have hra : (st2.x 1).toNat % 4 = 0 := by rw [r21, j1]; exact sc.returnAligned
-  obtain ⟨s4, r4, pc4, q10, -, kept, -, frame, cfg⟩ := fin_on L hl R3 (pr := S0 + 4 + 1 + 1) v6
+  obtain ⟨s4, r4, pc4, q10, -, kept, -, frame, cfg⟩ := fin_on L hl R3 (pr := S0 + 4 + 1 + 1) v6 (L.live_ret Cj I _ hv c6)
     (by rw [show S0 + 4 + 1 + 1 = S0 + 6 by omega]; exact c6) hra
     (fun j hj => by
       have : j ≠ 10 ∧ j ≠ 11 ∧ j ≠ 30 ∧ j ≠ 31 := by simp [keepR] at hj; omega

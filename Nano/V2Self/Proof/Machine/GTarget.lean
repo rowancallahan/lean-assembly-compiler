@@ -3,7 +3,7 @@ is not one fixed-size block per J instruction (the native AArch64 generator `C/G
 * `Img`: a program image, supplied per program by the target's `valid`: the machine code BYTES (no word size), the
   byte offset `off pc` of each J instruction (no `blockLen`), and the ANCHOR pcs `vis` (the J pcs at which the machine
   state is related to the J state; a fused template, e.g. `subs; b.cond` for `bgeu; jal`, has J pcs with no machine
-  state of their own).
+  state of their own), and the J registers `dead pc j` that are not related at anchor `pc`.
 * `GTarget.Rel`: `JTarget.Rel` with the pc through `off`, the code as bytes, and the J link layout = the image's (`lk`).
 * `GTarget.Laws.seg`: the SEGMENT law, replacing the one-step `step_ok`: from an anchor, along a safe J run that ends
   at an anchor, the machine runs to a later anchor of that run.  Instruction width and branch reach are the
@@ -41,6 +41,9 @@ structure Img where
   code : List UInt8
   ly : CallProbe.LinkLay
   vis : Nat → Prop
+  /-- `dead pc j`: J register `j` is not related at anchor `pc` (a temporary that is dead at a template boundary and
+  that the machine code does not compute as J does) -/
+  dead : Nat → Nat → Prop
 
 /-- the byte offset of J instruction `pc` -/
 def Img.off (I : Img) (pc : Nat) : Nat := I.ly.off pc
@@ -73,7 +76,7 @@ structure Rel (K : LayW) (C : List J) (I : Img) (s0 : T.M.State) (p : Nat × Cal
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
   lk : p.2.ly = I.ly
-  x : ∀ j, 0 < j → j < 32 → (T.M.observe s).register (T.reg j) = p.2.x j
+  x : ∀ j, 0 < j → j < 32 → ¬ I.dead p.1 j → (T.M.observe s).register (T.reg j) = p.2.x j
   keep : ∀ r, (∀ j, 0 < j → j < 32 → T.reg j ≠ r) → r ∉ T.scratch →
     (T.M.observe s).register r = (T.M.observe s0).register r
   w : ∀ a, wok K a → ∀ k < 8, (T.M.observe s).memory (UInt64.ofNat (a + k)) = some (cbyte (p.2.m a) k)
@@ -108,6 +111,8 @@ structure Laws : Prop where
   vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   /-- every `jalr x0, 0(x1)` (return to the host, function return) is an anchor -/
   vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → I.vis pc
+  /-- at a `jalr x0, 0(x1)` every J register is related -/
+  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → ∀ j, ¬ I.dead pc j
   /-- the error-status pair `addi a0, x0, imm; addi a1, x0, 0` and its successor are anchors (stubs, start check) -/
   vis_err : ∀ (C : List J) (I : Img) (pc : Nat) (imm : Int), T.valid C I → C[pc]? = some (.addi 10 0 imm) →
     C[pc + 1]? = some (.addi 11 0 0) → I.vis pc ∧ I.vis (pc + 1) ∧ I.vis (pc + 2)

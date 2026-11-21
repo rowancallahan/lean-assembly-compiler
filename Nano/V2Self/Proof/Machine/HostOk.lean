@@ -102,7 +102,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
   obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy hv
   obtain ⟨s', r1, R1⟩ := gsim L hl h3 (L.entry Cj I hv).1 (L.vis_ret Cj I pr hv c31) hR0
   have hra : (s3.x 1).toNat % 4 = 0 := by rw [e1, j1]; exact sc.returnAligned
-  obtain ⟨s4, r2, pc4, q10, q11, kept, bytes, frame, cfg⟩ := fin_on L hl R1 (L.vis_ret Cj I pr hv c31) c31 hra kp e8 rfl wb
+  obtain ⟨s4, r2, pc4, q10, q11, kept, bytes, frame, cfg⟩ := fin_on L hl R1 (L.vis_ret Cj I pr hv c31) (L.live_ret Cj I pr hv c31) c31 hra kp e8 rfl wb
     (wb + call.workLength) (Nat.le_refl _) (by simp [KL, E0]; omega) y rfl
     (fun i hi => by show lbm s3.m (call.outputAddress.toNat + i) = _; rw [← x13]; exact hby i hi)
   obtain ⟨-, -, -, -, -, -, hst, hol⟩ := L.reg_map
