@@ -1,6 +1,7 @@
 import Harvest.H4.Reserved
 import Harvest.H4.Tokens
 import Harvest.H4.Infix
+import Harvest.H4.TrimAscii
 #print axioms H4.reserved_not_ident
 #print axioms H4.reserved_wordlike_or_punct
 #print axioms H4.reserved_ext_ok
@@ -16,3 +17,5 @@ import Harvest.H4.Infix
 #print axioms H4.Inf.assoc_table
 #print axioms H4.Inf.pipes_weakest
 #print axioms H4.Inf.arrayLit_shape
+#print axioms H4.trimAscii_copy
+#print axioms H4.anon_token
