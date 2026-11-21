@@ -2,10 +2,11 @@
 Output Buf: tag bytes; tags: def 1, let 2, UInt64 3, Int64 4, number 5 (+ 8 LE value bytes), ( 6, ) 7, : 8, := 9, + 10, - 11, * 12, ; 13,
 ident 14 (+ (1,byte)* + 0), `,` 15, × 16, → 17, | 18, => 19, < 20, == 23, &&& 26, ||| 27, <<< 28, >>> 29 (restricted set: no ≤ ≠ && || Int64; the source itself uses only == and < in conditions, so build_self_S.py needs no desugaring),
 [ 30, ] 31, if 32, then 33, else 34, Nat 35, Buf 36, List 37, UInt8 38.  Whitespace = space, newline.  Any other character: output empty.
-Internal kinds: 0 reject, 90 skip, 91 end; trivia (SYNTAX_EXP.md): 92 namespace/open/section/end (skip the line), 93 private,
+Internal kinds: 0 reject (also the word `open`), 90 skip, 91 end; trivia (SYNTAX_EXP.md): 92 namespace, 97 end, 98 section
+(s23; the line: s13 spaces, the name, s22/s20 its form; emitted as the scope markers 48/49 + identifier, 50/51), 93 private,
 94 dash-dash, 95 slash-dash (nested, to the matching dash-slash; after a doc opener s15 first skips Lean's whitespace),
-96 `@[` (Lean's attribute grammar, names inline/reducible (s16), to the `]`: s14); a 92 line must pass s13 (names,
-dots, spaces; no word `in`); after a doc comment, an attribute, `private`: s17 (after Lean's whitespace, `@[`/`private`/`def`). Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
+96 `@[` (Lean's attribute grammar, names inline/reducible (s16), to the `]`: s14); after a doc comment, an attribute, `private`: s17 (after Lean's whitespace, `@[`/`private`/`def`); after a
+module doc: s24 (a command; s25 the scope words). Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
 import Nano.Main.Chain
 namespace C
 
@@ -50,9 +51,9 @@ def s3 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
   let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
   let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
-  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 92 else r19 else r19 else r19 else r19;
-  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 92 else r20 else r20 else r20 else r20 else r20;
-  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 92 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
+  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 97 else r19 else r19 else r19 else r19;
+  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 0 else r20 else r20 else r20 else r20 else r20;
+  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 98 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
   let r23 := if d == 9 then if c == 110 then if rd x (p + 1) == 97 then if rd x (p + 2) == 109 then if rd x (p + 3) == 101 then if rd x (p + 4) == 115 then if rd x (p + 5) == 112 then if rd x (p + 6) == 97 then if rd x (p + 7) == 99 then if rd x (p + 8) == 101 then 92 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22;
   let r24 := if d == 7 then if c == 112 then if rd x (p + 1) == 114 then if rd x (p + 2) == 105 then if rd x (p + 3) == 118 then if rd x (p + 4) == 97 then if rd x (p + 5) == 116 then if rd x (p + 6) == 101 then 93 else r23 else r23 else r23 else r23 else r23 else r23 else r23 else r23;
   r24
@@ -137,17 +138,26 @@ def s12 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
   | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
 
 def s13 : Nat → List UInt8 → UInt64 → UInt64
-  | 0, x, i => 0
-  | n + 1, x, i => if i < len x then
-      if rd x i == 10 then 1
-      else if rd x i == 32 then
-        if rd x (i + 1) == 105 then if rd x (i + 2) == 110 then
-          if i + 3 < len x then if rd x (i + 3) == 32 then 0 else if rd x (i + 3) == 10 then 0 else s13 n x (i + 1) else 0
-        else s13 n x (i + 1) else s13 n x (i + 1)
-      else if rd x i == 46 then s13 n x (i + 1)
-      else if s0 (rd x i) == 1 then s13 n x (i + 1)
-      else 0
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if rd x i == 32 then s13 n x (i + 1) else i else i
+
+def s21 : Nat → List UInt8 → UInt64 → UInt64
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if 96 < rd x i then if rd x i < 123 then s21 n x (i + 1) else i else i else i
+
+def s20 (x : List UInt8) (a b : UInt64) : UInt64 :=
+  let j := s21 (len' x) x (a + 1);
+  if 64 < rd x a then if rd x a < 91 then if j < b then if s2 (len' x) x j b == 1 then
+    if j == a + 3 then if rd x a == 73 then if rd x (a + 1) == 110 then if rd x (a + 2) == 116 then 0 else 1 else 1 else 1
+    else if j == a + 5 then if rd x a == 70 then if rd x (a + 1) == 108 then if rd x (a + 2) == 111 then if rd x (a + 3) == 97 then if rd x (a + 4) == 116 then 0 else 1 else 1 else 1 else 1 else 1
     else 1
+  else 0 else 0 else 0 else 0
+
+def s22 (x : List UInt8) (q a b e k : UInt64) : UInt64 :=
+  let v := if e < len x then if rd x e == 10 then 1 else 0 else 1;
+  if v == 0 then 0
+  else if a == b then if k == 92 then 0 else 1
+  else if k == 98 then 0 else if rd x q == 32 then s20 x a b else 0
 
 def s16 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let d := e - p;
@@ -198,6 +208,22 @@ def s17 (x : List UInt8) (i k : UInt64) : UInt64 :=
   else if k == 2 then if rd x j == 64 then if rd x (j + 1) == 91 then 1 else s18 x j k else s18 x j k
   else s18 x j k
 
+def s23 (k : UInt64) : UInt64 := if k == 92 then 1 else if k == 97 then 1 else if k == 98 then 1 else 0
+
+def s25 (x : List UInt8) (j : UInt64) : UInt64 :=
+  let e := s1 (len' x) x j;
+  if s3 x j e == 92 then 1 else if s3 x j e == 97 then 1 else if s3 x j e == 98 then 1 else 0
+
+def s24 (x : List UInt8) (i : UInt64) : UInt64 :=
+  let j := s15 (len' x) x i;
+  if j == 0 then 0
+  else if j < len x then
+    if rd x j == 47 then if rd x (j + 1) == 45 then 1 else 0
+    else if rd x j == 64 then if rd x (j + 1) == 91 then 1 else 0
+    else if s18 x j 1 == 1 then 1
+    else s25 x j
+  else 0
+
 def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -208,12 +234,21 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
-    else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
+    else if s23 k == 1 then
+      let q := s5 x p k;
+      let a := s13 (len' x) x q;
+      let b := s1 (len' x) x a;
+      let e := s13 (len' x) x b;
+      let m := if k == 97 then 49 else 48;
+      if s22 x q a b e k == 1 then
+        if a == b then s9 n x e (q0 o (m + 2)) else s9 n x e (s7 (len' x) x a b (q0 (q0 o m) 14))
+      else bnew
     else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
     else if k == 95 then
       let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 3;
       if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew
       else if rd x (p + 2) == 45 then if s17 x (s11 (len' x) x b 0) 2 == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
+      else if rd x (p + 2) == 33 then if s24 x (s11 (len' x) x b 0) == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
       else s9 n x (s11 (len' x) x b 0) o
     else if k == 96 then if s14 (len' x) x (p + 2) 0 0 == 0 then bnew
       else if s17 x (s14 (len' x) x (p + 2) 0 0) 1 == 1 then s9 n x (s14 (len' x) x (p + 2) 0 0) o else bnew

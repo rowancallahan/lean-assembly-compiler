@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_238 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 238) :
-    Spec238 inp (defMean inp κC ms PC.d238) := by
+theorem ok_246 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 246) :
+    Spec246 inp (defMean inp κC ms PC.d246) := by
+  intro a0 a1
+  refine defMean_den (C.g31 a0 a1) PC.b246 ([.b a0, .w a1] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b246
+  den_unfold
+  den
+
+theorem ok_247 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 247) :
+    Spec247 inp (defMean inp κC ms PC.d247) := by
+  intro a0 a1 a2
+  refine defMean_den (C.g32 a0 a1 a2) PC.b247 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b247
+  den_unfold
+  den
+
+theorem ok_248 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 248) :
+    Spec248 inp (defMean inp κC ms PC.d248) := by
   intro a0
-  refine defMean_den (C.g34 a0) PC.b238 ([.b a0] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b238
-  den_unfold
-  den
-
-theorem ok_239 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 239) :
-    Spec239 inp (defMean inp κC ms PC.d239) := by
-  intro a0 a1 a2
-  refine defMean_den (C.g35 a0 a1 a2) PC.b239 ([.b a0, .b a1, .w a2] ++ List.replicate 12 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b239
-  den_unfold
-  den
-
-theorem ok_240 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 240) :
-    Spec240 inp (defMean inp κC ms PC.d240) := by
-  intro a0 a1 a2
-  refine defMean_den (C.g43 a0 a1 a2) PC.b240 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b240
+  refine defMean_den (C.g33 a0) PC.b248 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b248
   den_unfold
   den
 

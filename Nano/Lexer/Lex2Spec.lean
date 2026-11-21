@@ -6,10 +6,11 @@ whitespace (space, newline) is skipped; the operator table is searched longest-f
 Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
 (slash-dash ... dash-slash; unterminated: rejected); a doc comment (slash-dash-dash or slash-dash-bang): as Lean, the
 whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
-attribute `@[ name, … ]` (names `inline`, `reducible`); the words `namespace`, `open`, `section`, `end` with the rest of
-their line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the
-word `private`.  A slash-dash-dash doc comment, an attribute and `private` must be followed (after whitespace and
-comments) by what Lean allows after them: `@[`, `private` or `def` (`declNext`), so nano accepts no modifier Lean rejects.
+attribute `@[ name, … ]` (names `inline`, `reducible`); the word `private`.  A slash-dash-dash doc comment, an
+attribute and `private` must be followed (after whitespace and comments) by what Lean allows after them: `@[`, `private`
+or `def` (`declNext`); a slash-dash-bang module doc by a command (`cmdNext`), so nano accepts no modifier Lean
+rejects.  Scope lines `namespace N`, `section`, `end`, `end N` (`scopeLine`, `nsName`) become marker tokens
+(`scopeTok`), which `DsSpec.frame` allows only around the whole program; the word `open` is rejected.
 Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
 import Nano.Main.Prelude
 namespace LexSpec
@@ -47,9 +48,13 @@ def kwTable : List (List UInt8 × UInt64) :=
    ([98, 115, 101, 116], 46),
    ([98, 112, 117, 115, 104], 47)]
 
-/-- words that skip the rest of their line: namespace open section end -/
-def lineKw : List (List UInt8) :=
-  [[110, 97, 109, 101, 115, 112, 97, 99, 101], [111, 112, 101, 110], [115, 101, 99, 116, 105, 111, 110], [101, 110, 100]]
+/-- the scope words `namespace`, `section`, `end`, and `open` (rejected: it can change name resolution) -/
+def NS : List UInt8 := [110, 97, 109, 101, 115, 112, 97, 99, 101]
+def SEC : List UInt8 := [115, 101, 99, 116, 105, 111, 110]
+def END : List UInt8 := [101, 110, 100]
+def OPEN : List UInt8 := [111, 112, 101, 110]
+/-- the scope words and their `scopeLine` kind -/
+def scopeKw : List (List UInt8 × Nat) := [(NS, 0), (SEC, 1), (END, 2)]
 /-- words that are dropped: private -/
 def dropKw : List (List UInt8) := [[112, 114, 105, 118, 97, 116, 101]]
 
@@ -78,15 +83,26 @@ def docWs : Nat → List UInt8 → Option (List UInt8)
       (blockEnd 0 r.tail.tail).bind (docWs f)
     else some (c :: r)
 
-/-- `in` as a word: after a space, followed by the end, a space or a newline -/
-def inWord : List UInt8 → Bool
-  | 105 :: 110 :: t => t.head? == none || t.head? == some 32 || t.head? == some 10
-  | _ => false
+/-- a scope name nano accepts (Testing/notes/SYNTAX_EXP.md, frame rule): one component, a capital letter, small
+letters, then at least one digit, and not starting `Int` or `Float`.  The only root names of this shape in Lean 4.34.1
+(`import Lean`, all constants) are Int8 Int16 Int32 Int64 Float32, so a declaration or a name inside such a namespace
+cannot meet an existing one -/
+def nsName : List UInt8 → Bool
+  | c :: r =>
+    let a := r.takeWhile fun b => 97 ≤ b && b ≤ 122
+    let d := r.dropWhile fun b => 97 ≤ b && b ≤ 122
+    65 ≤ c && c ≤ 90 && d != [] && d.all isD && !(c :: a == [73, 110, 116]) && !(c :: a == [70, 108, 111, 97, 116])
+  | [] => false
 
-/-- the rest of a `namespace`/`open`/`section`/`end` line: names, dots, spaces up to the newline, no word `in` -/
-def lineOk : List UInt8 → Bool
-  | [] => true
-  | b :: r => b == 10 || ((isW b || b == 46 || b == 32) && !(b == 32 && inWord r) && lineOk r)
+/-- the rest of a `namespace` (`k = 0`: a name required), `section` (`k = 1`: no name) or `end` (`k = 2`: a name
+optional) line: a space and the name (`nsName`), spaces, then a newline or the end of the text; the name and the rest
+from the newline -/
+def scopeLine (k : Nat) (r : List UInt8) : Option (List UInt8 × List UInt8) :=
+  let s := r.dropWhile (· == 32)
+  let n := s.takeWhile isW
+  let e := (s.dropWhile isW).dropWhile (· == 32)
+  if (e.head? = none ∨ e.head? = some 10) ∧ (if n = [] then k ≠ 0 else k ≠ 1 ∧ r.head? = some 32 ∧ nsName n = true)
+  then some (n, e) else none
 
 /-- the attribute names accepted: `inline`, `reducible` -/
 def attrNames : List (List UInt8) := [[105, 110, 108, 105, 110, 101], [114, 101, 100, 117, 99, 105, 98, 108, 101]]
@@ -119,6 +135,20 @@ def declNext (k : Nat) (l : List UInt8) : Bool :=
   | some u => (k == 2 && [64, 91].isPrefixOf u) || (1 ≤ k && startsWord PRIV u) || startsWord DEF u
   | none => false
 
+/-- what may follow a module doc comment (slash-dash-bang), after Lean's whitespace and comments: a command
+(slash-dash-dash, slash-dash-bang, `@[`, `private`, `def`, `namespace`, `section`, `end`); Lean ends a term at a module doc
+comment and then expects a command.  Stricter than Lean: the end of the text is not accepted here -/
+def cmdNext (l : List UInt8) : Bool :=
+  match docWs (l.length + 1) l with
+  | some u => [47, 45].isPrefixOf u || [64, 91].isPrefixOf u || startsWord PRIV u || startsWord DEF u ||
+      startsWord NS u || startsWord SEC u || startsWord END u
+  | none => false
+
+/-- a scope marker: `48`/`49` (opens/closes the scope of a name) with the name's identifier token, `50`/`51` (opens/closes
+an unnamed section) -/
+def scopeTok (o : Bool) (n : List UInt8) : List UInt64 :=
+  if n = [] then [if o then 50 else 51] else (if o then 48 else 49) :: 14 :: (n.flatMap fun b => [1, b.toUInt64]) ++ [0]
+
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
 /-- 8 little-endian bytes -/
@@ -133,7 +163,8 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
     else if c == 47 && r.head? == some 45 then
       (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
        else blockEnd 0 r.tail.tail).bind fun t =>
-        if r.tail.head? == some 45 && !declNext 2 t then none else some ([], t)
+        if r.tail.head? == some 45 && !declNext 2 t then none
+        else if r.tail.head? == some 33 && !cmdNext t then none else some ([], t)
     else if c == 64 && r.head? == some 91 then
       (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none
     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
@@ -143,11 +174,14 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
         let rest := (c :: r).dropWhile isW
         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
         else if isW c then
-          if lineKw.contains w then (if lineOk rest then some ([], rest.dropWhile (· != 10)) else none)
-          else if dropKw.contains w then (if declNext 0 rest then some ([], rest) else none)
-          else some ((match kwTable.lookup w with
-                 | some k => [k]
-                 | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
+          if w == OPEN then none
+          else match scopeKw.lookup w with
+          | some k => (scopeLine k rest).map fun (n, e) => (scopeTok (k != 2) n, e)
+          | none =>
+            if dropKw.contains w then (if declNext 0 rest then some ([], rest) else none)
+            else some ((match kwTable.lookup w with
+                   | some k => [k]
+                   | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
         else none
 
 inductive Lexes : List UInt8 → List UInt64 → Prop
@@ -155,3 +189,4 @@ inductive Lexes : List UInt8 → List UInt64 → Prop
   | cons {l e r t} : step l = some (e, r) → Lexes r t → Lexes l (e ++ t)
 
 end LexSpec
+

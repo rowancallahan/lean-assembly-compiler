@@ -35,16 +35,61 @@ import Nano.SelfHost.SrcLink.Data32
 import Nano.SelfHost.SrcLink.Data33
 import Nano.SelfHost.SrcLink.Data34
 import Nano.SelfHost.SrcLink.Data35
+import Nano.SelfHost.SrcLink.Data36
 namespace SrcGen
 open ParSpec SrcLink
 
-def F : Nat := 283064
-def T261 : List Tok := []
-def X260 : List UInt8 := x260
-def W260 : List UInt64 := w260
-def Ls261 : List DefA := []
+def F : Nat := 291984
+def T272 : List Tok := []
+def X271 : List UInt8 := x271
+def W271 : List UInt64 := w271
+def Ls272 : List DefA := []
+def T271 : List Tok := S271 ++ T272
+def Ls271 : List DefA := d271 :: Ls272
+def T270 : List Tok := S270 ++ T271
+def Ls270 : List DefA := d270 :: Ls271
+def X270 : List UInt8 := x270 ++ X271
+def W270 : List UInt64 := w270 ++ W271
+def T269 : List Tok := S269 ++ T270
+def Ls269 : List DefA := d269 :: Ls270
+def X269 : List UInt8 := x269 ++ X270
+def W269 : List UInt64 := w269 ++ W270
+def T268 : List Tok := S268 ++ T269
+def Ls268 : List DefA := d268 :: Ls269
+def X268 : List UInt8 := x268 ++ X269
+def W268 : List UInt64 := w268 ++ W269
+def T267 : List Tok := S267 ++ T268
+def Ls267 : List DefA := d267 :: Ls268
+def X267 : List UInt8 := x267 ++ X268
+def W267 : List UInt64 := w267 ++ W268
+def T266 : List Tok := S266 ++ T267
+def Ls266 : List DefA := d266 :: Ls267
+def X266 : List UInt8 := x266 ++ X267
+def W266 : List UInt64 := w266 ++ W267
+def T265 : List Tok := S265 ++ T266
+def Ls265 : List DefA := d265 :: Ls266
+def X265 : List UInt8 := x265 ++ X266
+def W265 : List UInt64 := w265 ++ W266
+def T264 : List Tok := S264 ++ T265
+def Ls264 : List DefA := d264 :: Ls265
+def X264 : List UInt8 := x264 ++ X265
+def W264 : List UInt64 := w264 ++ W265
+def T263 : List Tok := S263 ++ T264
+def Ls263 : List DefA := d263 :: Ls264
+def X263 : List UInt8 := x263 ++ X264
+def W263 : List UInt64 := w263 ++ W264
+def T262 : List Tok := S262 ++ T263
+def Ls262 : List DefA := d262 :: Ls263
+def X262 : List UInt8 := x262 ++ X263
+def W262 : List UInt64 := w262 ++ W263
+def T261 : List Tok := S261 ++ T262
+def Ls261 : List DefA := d261 :: Ls262
+def X261 : List UInt8 := x261 ++ X262
+def W261 : List UInt64 := w261 ++ W262
 def T260 : List Tok := S260 ++ T261
 def Ls260 : List DefA := d260 :: Ls261
+def X260 : List UInt8 := x260 ++ X261
+def W260 : List UInt64 := w260 ++ W261
 def T259 : List Tok := S259 ++ T260
 def Ls259 : List DefA := d259 :: Ls260
 def X259 : List UInt8 := x259 ++ X260
@@ -1347,5 +1392,16 @@ def D258 : List DefI := D257 ++ [di257]
 def D259 : List DefI := D258 ++ [di258]
 def D260 : List DefI := D259 ++ [di259]
 def D261 : List DefI := D260 ++ [di260]
+def D262 : List DefI := D261 ++ [di261]
+def D263 : List DefI := D262 ++ [di262]
+def D264 : List DefI := D263 ++ [di263]
+def D265 : List DefI := D264 ++ [di264]
+def D266 : List DefI := D265 ++ [di265]
+def D267 : List DefI := D266 ++ [di266]
+def D268 : List DefI := D267 ++ [di267]
+def D269 : List DefI := D268 ++ [di268]
+def D270 : List DefI := D269 ++ [di269]
+def D271 : List DefI := D270 ++ [di270]
+def D272 : List DefI := D271 ++ [di271]
 
 end SrcGen

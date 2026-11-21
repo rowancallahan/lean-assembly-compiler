@@ -5,25 +5,17 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex140 : lexAll (x140.length + 1) x140 = some w140 := by decide +kernel
-theorem tok140 : tokens w140 = some S140 := by decide +kernel
-theorem nl140 : x140.getLast? = some 10 := by decide +kernel
-theorem chk140 : chkDef (pDef F D140 T140) di140 d140 T141 = true := by decide +kernel
-theorem lex141 : lexAll (x141.length + 1) x141 = some w141 := by decide +kernel
-theorem tok141 : tokens w141 = some S141 := by decide +kernel
-theorem nl141 : x141.getLast? = some 10 := by decide +kernel
-theorem chk141 : chkDef (pDef F D141 T141) di141 d141 T142 = true := by decide +kernel
-theorem lex142 : lexAll (x142.length + 1) x142 = some w142 := by decide +kernel
-theorem tok142 : tokens w142 = some S142 := by decide +kernel
-theorem nl142 : x142.getLast? = some 10 := by decide +kernel
-theorem chk142 : chkDef (pDef F D142 T142) di142 d142 T143 = true := by decide +kernel
-theorem lex143 : lexAll (x143.length + 1) x143 = some w143 := by decide +kernel
-theorem tok143 : tokens w143 = some S143 := by decide +kernel
-theorem nl143 : x143.getLast? = some 10 := by decide +kernel
-theorem chk143 : chkDef (pDef F D143 T143) di143 d143 T144 = true := by decide +kernel
-theorem lex144 : lexAll (x144.length + 1) x144 = some w144 := by decide +kernel
-theorem tok144 : tokens w144 = some S144 := by decide +kernel
-theorem nl144 : x144.getLast? = some 10 := by decide +kernel
-theorem chk144 : chkDef (pDef F D144 T144) di144 d144 T145 = true := by decide +kernel
+theorem lex148 : lexAll (x148.length + 1) x148 = some w148 := by decide +kernel
+theorem tok148 : tokens w148 = some S148 := by decide +kernel
+theorem nl148 : x148.getLast? = some 10 := by decide +kernel
+theorem chk148 : chkDef (pDef F D148 T148) di148 d148 T149 = true := by decide +kernel
+theorem lex149 : lexAll (x149.length + 1) x149 = some w149 := by decide +kernel
+theorem tok149 : tokens w149 = some S149 := by decide +kernel
+theorem nl149 : x149.getLast? = some 10 := by decide +kernel
+theorem chk149 : chkDef (pDef F D149 T149) di149 d149 T150 = true := by decide +kernel
+theorem lex150 : lexAll (x150.length + 1) x150 = some w150 := by decide +kernel
+theorem tok150 : tokens w150 = some S150 := by decide +kernel
+theorem nl150 : x150.getLast? = some 10 := by decide +kernel
+theorem chk150 : chkDef (pDef F D150 T150) di150 d150 T151 = true := by decide +kernel
 
 end SrcGen

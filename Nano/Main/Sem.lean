@@ -237,6 +237,17 @@ theorem attrEnd_len : ∀ (l w : List UInt8) (d : Bool) (t : List UInt8), LexSpe
 theorem dw_len {p : UInt8 → Bool} (l : List UInt8) : (l.dropWhile p).length ≤ l.length :=
   (List.dropWhile_suffix p).length_le
 
+theorem scopeLine_len (k : Nat) (r n e : List UInt8) (h : LexSpec.scopeLine k r = some (n, e)) :
+    n.length + e.length ≤ r.length := by
+  unfold LexSpec.scopeLine at h
+  simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨-, rfl, rfl⟩ := h
+  · have h1 := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := r.dropWhile (· == 32))
+    have h2 := congrArg List.length h1; simp only [List.length_append] at h2
+    have := dw_len (p := (· == 32)) r
+    have := dw_len (p := (· == 32)) ((r.dropWhile (· == 32)).dropWhile LexSpec.isW)
+    omega
+
 theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpec.step l = some (e, r)) :
     e.length + 9 * r.length ≤ 9 * l.length := by
   match l, h with
@@ -279,9 +290,15 @@ theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpe
       · split at h
         · have := hc ‹_›
           split at h
-          · split at h
-            · cases h; have := dw_len (p := (· != 10)) ((c :: rr).dropWhile LexSpec.isW); simp; omega
-            · cases h
+          · cases h
+          split at h
+          · obtain ⟨⟨n, e'⟩, hs, he⟩ := Option.map_eq_some_iff.1 h
+            cases he
+            have := scopeLine_len _ _ _ _ hs
+            have : ∀ o, (LexSpec.scopeTok o n).length ≤ 2 * n.length + 3 := fun o => by
+              unfold LexSpec.scopeTok; split <;> simp [List.length_flatMap, sum2] <;> omega
+            refine Nat.le_trans (Nat.add_le_add_right (this _) _) ?_
+            simp only [List.length_cons]; omega
           split at h
           · split at h
             · cases h; simp; omega

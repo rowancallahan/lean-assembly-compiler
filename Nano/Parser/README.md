@@ -68,8 +68,7 @@ machine memory and the L2 state (one file per handler: `ParInvAtom`, `ParInvCall
 `ParInvOps`, `ParInvStep`, `ParInvTop`). Swept: no dead declarations; same-statement copies merged
 (`status_bset0`, `ite0`, `shRow0`, `drop_bset0`, `nt_code`).
 
-Known superset (syntax-1, lead decision 2026-11-21; Testing/notes/SYNTAX_EXP.md): the front end accepts some texts Lean
-rejects, and gives them a meaning Lean does not define. These are doc comments, `/-!`, `@[…]` and `private` outside a
-declaration-modifier position (they are trivia to the lexer), literals Lean would default to Nat (S has only
-UInt64/UInt8), and match arms that break Lean's offside rule (S has no layout rule). None can be miscompiled: a text Lean
-accepts means the same in both. Rejecting the misplaced modifiers would need a modifier token checked in `DsSpec.ds`.
+Lean compatibility (owner rule: nano accepts only what Lean accepts, with the same result): the front end's reject rules
+(misplaced modifiers, attribute whitelist, module docs, duplicate arms, doc whitespace, the scope frame) are listed with
+examples in Testing/notes/SYNTAX_EXP.md "Reject rules". Still open there: Nat defaulting of literal-only operands (B) and
+Lean's offside rule (D).

@@ -138,14 +138,268 @@ unchanged, and `review_axioms.sh` gives "OK: 8 theorems, axioms as pinned".
 ### Fuzz (`Testing/nano/v2self/fuzz/fuzz_syntax.py` + `lean_check.py`)
 FUZZ_RESULTS
 
-Known superset (lead decision 2026-11-21: documented, not rejected; no miscompile possible, since Lean gives these texts no meaning): the compiler
-accepts texts that Lean rejects.
-- Doc comments, `/-!` or `@[…]` in a position Lean does not allow (for example mid-expression).
-- Typing differences: Lean defaults unconstrained literals to Nat.
-- Layout: Lean's offside rule for match arms; S has no layout rule.
+### Reject rules (owner rule: every text nano accepts, Lean 4.34.1 accepts with the same result)
+Each rule has regression cases in `Testing/nano/v2self/fuzz/syntax_regress.py` (both compilers; `--lean` re-checks every
+verdict with `lean`). "Stricter" marks texts Lean accepts and nano rejects (allowed).
 
-Rejecting the misplaced modifiers would need a modifier token checked in `DsSpec.ds`: a further trusted-spec change and
-about 3–5 h of proofs.
+| class | rule (trusted spec) | accepted | rejected |
+|---|---|---|---|
+| A | modifiers only where Lean's `declModifiers` allows them (docComment? attributes? private? def): `declNext` after `/--`, `@[…]`, `private` (Lean/Parser/Command.lean `declModifiers`) | `/-- d -/ @[inline] private def f …` | `def f := /-- d -/ x`, `private @[inline] def`, `@[inline] /-- d -/ def`, `/-- d -/` at the end |
+| A | attribute whitelist `inline`, `reducible` (`attrNames`), Lean's comma grammar (`attrEnd`) | `@[inline, reducible]` | `@[simp]` (stricter), `@[implemented_by f]`, `@[extern …]`, `@[export …]`, `@[csimp]`, `@[x.y]`, `@[]` |
+| A | `/-!` must be followed by a command (`cmdNext`): Lean ends a term at a module doc and then parses a command | `def g := n` ⏎ `/-! x -/` ⏎ `def m …` | `def g := n /-! x -/ + 1` (was compiled as n+1), `/-! x -/` at the end of the text (stricter) |
+| C | no two literal arms of one `match` with the same value (`DsSpec.dupOk`; Lean: "redundant alternative") | `| 0 => … | 1 => … | _ => …` | `| 0 => … | 0 => … | _ => …` |
+| F1 | after `/--` or `/-!`: a tab or a CR without LF is an error, as in Lean's `whitespace` (Lean/Parser/Basic.lean: "tabs are not allowed", "isolated carriage returns are not allowed") (`docWs`) | `/--` CR LF ` x -/` | `/--` TAB `foo -/`, `/-- ` CR ` x -/` |
+| F2 | a plain `/-` skips one byte before its body (Lean's `s.next` before `finishCommentBlock`), so `/-/- -/` is one comment (`docWs`, `step`) | `/-/- -/` | `/-/- -/ -/` |
+| E | frame rule: scope lines `namespace N`, `section`, `end`, `end N` become marker tokens (`scopeLine`, `scopeTok`); `DsSpec.frame` allows openers only before every other token and closers only after the last one, each `end` naming the innermost open scope; scopes may stay open at the end (as in Lean) | `namespace Fz1` … `end Fz1`; `namespace Fz1` ⏎ `section` … `end` ⏎ `end Fz1`; `namespace Fz1` left open | `end` with nothing open (F3: "Invalid `end`"), `end Fz2` closing `Fz1`, `end` closing a namespace, `end Fz1` closing a section, a def after the last `end` or a `namespace` between defs (stricter: Lean accepts with other names), `namespace A B` |
+| E | scope names (`nsName`): one component, capital, small letters, ≥1 digit, not `Int…`/`Float…` — the only Lean 4.34.1 root names of this shape (all constants of `import Lean`) are Int8/16/32/64 and Float32, so no definition or reference inside the scope can meet an existing name | `Fz1`, `Abc12` | `Int8`, `Float9`, `Fz1.Fz2`, `foo`, `X` (all stricter) |
+| E | the word `open` is rejected (it can change name resolution; "if in doubt, reject") | — | `open Nat` (stricter), `open Nat in e` |
+
+### Trusted-definition changes since 28211caf (F1/F2 and E; for owner review)
+Only `LexSpec` (Nano/Lexer/Lex2Spec.lean) and `DsSpec` (Nano/Lexer/DsSpec.lean) change; `pOf`, `mC`'s statement,
+`ParSpec` and the REVIEW statements are unchanged (`review_axioms.sh`: 8 theorems, axioms as pinned). `ds` now first
+applies `frame`; the old body is `ds0`.
+```diff
+diff --git a/Nano/Lexer/DsSpec.lean b/Nano/Lexer/DsSpec.lean
+index c10b7919..e3fd57ba 100644
+--- a/Nano/Lexer/DsSpec.lean
++++ b/Nano/Lexer/DsSpec.lean
+@@ -7,3 +7,4 @@ where μ = `MU`, an identifier no Lean text can spell; `| _ => e` becomes `else
+ yet), 2 closed.  A match ends at the `)` of its depth, the next `def` (depth 0 only) or the end of the text, and must be
+-closed by then; an arm after the catch-all arm is rejected; a match inside a scrutinee is rejected. -/
++closed by then; an arm after the catch-all arm is rejected; a match inside a scrutinee is rejected; two literal arms of
++one match with the same value are rejected (`dupOk`; Lean: redundant alternative). -/
+ import Nano.Main.Prelude
+@@ -89,2 +90,37 @@ def go : Nat → List UInt64 → List Nat → Bool → Option (List UInt64)
+ 
++/-- **no redundant arm**: two literal arms of one match never have the same value (Lean rejects a redundant
++alternative; a literal word is its value mod 2^64).  Matches and arms are found as `go` finds them.  Each match gets a
++fresh number at its `with` (`m`: the last one); `ids`: per paren depth (innermost first) the number of the match open
++there (0: none, or after its catch-all arm); `seen`: the (match number, literal) pairs of the arms read so far;
++`sc`: inside a scrutinee.  Only `true` matters (a text `go` rejects may pass). -/
++def dupOk : Nat → List UInt64 → List Nat → List (Nat × List UInt64) → Nat → Bool → Bool
++  | 0, _, _, _, _, _ => false
++  | _ + 1, [], _, _, _, _ => true
++  | f + 1, ts, ids, seen, m, sc => match splitTok ts with
++    | none => true
++    | some (a, r) =>
++      if sc then
++        if a = WITH then
++          match r with
++          | 18 :: r1 => match pat r1 with
++            | some (.lit w, r2) => dupOk f r2 ((m + 1) :: ids.tail) ((m + 1, w) :: seen) (m + 1) false
++            | some (_, r2) => dupOk f r2 (0 :: ids.tail) seen (m + 1) false
++            | none => true
++          | _ => true
++        else dupOk f r ids seen m true
++      else if a = MATCH then dupOk f r ids seen m true
++      else if a = [18] then
++        match ids.head? with
++        | some k =>
++          if k = 0 then dupOk f r ids seen m false
++          else match pat r with
++            | some (.lit w, r2) => if seen.contains (k, w) then false else dupOk f r2 ids ((k, w) :: seen) m false
++            | some (_, r2) => dupOk f r2 (0 :: ids.tail) seen m false
++            | none => true
++        | none => dupOk f r ids seen m false
++      else if a = [6] then dupOk f r (0 :: ids) seen m false
++      else if a = [7] then dupOk f r ids.tail seen m false
++      else if a = [1] then dupOk f r [0] seen m false
++      else dupOk f r ids seen m false
++
+ /-- every token is well formed and none is `match` -/
+@@ -97,6 +133,26 @@ def noMatch : Nat → List UInt64 → Bool
+ 
+-/-- **the desugaring**: fewer than 2^24 words in and out; a text without `match` is unchanged -/
+-def ds (ts : List UInt64) : Option (List UInt64) :=
++/-- **the scope frame** (Testing/notes/SYNTAX_EXP.md, frame rule): the lexer's scope markers (`LexSpec.scopeTok`) may only
++open scopes before every other token (`ph = 0`) and close them after every other token (`ph = 2`); each `end` names the
++innermost open scope (`st`, innermost first; `[]`: an unnamed section); scopes may stay open at the end, as in Lean.
++The other tokens, in order.  So all definitions are in the same scope, and nano's flat names mean what Lean's do. -/
++def frame : Nat → List UInt64 → Nat → List (List UInt64) → Option (List UInt64)
++  | 0, _, _, _ => none
++  | _ + 1, [], _, _ => some []
++  | f + 1, k :: r, ph, st =>
++    if k = 48 then
++      (if ph = 0 then (match splitTok r with | some (n, r') => frame f r' 0 (n :: st) | none => none) else none)
++    else if k = 50 then (if ph = 0 then frame f r 0 ([] :: st) else none)
++    else if k = 49 then
++      (match splitTok r with | some (n, r') => if st.head? = some n then frame f r' 2 st.tail else none | none => none)
++    else if k = 51 then (if st.head? = some [] then frame f r 2 st.tail else none)
++    else if ph = 2 then none
++    else match splitTok (k :: r) with
++      | some (a, r') => (frame f r' 1 st).map (a ++ ·)
++      | none => none
++
++/-- the match desugaring of the framed tokens -/
++def ds0 (ts : List UInt64) : Option (List UInt64) :=
+   if ts.length < 2 ^ 24 then
+     if noMatch (ts.length + 1) ts then some ts
++    else if !dupOk (ts.length + 1) ts [0] [] 0 false then none
+     else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
+@@ -104,2 +160,6 @@ def ds (ts : List UInt64) : Option (List UInt64) :=
+ 
++/-- **the desugaring**: the scope frame (`frame`), then fewer than 2^24 words in and out; a text without `match` is
++unchanged; no redundant arm -/
++def ds (ts : List UInt64) : Option (List UInt64) := (frame (ts.length + 1) ts 0 []).bind ds0
++
+ /-- **the token words a text means**: it lexes (`LexSpec.Lexes`) and the lexer's words desugar (`ds`) to `ts` -/
+diff --git a/Nano/Lexer/Lex2Spec.lean b/Nano/Lexer/Lex2Spec.lean
+index 4333e170..936ff54c 100644
+--- a/Nano/Lexer/Lex2Spec.lean
++++ b/Nano/Lexer/Lex2Spec.lean
+@@ -8,5 +8,7 @@ Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to th
+ whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
+-attribute `@[ … ]` of names, spaces and commas; the words `namespace`, `open`, `section`, `end` with the rest of their
+-line, which must be names, dots and spaces and must not contain the word `in` (`open X in e` is a Lean term); the word
+-`private`.
++attribute `@[ name, … ]` (names `inline`, `reducible`); the word `private`.  A slash-dash-dash doc comment, an
++attribute and `private` must be followed (after whitespace and comments) by what Lean allows after them: `@[`, `private`
++or `def` (`declNext`); a slash-dash-bang module doc by a command (`cmdNext`), so nano accepts no modifier Lean
++rejects.  Scope lines `namespace N`, `section`, `end`, `end N` (`scopeLine`, `nsName`) become marker tokens
++(`scopeTok`), which `DsSpec.frame` allows only around the whole program; the word `open` is rejected.
+ Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
+@@ -48,5 +50,9 @@ def kwTable : List (List UInt8 × UInt64) :=
+ 
+-/-- words that skip the rest of their line: namespace open section end -/
+-def lineKw : List (List UInt8) :=
+-  [[110, 97, 109, 101, 115, 112, 97, 99, 101], [111, 112, 101, 110], [115, 101, 99, 116, 105, 111, 110], [101, 110, 100]]
++/-- the scope words `namespace`, `section`, `end`, and `open` (rejected: it can change name resolution) -/
++def NS : List UInt8 := [110, 97, 109, 101, 115, 112, 97, 99, 101]
++def SEC : List UInt8 := [115, 101, 99, 116, 105, 111, 110]
++def END : List UInt8 := [101, 110, 100]
++def OPEN : List UInt8 := [111, 112, 101, 110]
++/-- the scope words and their `scopeLine` kind -/
++def scopeKw : List (List UInt8 × Nat) := [(NS, 0), (SEC, 1), (END, 2)]
+ /-- words that are dropped: private -/
+@@ -64,3 +70,6 @@ def blockEnd : Nat → List UInt8 → Option (List UInt8)
+ /-- Lean's whitespace after a doc-comment opener (fuel `f`): spaces, newlines (CR LF too), dash-dash lines and plain
+-nested block comments; the rest from the comment body's first byte -/
++nested block comments; the rest from the comment body's first byte.  A tab or an isolated CR is an error, as in Lean's
++`whitespace` (Lean/Parser/Basic.lean: "tabs are not allowed", "isolated carriage returns are not allowed"); a plain block
++comment skips the byte after its opener before its body, as Lean's `whitespace` does (`s.next` before
++`finishCommentBlock`), so slash-dash-slash-dash does not nest -/
+ def docWs : Nat → List UInt8 → Option (List UInt8)
+@@ -70,21 +79,73 @@ def docWs : Nat → List UInt8 → Option (List UInt8)
+     if c = 32 ∨ c = 10 ∨ (c = 13 ∧ r.head? = some 10) then docWs f r
++    else if c = 9 ∨ c = 13 then none
+     else if c = 45 ∧ r.head? = some 45 then docWs f (r.dropWhile (· != 10))
+     else if c = 47 ∧ r.head? = some 45 ∧ r.tail.head? ≠ some 45 ∧ r.tail.head? ≠ some 33 then
+-      (blockEnd 0 r.tail).bind (docWs f)
++      (blockEnd 0 r.tail.tail).bind (docWs f)
+     else some (c :: r)
+ 
+-/-- `in` as a word: after a space, followed by the end, a space or a newline -/
+-def inWord : List UInt8 → Bool
+-  | 105 :: 110 :: t => t.head? == none || t.head? == some 32 || t.head? == some 10
+-  | _ => false
++/-- a scope name nano accepts (Testing/notes/SYNTAX_EXP.md, frame rule): one component, a capital letter, small
++letters, then at least one digit, and not starting `Int` or `Float`.  The only root names of this shape in Lean 4.34.1
++(`import Lean`, all constants) are Int8 Int16 Int32 Int64 Float32, so a declaration or a name inside such a namespace
++cannot meet an existing one -/
++def nsName : List UInt8 → Bool
++  | c :: r =>
++    let a := r.takeWhile fun b => 97 ≤ b && b ≤ 122
++    let d := r.dropWhile fun b => 97 ≤ b && b ≤ 122
++    65 ≤ c && c ≤ 90 && d != [] && d.all isD && !(c :: a == [73, 110, 116]) && !(c :: a == [70, 108, 111, 97, 116])
++  | [] => false
+ 
+-/-- the rest of a `namespace`/`open`/`section`/`end` line: names, dots, spaces up to the newline, no word `in` -/
+-def lineOk : List UInt8 → Bool
+-  | [] => true
+-  | b :: r => b == 10 || ((isW b || b == 46 || b == 32) && !(b == 32 && inWord r) && lineOk r)
++/-- the rest of a `namespace` (`k = 0`: a name required), `section` (`k = 1`: no name) or `end` (`k = 2`: a name
++optional) line: a space and the name (`nsName`), spaces, then a newline or the end of the text; the name and the rest
++from the newline -/
++def scopeLine (k : Nat) (r : List UInt8) : Option (List UInt8 × List UInt8) :=
++  let s := r.dropWhile (· == 32)
++  let n := s.takeWhile isW
++  let e := (s.dropWhile isW).dropWhile (· == 32)
++  if (e.head? = none ∨ e.head? = some 10) ∧ (if n = [] then k ≠ 0 else k ≠ 1 ∧ r.head? = some 32 ∧ nsName n = true)
++  then some (n, e) else none
+ 
+-/-- the rest after the `]` of an attribute whose bytes are names, spaces and commas -/
+-def attrEnd : List UInt8 → Option (List UInt8)
+-  | [] => none
+-  | b :: r => if b == 93 then some r else if isW b || b == 32 || b == 44 then attrEnd r else none
++/-- the attribute names accepted: `inline`, `reducible` -/
++def attrNames : List (List UInt8) := [[105, 110, 108, 105, 110, 101], [114, 101, 100, 117, 99, 105, 98, 108, 101]]
++
++/-- the contents of `@[` … `]` as Lean's grammar, names from `attrNames`: `name (, name)*`, spaces around; the rest after
++the `]`.  `w`: the name being read (reversed); `d`: a name has been read since the start or the last comma -/
++def attrEnd : List UInt8 → List UInt8 → Bool → Option (List UInt8)
++  | [], _, _ => none
++  | b :: r, w, d =>
++    if isW b then (if d then none else attrEnd r (b :: w) false)
++    else if w ≠ [] ∧ !attrNames.contains w.reverse then none
++    else
++      let d' := d || w ≠ []
++      if b == 32 then attrEnd r [] d'
++      else if b == 44 then (if d' then attrEnd r [] false else none)
++      else if b == 93 then (if d' then some r else none)
++      else none
++
++/-- `w` followed by a non-name byte (or the end) starts `l` -/
++def startsWord (w l : List UInt8) : Bool := w.isPrefixOf l && !(((l.drop w.length).head?.map isW).getD false)
++
++/-- the words `def`, `private` -/
++def DEF : List UInt8 := [100, 101, 102]
++def PRIV : List UInt8 := [112, 114, 105, 118, 97, 116, 101]
++
++/-- what may follow a declaration modifier, after Lean's whitespace and comments (`docWs`): `@[` (`k = 2`: after a doc
++comment), `private` (`k ≥ 1`: after a doc comment or an attribute) or `def` (Lean: docComment? attributes? private? def) -/
++def declNext (k : Nat) (l : List UInt8) : Bool :=
++  match docWs (l.length + 1) l with
++  | some u => (k == 2 && [64, 91].isPrefixOf u) || (1 ≤ k && startsWord PRIV u) || startsWord DEF u
++  | none => false
++
++/-- what may follow a module doc comment (slash-dash-bang), after Lean's whitespace and comments: a command
++(slash-dash-dash, slash-dash-bang, `@[`, `private`, `def`, `namespace`, `section`, `end`); Lean ends a term at a module doc
++comment and then expects a command.  Stricter than Lean: the end of the text is not accepted here -/
++def cmdNext (l : List UInt8) : Bool :=
++  match docWs (l.length + 1) l with
++  | some u => [47, 45].isPrefixOf u || [64, 91].isPrefixOf u || startsWord PRIV u || startsWord DEF u ||
++      startsWord NS u || startsWord SEC u || startsWord END u
++  | none => false
++
++/-- a scope marker: `48`/`49` (opens/closes the scope of a name) with the name's identifier token, `50`/`51` (opens/closes
++an unnamed section) -/
++def scopeTok (o : Bool) (n : List UInt8) : List UInt64 :=
++  if n = [] then [if o then 50 else 51] else (if o then 48 else 49) :: 14 :: (n.flatMap fun b => [1, b.toUInt64]) ++ [0]
+ 
+@@ -103,4 +164,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+       (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
+-       else blockEnd 0 r.tail).map fun t => ([], t)
+-    else if c == 64 && r.head? == some 91 then (attrEnd r.tail).map fun t => ([], t)
++       else blockEnd 0 r.tail.tail).bind fun t =>
++        if r.tail.head? == some 45 && !declNext 2 t then none
++        else if r.tail.head? == some 33 && !cmdNext t then none else some ([], t)
++    else if c == 64 && r.head? == some 91 then
++      (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none
+     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
+@@ -112,7 +176,10 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+         else if isW c then
+-          if lineKw.contains w then (if lineOk rest then some ([], rest.dropWhile (· != 10)) else none)
+-          else if dropKw.contains w then some ([], rest)
+-          else some ((match kwTable.lookup w with
+-                 | some k => [k]
+-                 | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
++          if w == OPEN then none
++          else match scopeKw.lookup w with
++          | some k => (scopeLine k rest).map fun (n, e) => (scopeTok (k != 2) n, e)
++          | none =>
++            if dropKw.contains w then (if declNext 0 rest then some ([], rest) else none)
++            else some ((match kwTable.lookup w with
++                   | some k => [k]
++                   | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
+         else none
+@@ -124 +191,2 @@ inductive Lexes : List UInt8 → List UInt64 → Prop
+ end LexSpec
++
+```
+
+Still open: B (Nat defaulting of literal-only operands, incl. M15 tuple-let operands), D (layout/offside), M1–M14.
+`partial def`: rejected (the word `partial` is an identifier to the lexer and the parser expects `def`), so termination
+is never assumed.
 
 ## Morning summary (SYNTAX-EXP, 2026-11-20)
 Both branches include `origin/release-434` @234d4ff5 (which now contains rv-regen-434). The merge changed no file under

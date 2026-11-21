@@ -8,56 +8,28 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_144 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 144) :
-    Spec144 inp (defMean inp κC ms PC.d144) := by
-  intro a0 a1 a2 a3
-  refine defMean_den (C.v96 a0 a1 a2 a3) PC.b144 ([.b a0, .w a1, .w a2, .w a3]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b144
+theorem ok_152 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 152) :
+    Spec152 inp (defMean inp κC ms PC.d152) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v143 a0 a1 a2) PC.b152 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b152
   den_unfold
   den
 
-theorem ok_145 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 145) :
-    Spec145 inp (defMean inp κC ms PC.d145) := by
-  have L : ∀ (n : Nat), n < 18446744073709551616 → ∀ (w0 : UInt64) (a1 : Buf),
-      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z145 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s145 e) n ([.w w0, .b a1] ++ List.replicate 6 (.w 0))) (enc (C.v97 n a1)) := by
-    intro n
-    induction n with
-    | zero => intro _ w0 a1; rw [C.v97.eq_def]; den_match 0; unfold PC.z145; exact loop_zero (by den)
-    | succ n ih =>
-      intro hn w0 a1
-      rw [C.v97.eq_def]
-      den_match 1
-      refine loop_succ (env1 := [.w (UInt64.ofNat n), .b a1] ++ List.replicate 6 (.w 0)) rfl ?_
-      have hc : ∀ (a1' : Buf) {e : Nd} {env : List W}, DenT ⟨inp, κC, ms⟩ e env a1' →
-          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z145 e) PC.s145 n ([.w (UInt64.ofNat n), .b a1] ++ List.replicate 6 (.w 0))) (.cont e) env (C.v97 n a1') :=
-        fun a1' _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ a1'⟩
-      unfold PC.s145
-      den [hc]
-  intro a0 a1 hn
-  refine defMean_loop (C.v97 a0 a1) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
-  have h := L a0 hn (UInt64.ofNat a0) a1
-  rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
+theorem ok_153 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 153) :
+    Spec153 inp (defMean inp κC ms PC.d153) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v144 a0 a1 a2) PC.b153 ([.b a0, .w a1, .w a2] ++ List.replicate 4 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b153
+  den_unfold
+  den
 
-theorem ok_146 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 146) :
-    Spec146 inp (defMean inp κC ms PC.d146) := by
-  have L : ∀ (n : Nat), n < 18446744073709551616 → ∀ (w0 : UInt64) (a1 : Buf) (a2 : UInt64) (a3 : Buf),
-      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z146 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s146 e) n ([.w w0, .b a1, .w a2, .b a3] ++ List.replicate 1 (.w 0))) (enc (C.v98 n a1 a2 a3)) := by
-    intro n
-    induction n with
-    | zero => intro _ w0 a1 a2 a3; rw [C.v98.eq_def]; den_match 0; unfold PC.z146; exact loop_zero (by den)
-    | succ n ih =>
-      intro hn w0 a1 a2 a3
-      rw [C.v98.eq_def]
-      den_match 1
-      refine loop_succ (env1 := [.w (UInt64.ofNat n), .b a1, .w a2, .b a3] ++ List.replicate 1 (.w 0)) rfl ?_
-      have hc : ∀ (a1' : Buf) (a2' : UInt64) (a3' : Buf) {e : Nd} {env : List W}, DenT ⟨inp, κC, ms⟩ e env (a1', a2', a3') →
-          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z146 e) PC.s146 n ([.w (UInt64.ofNat n), .b a1, .w a2, .b a3] ++ List.replicate 1 (.w 0))) (.cont e) env (C.v98 n a1' a2' a3') :=
-        fun a1' a2' a3' _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ a1' a2' a3'⟩
-      unfold PC.s146
-      den [hc]
-  intro a0 a1 a2 a3 hn
-  refine defMean_loop (C.v98 a0 a1 a2 a3) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
-  have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3
-  rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
+theorem ok_154 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 154) :
+    Spec154 inp (defMean inp κC ms PC.d154) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v204 a0 a1 a2) PC.b154 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b154
+  den_unfold
+  den
 
 end Cert

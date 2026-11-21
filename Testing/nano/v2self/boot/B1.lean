@@ -64,9 +64,9 @@ def s3 (x : Array UInt8) (p e : UInt64) : UInt64 :=
   let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
   let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
   let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
-  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 92 else r19 else r19 else r19 else r19;
-  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 92 else r20 else r20 else r20 else r20 else r20;
-  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 92 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
+  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 97 else r19 else r19 else r19 else r19;
+  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 0 else r20 else r20 else r20 else r20 else r20;
+  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 98 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
   let r23 := if d == 9 then if c == 110 then if rd x (p + 1) == 97 then if rd x (p + 2) == 109 then if rd x (p + 3) == 101 then if rd x (p + 4) == 115 then if rd x (p + 5) == 112 then if rd x (p + 6) == 97 then if rd x (p + 7) == 99 then if rd x (p + 8) == 101 then 92 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22;
   let r24 := if d == 7 then if c == 112 then if rd x (p + 1) == 114 then if rd x (p + 2) == 105 then if rd x (p + 3) == 118 then if rd x (p + 4) == 97 then if rd x (p + 5) == 116 then if rd x (p + 6) == 101 then 93 else r23 else r23 else r23 else r23 else r23 else r23 else r23 else r23;
   r24
@@ -151,17 +151,26 @@ def s12 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64
   | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
 
 def s13 : Nat → Array UInt8 → UInt64 → UInt64
-  | 0, x, i => 0
-  | n + 1, x, i => if i < len x then
-      if rd x i == 10 then 1
-      else if rd x i == 32 then
-        if rd x (i + 1) == 105 then if rd x (i + 2) == 110 then
-          if i + 3 < len x then if rd x (i + 3) == 32 then 0 else if rd x (i + 3) == 10 then 0 else s13 n x (i + 1) else 0
-        else s13 n x (i + 1) else s13 n x (i + 1)
-      else if rd x i == 46 then s13 n x (i + 1)
-      else if s0 (rd x i) == 1 then s13 n x (i + 1)
-      else 0
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if rd x i == 32 then s13 n x (i + 1) else i else i
+
+def s21 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if 96 < rd x i then if rd x i < 123 then s21 n x (i + 1) else i else i else i
+
+def s20 (x : Array UInt8) (a b : UInt64) : UInt64 :=
+  let j := s21 (len' x) x (a + 1);
+  if 64 < rd x a then if rd x a < 91 then if j < b then if s2 (len' x) x j b == 1 then
+    if j == a + 3 then if rd x a == 73 then if rd x (a + 1) == 110 then if rd x (a + 2) == 116 then 0 else 1 else 1 else 1
+    else if j == a + 5 then if rd x a == 70 then if rd x (a + 1) == 108 then if rd x (a + 2) == 111 then if rd x (a + 3) == 97 then if rd x (a + 4) == 116 then 0 else 1 else 1 else 1 else 1 else 1
     else 1
+  else 0 else 0 else 0 else 0
+
+def s22 (x : Array UInt8) (q a b e k : UInt64) : UInt64 :=
+  let v := if e < len x then if rd x e == 10 then 1 else 0 else 1;
+  if v == 0 then 0
+  else if a == b then if k == 92 then 0 else 1
+  else if k == 98 then 0 else if rd x q == 32 then s20 x a b else 0
 
 def s16 (x : Array UInt8) (p e : UInt64) : UInt64 :=
   let d := e - p;
@@ -212,6 +221,22 @@ def s17 (x : Array UInt8) (i k : UInt64) : UInt64 :=
   else if k == 2 then if rd x j == 64 then if rd x (j + 1) == 91 then 1 else s18 x j k else s18 x j k
   else s18 x j k
 
+def s23 (k : UInt64) : UInt64 := if k == 92 then 1 else if k == 97 then 1 else if k == 98 then 1 else 0
+
+def s25 (x : Array UInt8) (j : UInt64) : UInt64 :=
+  let e := s1 (len' x) x j;
+  if s3 x j e == 92 then 1 else if s3 x j e == 97 then 1 else if s3 x j e == 98 then 1 else 0
+
+def s24 (x : Array UInt8) (i : UInt64) : UInt64 :=
+  let j := s15 (len' x) x i;
+  if j == 0 then 0
+  else if j < len x then
+    if rd x j == 47 then if rd x (j + 1) == 45 then 1 else 0
+    else if rd x j == 64 then if rd x (j + 1) == 91 then 1 else 0
+    else if s18 x j 1 == 1 then 1
+    else s25 x j
+  else 0
+
 def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -222,12 +247,21 @@ def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
-    else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
+    else if s23 k == 1 then
+      let q := s5 x p k;
+      let a := s13 (len' x) x q;
+      let b := s1 (len' x) x a;
+      let e := s13 (len' x) x b;
+      let m := if k == 97 then 49 else 48;
+      if s22 x q a b e k == 1 then
+        if a == b then s9 n x e (q0 o (m + 2)) else s9 n x e (s7 (len' x) x a b (q0 (q0 o m) 14))
+      else bnew
     else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
     else if k == 95 then
       let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 3;
       if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew
       else if rd x (p + 2) == 45 then if s17 x (s11 (len' x) x b 0) 2 == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
+      else if rd x (p + 2) == 33 then if s24 x (s11 (len' x) x b 0) == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
       else s9 n x (s11 (len' x) x b 0) o
     else if k == 96 then if s14 (len' x) x (p + 2) 0 0 == 0 then bnew
       else if s17 x (s14 (len' x) x (p + 2) 0 0) 1 == 1 then s9 n x (s14 (len' x) x (p + 2) 0 0) o else bnew
@@ -370,12 +404,52 @@ def t11 : Nat → Buf → UInt64 → UInt64
   | 0, t, i => 0
   | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
 
-def t10 (t : Buf) : Buf :=
+def t20 (t : Buf) : Buf :=
   if bsize t < 16777216 then
     if t11 16777216 t 0 == 1 then t else
     if t12 16777216 t 0 0 (bpush bnew 0) bnew 0 0 == 0 then bnew else
     let o := t9 16777216 t 0 0 (bpush bnew 0) 0 bnew;
     if bsize o < 16777216 then o else bnew
+  else bnew
+
+def t19 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if 47 < bget t i then if bget t i < 52 then 2 else t19 n t (t0 t i) else t19 n t (t0 t i) else 1
+
+def t17 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, t, a, e, b => 0
+  | n + 1, t, a, e, b => if a < e then if b < bsize t then if bget t a == bget t b then t17 n t (a + 1) e (b + 1) else 0 else 0 else 1
+
+def t18 (s : Buf) (d v : UInt64) : Buf := if d < bsize s then bset s d v else bpush s v
+
+def t16 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
+  | 0, t, i, ph, s, d, o => bnew
+  | n + 1, t, i, ph, s, d, o =>
+    if i < bsize t then
+      let k := bget t i;
+      if k == 48 then
+        if ph == 0 then if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew
+          else t16 n t (t0 t (i + 1)) 0 (t18 s d (i + 1)) (d + 1) o else bnew else bnew
+      else if k == 50 then if ph == 0 then t16 n t (i + 1) 0 (t18 s d 0) (d + 1) o else bnew
+      else if k == 49 then
+        if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew else if 0 < d then
+          let a := bget s (d - 1);
+          if 0 < a then
+            if t0 t (i + 1) - (i + 1) == t0 t a - a then
+              if t17 16777216 t a (t0 t a) (i + 1) == 1 then t16 n t (t0 t (i + 1)) 2 s (d - 1) o else bnew
+            else bnew
+          else bnew
+        else bnew else bnew
+      else if k == 51 then if 0 < d then if bget s (d - 1) == 0 then t16 n t (i + 1) 2 s (d - 1) o else bnew else bnew
+      else if ph == 2 then bnew
+      else if t0 t i == 0 then bnew else t16 n t (t0 t i) 1 s d (t6 16777216 t i (t0 t i) o)
+    else o
+
+def t10 (t : Buf) : Buf :=
+  if bsize t < 16777216 then
+    if t19 16777216 t 0 == 1 then t20 t
+    else if t19 16777216 t 0 == 2 then t20 (t16 16777216 t 0 0 bnew 0 bnew)
+    else bnew
   else bnew
 
 -- ===== Par1 =====

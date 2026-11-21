@@ -8,19 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_136 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 136) :
-    Spec136 inp (defMean inp κC ms PC.d136) := by
+theorem ok_144 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 144) :
+    Spec144 inp (defMean inp κC ms PC.d144) := by
   intro a0 a1 a2
-  refine defMean_den (C.v138 a0 a1 a2) PC.b136 ([.b a0, .w a1, .w a2] ++ List.replicate 21 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b136
+  refine defMean_den (C.v135 a0 a1 a2) PC.b144 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b144
   den_unfold
   den
 
-theorem ok_137 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 137) :
-    Spec137 inp (defMean inp κC ms PC.d137) := by
+theorem ok_145 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 145) :
+    Spec145 inp (defMean inp κC ms PC.d145) := by
   intro a0 a1 a2
-  refine defMean_den (C.v139 a0 a1 a2) PC.b137 ([.b a0, .w a1, .w a2] ++ List.replicate 19 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b137
+  refine defMean_den (C.v136 a0 a1 a2) PC.b145 ([.b a0, .w a1, .w a2] ++ List.replicate 14 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b145
+  den_unfold
+  den
+
+theorem ok_146 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 146) :
+    Spec146 inp (defMean inp κC ms PC.d146) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v137 a0 a1 a2) PC.b146 ([.b a0, .w a1, .w a2] ++ List.replicate 16 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b146
   den_unfold
   den
 

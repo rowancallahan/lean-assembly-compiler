@@ -1636,12 +1636,12 @@ theorem rep0 : Rep (bpush bnew 0) 0 [0] := ⟨rfl, by simp [bpush, bnew], fun k 
 
 /-- **the match desugaring is sound**: if `C.t10` accepts a token buffer (below 2^24 words), its output is the
 specification's `ds` -/
-theorem t10_sound (t : Buf) (ht : t.length < 16777216) (h : t10 t ≠ []) : ds t = some (t10 t) := by
+theorem t20_sound (t : Buf) (ht : t.length < 16777216) (h : t20 t ≠ []) : ds0 t = some (t20 t) := by
   have hb : bsize t < 16777216 := by
     rw [UInt64.lt_iff_toNat_lt, bsize_toNat ht]; simpa using ht
-  unfold t10 at h ⊢
+  unfold t20 at h ⊢
   rw [if_pos hb] at h ⊢
-  unfold ds
+  unfold ds0
   rw [if_pos (by simpa using ht)]
   by_cases h11 : t11 16777216 t 0 = 1
   · rw [if_pos (bT h11)]
@@ -1676,5 +1676,321 @@ theorem t10_sound (t : Buf) (ht : t.length < 16777216) (h : t10 t ≠ []) : ds t
   by_cases hm : noMatch (t.length + 1) t = true
   · rw [if_pos hm, go_noMatch _ _ t [0] out hm (by simp) g1]
   · rw [if_neg hm, hdup]; simp only [Bool.not_true, Bool.false_eq_true, if_false, ite_false]; rw [g1]; simp [hO']
+
+
+/-! ### the scope frame: t19 (any marker?), t17 (names equal), t18 (stack entry), t16 (copy between the markers) -/
+
+theorem t19_sound : ∀ (n f : Nat) (t : Buf) (i : UInt64), t.length < 16777216 → i.toNat ≤ t.length →
+    t.length - i.toNat < f → t19 n t i = 1 →
+    ∀ ph, (ph = 0 ∨ ph = 1) → ∀ st, frame f (t.drop i.toNat) ph st = some (t.drop i.toNat)
+  | 0, _, _, _, _, _, _, h => by simp [t19] at h
+  | n + 1, f, t, i, ht, hi, hf, h => by
+    intro ph hph st
+    obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    simp only [t19] at h
+    by_cases hlt : i < bsize t
+    · rw [if_pos hlt] at h
+      have hl := (lt_bsize ht).1 hlt
+      have c1 : t0 t i ≠ 0 := by intro e'; rw [if_pos (by simpa using e')] at h; cases h
+      rw [if_neg (by simpa using c1)] at h
+      obtain ⟨e1, e2, e3⟩ := t0_sound t i ht hl c1
+      have hk : ¬ (47 < bget t i ∧ bget t i < 52) := fun ⟨a, b⟩ => by rw [if_pos a, if_pos b] at h; cases h
+      have h' : t19 n t (t0 t i) = 1 := by
+        by_cases a : 47 < bget t i
+        · rw [if_pos a, if_neg (fun b => hk ⟨a, b⟩)] at h; exact h
+        · rw [if_neg a] at h; exact h
+      have IH := t19_sound n f t (t0 t i) ht e2 (by omega) h' 1 (.inr rfl) st
+      have hk' : bget t i ≠ 48 ∧ bget t i ≠ 49 ∧ bget t i ≠ 50 ∧ bget t i ≠ 51 := by
+        refine ⟨?_, ?_, ?_, ?_⟩ <;> intro e <;> exact hk ⟨by rw [e]; decide, by rw [e]; decide⟩
+      rw [bget_eq] at hk'
+      have hph2 : ph ≠ 2 := by omega
+      rw [drop_cons' hl] at e3 ⊢
+      simp only [frame, hk'.1, hk'.2.1, hk'.2.2.1, hk'.2.2.2, hph2, if_false, e3, IH, Option.map_some]
+      rw [← drop_cons' hl, ← slice_app (Nat.le_of_lt e1) e2]
+    · have : i.toNat = t.length := by have := (not_congr (lt_bsize ht)).1 hlt; omega
+      rw [this]; simp [frame]
+
+theorem bN {a b : UInt64} (h : a ≠ b) : ¬ (a == b) = true := by simpa using h
+
+theorem slice_cons {t : Buf} {i e : Nat} (h1 : i < e) (h2 : e ≤ t.length) :
+    slice t i e = t.getD i 0 :: slice t (i + 1) e := by
+  simp only [slice]; rw [drop_cons' (by omega), show e - i = (e - (i + 1)) + 1 by omega]; simp
+
+theorem t17_eq : ∀ (n : Nat) (t : Buf) (a e b : UInt64), t.length < 16777216 → a.toNat ≤ e.toNat → e.toNat ≤ t.length →
+    b.toNat ≤ t.length → t17 n t a e b = 1 →
+    b.toNat + (e.toNat - a.toNat) ≤ t.length ∧ slice t a.toNat e.toNat = slice t b.toNat (b.toNat + (e.toNat - a.toNat))
+  | 0, _, _, _, _, _, _, _, _, h => by simp [t17] at h
+  | n + 1, t, a, e, b, ht, hae, he, hb, h => by
+    simp only [t17] at h
+    by_cases hlt : a < e
+    · rw [if_pos hlt] at h
+      have hl : a.toNat < e.toNat := UInt64.lt_iff_toNat_lt.1 hlt
+      by_cases hbl : b < bsize t
+      · rw [if_pos hbl] at h
+        have hbl' := (lt_bsize ht).1 hbl
+        by_cases heq : bget t a = bget t b
+        · rw [if_pos (by simpa using heq)] at h
+          have ha1 : (a + 1).toNat = a.toNat + 1 := add1 (by omega)
+          have hb1 : (b + 1).toNat = b.toNat + 1 := add1 (by omega)
+          obtain ⟨r1, r2⟩ := t17_eq n t (a + 1) e (b + 1) ht (by omega) he (by omega) h
+          rw [ha1, hb1] at r1 r2
+          refine ⟨by omega, ?_⟩
+          rw [slice_cons hl he, slice_cons (i := b.toNat) (e := b.toNat + (e.toNat - a.toNat)) (by omega) (by omega), r2, show b.toNat + 1 + (e.toNat - (a.toNat + 1)) =
+            b.toNat + (e.toNat - a.toNat) by omega]
+          rw [bget_eq, bget_eq] at heq; rw [heq]
+        · rw [if_neg (by simpa using heq)] at h; cases h
+      · rw [if_neg hbl] at h; cases h
+    · have : e.toNat = a.toNat := by have := UInt64.le_iff_toNat_le.1 (UInt64.not_lt.1 hlt); omega
+      refine ⟨by omega, ?_⟩; simp [slice, this]
+
+/-- a stack entry's scope name: 0 an unnamed section, else the name token at that position -/
+def nmOf (t : Buf) (a : UInt64) : List UInt64 := if a = 0 then [] else slice t a.toNat (t0 t a).toNat
+
+/-- the open-scope stack `s` (depth `d`) holds the positions `ps`, innermost first -/
+def SR (t s : Buf) (d : UInt64) (ps : List UInt64) : Prop :=
+  ps.length = d.toNat ∧ d.toNat ≤ s.length ∧ (∀ j, j < d.toNat → s.getD j 0 = ps.getD (d.toNat - 1 - j) 0) ∧
+  ∀ a ∈ ps, a ≠ 0 → a.toNat < t.length ∧ t0 t a ≠ 0
+
+theorem sr0 (t : Buf) : SR t bnew 0 [] := ⟨rfl, by simp [bnew], fun j hj => by simp at hj, fun a ha => by simp at ha⟩
+
+theorem sr_push {t s : Buf} {d v : UInt64} {ps : List UInt64} (h : SR t s d ps) (hs : s.length < 16777216)
+    (hd : d.toNat + 1 < 16777216) (hv : v ≠ 0 → v.toNat < t.length ∧ t0 t v ≠ 0) :
+    SR t (t18 s d v) (d + 1) (v :: ps) ∧ (t18 s d v).length ≤ max s.length (d.toNat + 1) := by
+  obtain ⟨h1, h2, h3, h4⟩ := h
+  have hd1 : (d + 1).toNat = d.toNat + 1 := add1 (by omega)
+  have key : (t18 s d v).length = max s.length (d.toNat + 1) ∧
+      ∀ j, j < d.toNat + 1 → (t18 s d v).getD j 0 = if j = d.toNat then v else s.getD j 0 := by
+    unfold t18
+    by_cases hlt : d < bsize s
+    · rw [if_pos hlt]; have hl := (lt_bsize hs).1 hlt
+      refine ⟨by simp [bset]; omega, fun j hj => ?_⟩
+      simp only [bset, List.getD_eq_getElem?_getD, List.getElem?_set]
+      by_cases e : j = d.toNat
+      · subst e; simp [hl]
+      · simp [Ne.symm e, e]
+    · rw [if_neg hlt]
+      have : d.toNat = s.length := by have := (not_congr (lt_bsize hs)).1 hlt; omega
+      refine ⟨by simp [bpush]; omega, fun j hj => ?_⟩
+      simp only [bpush, List.getD_eq_getElem?_getD]
+      by_cases e : j = d.toNat
+      · subst e; simp [this]
+      · rw [List.getElem?_append_left (by omega)]; simp [e]
+  refine ⟨⟨by simp [h1, hd1], by rw [key.1, hd1]; omega, fun j hj => ?_, fun a ha hne => ?_⟩, Nat.le_of_eq key.1⟩
+  · rw [hd1] at hj ⊢
+    rw [key.2 j hj]
+    by_cases e : j = d.toNat
+    · subst e; simp
+    · rw [if_neg e, h3 j (by omega), show d.toNat + 1 - 1 - j = (d.toNat - 1 - j) + 1 by omega]; simp
+  · simp at ha; rcases ha with rfl | ha
+    · exact hv hne
+    · exact h4 a ha hne
+
+theorem sr_pop {t s : Buf} {d : UInt64} {ps : List UInt64} (h : SR t s d ps) (hd : 0 < d.toNat) :
+    SR t s (d - 1) ps.tail ∧ bget s (d - 1) = ps.headD 0 := by
+  obtain ⟨h1, h2, h3, h4⟩ := h
+  have hd1 : (d - 1).toNat = d.toNat - 1 := by
+    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 (by simp; omega))]; simp
+  refine ⟨⟨by simp [h1, hd1], by omega, fun j hj => ?_, fun a ha hne => h4 a (List.mem_of_mem_tail ha) hne⟩, ?_⟩
+  · rw [hd1] at hj ⊢; rw [h3 j (by omega)]
+    cases ps with
+    | nil => simp at h1; omega
+    | cons p ps => simp only [List.tail_cons, show d.toNat - 1 - j = (d.toNat - 1 - 1 - j) + 1 by omega]; simp
+  · rw [bget_eq, hd1, h3 _ (by omega), show d.toNat - 1 - (d.toNat - 1) = 0 by omega]
+    cases ps with
+    | nil => simp at h1; omega
+    | cons p ps => simp
+
+theorem nmOf_ne {t : Buf} {a : UInt64} (ha : a ≠ 0) : nmOf t a = slice t a.toNat (t0 t a).toNat := by simp [nmOf, ha]
+
+theorem t16_sound : ∀ (n : Nat) (t : Buf) (i ph : UInt64) (s : Buf) (d : UInt64) (o : Buf) (ps : List UInt64) (f : Nat),
+    t.length < 16777216 → i.toNat ≤ t.length → t.length - i.toNat < f → ph.toNat ≤ 2 → SR t s d ps →
+    d.toNat ≤ i.toNat → s.length ≤ i.toNat → t16 n t i ph s d o ≠ [] →
+    ∃ body, frame f (t.drop i.toNat) ph.toNat (ps.map (nmOf t)) = some body ∧ body.length + i.toNat ≤ t.length ∧
+      t16 n t i ph s d o = o ++ body
+  | 0, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, h => by simp [t16, bnew] at h
+  | n + 1, t, i, ph, s, d, o, ps, f, ht, hi, hf, hph, hS, hdi, hsi, h => by
+    obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    have hnb : ∀ {x : Buf}, x = bnew → x ≠ [] → False := fun e hx => hx (by rw [e]; rfl)
+    simp only [t16] at h ⊢
+    by_cases hlt : i < bsize t
+    case neg =>
+      have : i.toNat = t.length := by have := (not_congr (lt_bsize ht)).1 hlt; omega
+      rw [if_neg hlt]
+      exact ⟨[], by rw [this]; simp [frame], by simp; omega, by simp⟩
+    rw [if_pos hlt] at h ⊢
+    have hl := (lt_bsize ht).1 hlt
+    rw [drop_cons' hl]
+    have hk' : t.getD i.toNat 0 = bget t i := (bget_eq t i).symm
+    rw [hk']
+    generalize hk : bget t i = k at h ⊢
+    have hi1 : (i + 1).toNat = i.toNat + 1 := add1 (by omega)
+    by_cases k48 : k = 48
+    · subst k48
+      rw [if_pos (bT rfl)] at h ⊢
+      by_cases hp0 : ph = 0
+      case neg =>
+        rw [if_neg (by simpa using hp0)] at h; exact (h rfl).elim
+      subst hp0
+      rw [if_pos (bT rfl)] at h ⊢
+      by_cases hi1l : i + 1 < bsize t
+      case neg =>
+        rw [if_neg hi1l] at h; exact (h rfl).elim
+      rw [if_pos hi1l] at h ⊢
+      have hl1 := (lt_bsize ht).1 hi1l
+      by_cases hj0 : t0 t (i + 1) = 0
+      · rw [if_pos (bT hj0)] at h; exact (h rfl).elim
+      rw [if_neg (bN hj0)] at h ⊢
+      obtain ⟨e1, e2, e3⟩ := t0_sound t (i + 1) ht hl1 hj0
+      rw [hi1] at e1 e3
+      have hv : i + 1 ≠ 0 := fun e => by rw [e] at hi1; simp at hi1
+      obtain ⟨hS', hlen'⟩ := sr_push hS (by omega) (by omega) (v := i + 1) (fun _ => ⟨by omega, hj0⟩)
+      obtain ⟨body, g1, g2, g3⟩ := t16_sound n t (t0 t (i + 1)) 0 (t18 s d (i + 1)) (d + 1) o ((i + 1) :: ps) f ht e2
+        (by omega) (by simp) hS' (by rw [add1 (by omega)]; omega) (by omega) h
+      refine ⟨body, ?_, by omega, g3⟩
+      simp only [UInt64.toNat_zero, frame, if_true, e3]
+      simp only [List.map_cons, nmOf_ne hv, hi1, UInt64.toNat_zero] at g1
+      exact g1
+    by_cases k50 : k = 50
+    · subst k50
+      rw [if_neg (by decide), if_pos (bT rfl)] at h ⊢
+      by_cases hp0 : ph = 0
+      case neg =>
+        rw [if_neg (by simpa using hp0)] at h; exact (h rfl).elim
+      subst hp0
+      rw [if_pos (bT rfl)] at h ⊢
+      obtain ⟨hS', hlen'⟩ := sr_push hS (by omega) (by omega) (v := 0) (fun e => absurd rfl e)
+      obtain ⟨body, g1, g2, g3⟩ := t16_sound n t (i + 1) 0 (t18 s d 0) (d + 1) o (0 :: ps) f ht (by omega)
+        (by omega) (by simp) hS' (by rw [add1 (by omega), hi1]; omega) (by omega) h
+      refine ⟨body, ?_, by omega, g3⟩
+      simp (config := {decide := true}) only [UInt64.toNat_zero, frame, if_true, if_false]
+      simp only [List.map_cons, nmOf, if_true, hi1, UInt64.toNat_zero] at g1
+      exact g1
+    by_cases k49 : k = 49
+    · subst k49
+      rw [if_neg (by decide), if_neg (by decide), if_pos (bT rfl)] at h ⊢
+      by_cases hi1l : i + 1 < bsize t
+      case neg =>
+        rw [if_neg hi1l] at h; exact (h rfl).elim
+      rw [if_pos hi1l] at h ⊢
+      have hl1 := (lt_bsize ht).1 hi1l
+      by_cases hj0 : t0 t (i + 1) = 0
+      · rw [if_pos (bT hj0)] at h; exact (h rfl).elim
+      rw [if_neg (bN hj0)] at h ⊢
+      obtain ⟨e1, e2, e3⟩ := t0_sound t (i + 1) ht hl1 hj0
+      rw [hi1] at e1 e3
+      by_cases hd0 : 0 < d
+      case neg =>
+        rw [if_neg hd0] at h; exact (h rfl).elim
+      rw [if_pos hd0] at h ⊢
+      have hd0' : 0 < d.toNat := UInt64.lt_iff_toNat_lt.1 hd0
+      obtain ⟨hS', htop⟩ := sr_pop hS hd0'
+      have hdm : (d - 1).toNat = d.toNat - 1 := by
+        rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 (by simp; omega))]; simp
+      rw [htop] at h ⊢
+      by_cases ha0 : 0 < ps.headD 0
+      case neg =>
+        rw [if_neg ha0] at h; exact (h rfl).elim
+      rw [if_pos ha0] at h ⊢
+      have hane : ps.headD 0 ≠ 0 := fun e => by rw [e] at ha0; exact absurd ha0 (by decide)
+      obtain ⟨p, ps', rfl⟩ : ∃ p ps', ps = p :: ps' := by
+        cases ps with
+        | nil => simp at hane
+        | cons p ps' => exact ⟨p, ps', rfl⟩
+      simp only [List.headD_cons] at hane h ⊢
+      obtain ⟨pa1, pa2⟩ := hS.2.2.2 p (by simp) hane
+      obtain ⟨q1, q2, q3⟩ := t0_sound t p ht pa1 pa2
+      by_cases hlen : t0 t (i + 1) - (i + 1) = t0 t p - p
+      case neg =>
+        simp only [bF hlen, Bool.false_eq_true, if_false] at h; exact (h rfl).elim
+      simp only [bT hlen, if_true] at h ⊢
+      by_cases h17 : t17 16777216 t p (t0 t p) (i + 1) = 1
+      case neg =>
+        simp only [bF h17, Bool.false_eq_true, if_false] at h; exact (h rfl).elim
+      simp only [bT h17, if_true] at h ⊢
+      obtain ⟨c1, c2⟩ := t17_eq _ t p (t0 t p) (i + 1) ht (by omega) q2 (by omega) h17
+      have hl' : (t0 t (i + 1)).toNat - (i.toNat + 1) = (t0 t p).toNat - p.toNat := by
+        have := congrArg UInt64.toNat hlen
+        rwa [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 (by omega)),
+          UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 (by omega)), hi1] at this
+      rw [hi1] at c1 c2
+      have hnm : slice t (i.toNat + 1) (t0 t (i + 1)).toNat = nmOf t p := by
+        rw [nmOf_ne hane, c2, show i.toNat + 1 + ((t0 t p).toNat - p.toNat) = (t0 t (i + 1)).toNat by omega]
+      obtain ⟨body, g1, g2, g3⟩ := t16_sound n t (t0 t (i + 1)) 2 s (d - 1) o ps' f ht e2 (by omega) (by decide) hS'
+        (by rw [hdm]; omega) (by omega) h
+      refine ⟨body, ?_, by omega, g3⟩
+      simp (config := {decide := true}) only [frame, if_true, if_false, e3, List.map_cons, List.head?_cons, hnm,
+        List.tail_cons]
+      simpa using g1
+    by_cases k51 : k = 51
+    · subst k51
+      rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (bT rfl)] at h ⊢
+      by_cases hd0 : 0 < d
+      case neg =>
+        rw [if_neg hd0] at h; exact (h rfl).elim
+      rw [if_pos hd0] at h ⊢
+      have hd0' : 0 < d.toNat := UInt64.lt_iff_toNat_lt.1 hd0
+      obtain ⟨hS', htop⟩ := sr_pop hS hd0'
+      have hdm : (d - 1).toNat = d.toNat - 1 := by
+        rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 (by simp; omega))]; simp
+      rw [htop] at h ⊢
+      by_cases ha0 : ps.headD 0 = 0
+      case neg =>
+        rw [if_neg (by simpa using ha0)] at h; exact (h rfl).elim
+      rw [if_pos (bT ha0)] at h ⊢
+      obtain ⟨p, ps', rfl⟩ : ∃ p ps', ps = p :: ps' := by
+        cases ps with
+        | nil => have := hS.1; simp at this; omega
+        | cons p ps' => exact ⟨p, ps', rfl⟩
+      simp only [List.headD_cons] at ha0
+      obtain ⟨body, g1, g2, g3⟩ := t16_sound n t (i + 1) 2 s (d - 1) o ps' f ht (by omega) (by omega) (by decide) hS'
+        (by rw [hdm, hi1]; omega) (by omega) h
+      refine ⟨body, ?_, by omega, g3⟩
+      simp (config := {decide := true}) only [frame, if_true, if_false, List.map_cons, List.head?_cons, nmOf, ha0,
+        List.tail_cons]
+      simpa [hi1] using g1
+    rw [if_neg (bN k48), if_neg (bN k50), if_neg (bN k49), if_neg (bN k51)] at h ⊢
+    by_cases hp2 : ph = 2
+    · rw [if_pos (bT hp2)] at h; exact (h rfl).elim
+    rw [if_neg (bN hp2)] at h ⊢
+    by_cases hj0 : t0 t i = 0
+    · rw [if_pos (bT hj0)] at h; exact (h rfl).elim
+    rw [if_neg (bN hj0)] at h ⊢
+    obtain ⟨e1, e2, e3⟩ := t0_sound t i ht hl hj0
+    rw [t6_eq _ t i (t0 t i) o ht e2 (by omega) (by omega)] at h ⊢
+    obtain ⟨body, g1, g2, g3⟩ := t16_sound n t (t0 t i) 1 s d _ ps f ht e2 (by omega) (by decide) hS (by omega)
+      (by omega) h
+    refine ⟨slice t i.toNat (t0 t i).toNat ++ body, ?_, ?_, by rw [g3]; simp⟩
+    · have hp2' : ph.toNat ≠ 2 := fun e => hp2 (UInt64.toNat.inj (by simpa using e))
+      rw [drop_cons' hl, hk', hk] at e3
+      simp only [frame, k48, k50, k49, k51, hp2', if_false, e3, Option.map_some]
+      simpa using g1
+    · rw [List.length_append, slice_len (Nat.le_of_lt e1) e2]; omega
+
+theorem t10_sound (t : Buf) (ht : t.length < 16777216) (h : t10 t ≠ []) : ds t = some (t10 t) := by
+  have hb : bsize t < 16777216 := by
+    rw [UInt64.lt_iff_toNat_lt, bsize_toNat ht]; simpa using ht
+  unfold t10 at h ⊢
+  rw [if_pos hb] at h ⊢
+  unfold ds
+  have t20_len : ∀ u : Buf, t20 u ≠ [] → u.length ≤ t.length → u.length < 16777216 := fun u hu hl => by omega
+  by_cases h19 : t19 16777216 t 0 = 1
+  · rw [if_pos (bT h19)] at h ⊢
+    have := t19_sound _ (t.length + 1) t 0 ht (by simp) (by simp) h19 0 (.inl rfl) []
+    simp only [UInt64.toNat_zero, List.drop_zero] at this
+    rw [this, Option.bind_some]
+    exact t20_sound t ht h
+  rw [if_neg (bN h19)] at h ⊢
+  by_cases h192 : t19 16777216 t 0 = 2
+  · rw [if_pos (bT h192)] at h ⊢
+    have hne : t16 16777216 t 0 0 bnew 0 bnew ≠ [] := by
+      intro e; rw [e] at h; simp [t20, bsize, bnew, t11] at h
+    obtain ⟨body, g1, g2, g3⟩ := t16_sound 16777216 t 0 0 bnew 0 bnew [] (t.length + 1) ht (by simp) (by simp) (by decide)
+      (sr0 t) (by simp) (by simp [bnew]) hne
+    simp only [UInt64.toNat_zero, List.drop_zero, List.map_nil] at g1
+    rw [g3] at h ⊢
+    simp only [bnew, List.nil_append] at h ⊢
+    rw [g1, Option.bind_some]
+    exact t20_sound body (by omega) h
+  · rw [if_neg (bN h192)] at h; exact absurd rfl h
 
 end DsSpec

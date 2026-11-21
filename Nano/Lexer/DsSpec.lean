@@ -131,13 +131,36 @@ def noMatch : Nat → List UInt64 → Bool
     | none => false
     | some (a, r) => a != MATCH && noMatch f r
 
-/-- **the desugaring**: fewer than 2^24 words in and out; a text without `match` is unchanged; no redundant arm -/
-def ds (ts : List UInt64) : Option (List UInt64) :=
+/-- **the scope frame** (Testing/notes/SYNTAX_EXP.md, frame rule): the lexer's scope markers (`LexSpec.scopeTok`) may only
+open scopes before every other token (`ph = 0`) and close them after every other token (`ph = 2`); each `end` names the
+innermost open scope (`st`, innermost first; `[]`: an unnamed section); scopes may stay open at the end, as in Lean.
+The other tokens, in order.  So all definitions are in the same scope, and nano's flat names mean what Lean's do. -/
+def frame : Nat → List UInt64 → Nat → List (List UInt64) → Option (List UInt64)
+  | 0, _, _, _ => none
+  | _ + 1, [], _, _ => some []
+  | f + 1, k :: r, ph, st =>
+    if k = 48 then
+      (if ph = 0 then (match splitTok r with | some (n, r') => frame f r' 0 (n :: st) | none => none) else none)
+    else if k = 50 then (if ph = 0 then frame f r 0 ([] :: st) else none)
+    else if k = 49 then
+      (match splitTok r with | some (n, r') => if st.head? = some n then frame f r' 2 st.tail else none | none => none)
+    else if k = 51 then (if st.head? = some [] then frame f r 2 st.tail else none)
+    else if ph = 2 then none
+    else match splitTok (k :: r) with
+      | some (a, r') => (frame f r' 1 st).map (a ++ ·)
+      | none => none
+
+/-- the match desugaring of the framed tokens -/
+def ds0 (ts : List UInt64) : Option (List UInt64) :=
   if ts.length < 2 ^ 24 then
     if noMatch (ts.length + 1) ts then some ts
     else if !dupOk (ts.length + 1) ts [0] [] 0 false then none
     else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
   else none
+
+/-- **the desugaring**: the scope frame (`frame`), then fewer than 2^24 words in and out; a text without `match` is
+unchanged; no redundant arm -/
+def ds (ts : List UInt64) : Option (List UInt64) := (frame (ts.length + 1) ts 0 []).bind ds0
 
 /-- **the token words a text means**: it lexes (`LexSpec.Lexes`) and the lexer's words desugar (`ds`) to `ts` -/
 def LexesD (x : List UInt8) (ts : List UInt64) : Prop := ∃ t0, LexSpec.Lexes x t0 ∧ ds t0 = some ts

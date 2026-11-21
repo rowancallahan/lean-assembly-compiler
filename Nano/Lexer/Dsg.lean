@@ -7,6 +7,9 @@ identifiers with those spellings (Lean keywords).  Per paren depth d one cell: 0
 catch-all arm, 2 a match with its catch-all arm.  A match ends at the `)` of its depth, at the next `def` or at the end;
 it must have its catch-all arm by then.  `|` at a depth whose cell is 1 is an arm, 2 is rejected, 0 is copied.
 A text with no `match` token (`t11`) is passed through unchanged, without allocating (same memory as before).
+`t10` first checks the scope frame (`DsSpec.frame`): `t19` finds whether a scope marker (48-51) occurs (no: the
+tokens pass unchanged, no allocation); then `t16` copies the tokens between the markers, with the open scopes' name
+positions in `s` (depth `d`, 0 = unnamed section; `t18` sets an entry; `t17` compares names).  `t20` is the desugaring.
 `t12` first rejects a match with two literal arms of the same value (`DsSpec.dupOk`): each open match (per depth, `s`)
 has an id; the literals seen are appended to `u` as (id, 8 value words), `t13`/`t14` look one up, `t15` adds one. -/
 import Nano.Main.Chain
@@ -146,12 +149,52 @@ def t11 : Nat → Buf → UInt64 → UInt64
   | 0, t, i => 0
   | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
 
-def t10 (t : Buf) : Buf :=
+def t20 (t : Buf) : Buf :=
   if bsize t < 16777216 then
     if t11 16777216 t 0 == 1 then t else
     if t12 16777216 t 0 0 (bpush bnew 0) bnew 0 0 == 0 then bnew else
     let o := t9 16777216 t 0 0 (bpush bnew 0) 0 bnew;
     if bsize o < 16777216 then o else bnew
+  else bnew
+
+def t19 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if 47 < bget t i then if bget t i < 52 then 2 else t19 n t (t0 t i) else t19 n t (t0 t i) else 1
+
+def t17 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, t, a, e, b => 0
+  | n + 1, t, a, e, b => if a < e then if b < bsize t then if bget t a == bget t b then t17 n t (a + 1) e (b + 1) else 0 else 0 else 1
+
+def t18 (s : Buf) (d v : UInt64) : Buf := if d < bsize s then bset s d v else bpush s v
+
+def t16 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
+  | 0, t, i, ph, s, d, o => bnew
+  | n + 1, t, i, ph, s, d, o =>
+    if i < bsize t then
+      let k := bget t i;
+      if k == 48 then
+        if ph == 0 then if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew
+          else t16 n t (t0 t (i + 1)) 0 (t18 s d (i + 1)) (d + 1) o else bnew else bnew
+      else if k == 50 then if ph == 0 then t16 n t (i + 1) 0 (t18 s d 0) (d + 1) o else bnew
+      else if k == 49 then
+        if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew else if 0 < d then
+          let a := bget s (d - 1);
+          if 0 < a then
+            if t0 t (i + 1) - (i + 1) == t0 t a - a then
+              if t17 16777216 t a (t0 t a) (i + 1) == 1 then t16 n t (t0 t (i + 1)) 2 s (d - 1) o else bnew
+            else bnew
+          else bnew
+        else bnew else bnew
+      else if k == 51 then if 0 < d then if bget s (d - 1) == 0 then t16 n t (i + 1) 2 s (d - 1) o else bnew else bnew
+      else if ph == 2 then bnew
+      else if t0 t i == 0 then bnew else t16 n t (t0 t i) 1 s d (t6 16777216 t i (t0 t i) o)
+    else o
+
+def t10 (t : Buf) : Buf :=
+  if bsize t < 16777216 then
+    if t19 16777216 t 0 == 1 then t20 t
+    else if t19 16777216 t 0 == 2 then t20 (t16 16777216 t 0 0 bnew 0 bnew)
+    else bnew
   else bnew
 
 end C

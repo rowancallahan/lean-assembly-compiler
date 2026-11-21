@@ -23,10 +23,7 @@ theorem len_C : SrcGen.W0.length < 2 ^ 24 := by decide +kernel
 /-- C's text means its certified AST: it lexes, its words desugar to themselves (no `match`), and they parse -/
 theorem hsrc_C : ∃ ts, DsSpec.LexesD SrcGen.X0 ts ∧ ParsesProgram ts Cert.PC.all := by
   obtain ⟨hl, hp⟩ := SrcGen.link_pc
-  obtain ⟨toks, ht⟩ := lexes_tokWF hl
-  have e : toks = SrcGen.T0 := by
-    have := ParSpec.tokens_of ht; rw [SrcGen.tk0] at this; cases this; rfl
-  subst e
+  have ht := tokL_of_tokens (lexes_tokWF hl) SrcGen.tk0
   exact ⟨_, ⟨_, hl, DsSpec.ds_id ht noMatch_C len_C⟩, hp⟩
 
 /-- **C's text means `mC`**: for every input shorter than 2^64 bytes, the meaning of C's source text is `mC inp`,

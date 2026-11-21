@@ -123,32 +123,29 @@ theorem attrEnd_app : ∀ (l w : List UInt8) (d : Bool) (m t : List UInt8), attr
               · cases h
             · cases h
 
-theorem inWord_app : ∀ (r m : List UInt8), (10 : UInt8) ∈ r → inWord (r ++ m) = inWord r
-  | [], _, h => by simp at h
-  | [a], _, h => by
-    simp at h; subst h; simp [inWord]
-  | [a, b], _, h => by
-    simp at h; rcases h with rfl | rfl <;> simp [inWord]
-  | a :: b :: c :: t, m, _ => by
-    by_cases hab : a = 105 ∧ b = 110
-    · obtain ⟨rfl, rfl⟩ := hab; simp [inWord]
-    · have : ∀ l : List UInt8, inWord (a :: b :: l) = false := fun l => by
-        unfold inWord; split
-        · next e => simp at e; exact absurd ⟨e.1, e.2.1⟩ hab
-        · rfl
-      rw [List.cons_append, List.cons_append, this, this]
-
-theorem lineOk_app : ∀ (l m : List UInt8), (10 : UInt8) ∈ l → lineOk l = true → lineOk (l ++ m) = true
-  | [], _, h, _ => by simp at h
-  | b :: r, m, h, hk => by
-    simp only [List.cons_append, lineOk] at hk ⊢
-    by_cases hb : b = 10
-    · simp [hb]
-    have hr : (10 : UInt8) ∈ r := by rcases List.mem_cons.1 h with e | e; exact absurd e.symm hb; exact e
-    have hb' : (b == 10) = false := by simpa using hb
-    simp only [hb', Bool.false_or, Bool.and_eq_true] at hk ⊢
-    rw [inWord_app r m hr]
-    exact ⟨⟨hk.1.1, hk.1.2⟩, lineOk_app r m hr hk.2⟩
+theorem scopeLine_app (k : Nat) (r m n e : List UInt8) (hr : (10 : UInt8) ∈ r) (h : scopeLine k r = some (n, e)) :
+    scopeLine k (r ++ m) = some (n, e ++ m) ∧ e <:+ r := by
+  unfold scopeLine at h ⊢
+  simp only at h ⊢
+  obtain ⟨-, a2⟩ := takeWhile_app (p := (· == 32)) r m ⟨10, hr, by decide⟩
+  rw [a2]
+  have h1 : (10 : UInt8) ∈ r.dropWhile (· == 32) := mem_dropWhile _ hr (by decide)
+  obtain ⟨b1, b2⟩ := takeWhile_app (p := isW) (r.dropWhile (· == 32)) m ⟨10, h1, by decide⟩
+  rw [b1, b2]
+  have h2 : (10 : UInt8) ∈ (r.dropWhile (· == 32)).dropWhile isW := mem_dropWhile _ h1 (by decide)
+  obtain ⟨-, c2⟩ := takeWhile_app (p := (· == 32)) _ m ⟨10, h2, by decide⟩
+  rw [c2]
+  have h3 : (10 : UInt8) ∈ ((r.dropWhile (· == 32)).dropWhile isW).dropWhile (· == 32) := mem_dropWhile _ h2 (by decide)
+  have hE : ∀ (E : List UInt8), (10 : UInt8) ∈ E → (E ++ m).head? = E.head? := fun E hE => by
+    cases E with
+    | nil => simp at hE
+    | cons a E => rfl
+  rw [hE _ h3, hE r hr]
+  have sfx : ((r.dropWhile (· == 32)).dropWhile isW).dropWhile (· == 32) <:+ r :=
+    (List.dropWhile_suffix _).trans ((List.dropWhile_suffix _).trans (List.dropWhile_suffix _))
+  simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨hc, rfl, rfl⟩ := h
+  rw [if_pos hc]; exact ⟨rfl, sfx⟩
 
 theorem last_cons {c : UInt8} {r : List UInt8} (hl : (c :: r).getLast? = some 10) (hr : r ≠ []) : r.getLast? = some 10 := by
   rw [← hl, last_of_suffix (List.suffix_cons c r) hr]
@@ -260,6 +257,22 @@ theorem declNext_app (k : Nat) (t m : List UInt8) (ht : t.getLast? = some 10) (h
     rw [isPrefixOf_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul]
     exact h
 
+theorem cmdNext_app (t m : List UInt8) (ht : t.getLast? = some 10) (h : cmdNext t = true) : cmdNext (t ++ m) = true := by
+  unfold cmdNext at h ⊢
+  cases hd : docWs (t.length + 1) t with
+  | none => rw [hd] at h; cases h
+  | some u =>
+    rw [hd] at h
+    have hu : u ≠ [] := by rintro rfl; simp [startsWord, PRIV, DEF, NS, SEC, END, List.isPrefixOf] at h
+    obtain ⟨a1, a2⟩ := docWs_app _ ((t ++ m).length + 1) t m u (by simp) ht hd hu
+    rw [a1]
+    have hul : u.getLast? = some 10 := by rw [← ht]; exact last_of_suffix a2 hu
+    simp only
+    rw [isPrefixOf_app _ u m (by decide) hul, isPrefixOf_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul,
+      startsWord_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul, startsWord_app _ u m (by decide) hul,
+      startsWord_app _ u m (by decide) hul]
+    exact h
+
 theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.getLast? = some 10)
     (h : step l = some (e, r)) : step (l ++ m) = some (e, r ++ m) ∧ (r = [] ∨ r.getLast? = some 10) := by
   match l, hl, h with
@@ -301,10 +314,13 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
     split at h
     · rename_i h47; rw [if_pos h47]
       obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
-      obtain ⟨hdn, rfl, rfl⟩ : (r1.head? = some 45 → declNext 2 t = true) ∧ e = [] ∧ t = r := by
+      obtain ⟨hdn, hcn, rfl, rfl⟩ : (r1.head? = some 45 → declNext 2 t = true) ∧
+          (r1.head? = some 33 → cmdNext t = true) ∧ e = [] ∧ t = r := by
         cases hb2 : (r1.head? == some 45 && !declNext 2 t)
-        · simp only [hb2, Bool.false_eq_true, if_false, ite_false, Option.some.injEq, Prod.mk.injEq] at he
-          exact ⟨fun e => by simpa [e] using hb2, he.1.symm, he.2⟩
+        · cases hb3 : (r1.head? == some 33 && !cmdNext t)
+          · simp only [hb2, hb3, Bool.false_eq_true, if_false, ite_false, Option.some.injEq, Prod.mk.injEq] at he
+            exact ⟨fun e => by simpa [e] using hb2, fun e => by simpa [e] using hb3, he.1.symm, he.2⟩
+          · simp [hb2, hb3] at he
         · simp [hb2] at he
       have ha0 : a0 = 45 := by simp at h47; exact h47.2
       have hr1 : r1 ≠ [] := by rintro rfl; simp at hl; rw [ha0] at hl; cases hl
@@ -333,7 +349,13 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
             have htn : t ≠ [] := by rintro rfl; simp [declNext, docWs, startsWord, PRIV, DEF, List.isPrefixOf] at d
             simp [declNext_app 2 t m (by rw [← hl]; exact last_of_suffix st htn) d]
           · simp [e]
-        simp only [hdn', Bool.false_eq_true, if_false]; exact ⟨trivial, suf _ st⟩
+        have hcn' : (r1.head? == some 33 && !cmdNext (t ++ m)) = false := by
+          by_cases e : r1.head? = some 33
+          · have d := hcn e
+            have htn : t ≠ [] := by rintro rfl; simp [cmdNext, docWs, List.isPrefixOf, startsWord, PRIV, DEF, NS, SEC, END] at d
+            simp [cmdNext_app t m (by rw [← hl]; exact last_of_suffix st htn) d]
+          · simp [e]
+        simp only [hdn', hcn', Bool.false_eq_true, if_false]; exact ⟨trivial, suf _ st⟩
       · rw [if_neg hc]
         have hc' : (r1.head? == some 45 || r1.head? == some 33) = false := by simpa using hc
         simp only [hc', Bool.false_eq_true, ite_false] at hb
@@ -344,7 +366,11 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
           cases e : r1.head? == some 45
           · rfl
           · exact absurd (by simp [e]) hc
-        rw [b1, Option.bind_some]; simp only [n45, Bool.false_and, Bool.false_eq_true, if_false]
+        have n33 : (r1.head? == some 33) = false := by
+          cases e : r1.head? == some 33
+          · rfl
+          · exact absurd (by simp [e]) hc
+        rw [b1, Option.bind_some]; simp only [n45, n33, Bool.false_and, Bool.false_eq_true, if_false]
         exact ⟨trivial, suf _ (b2.trans ((List.tail_suffix _).trans sr1))⟩
     rename_i h47; rw [if_neg h47]
     split at h
@@ -389,26 +415,27 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
         · rename_i hd hwc
           rw [if_neg hd, if_pos hwc]
           split at h
-          · rename_i hlk; rw [if_pos hlk]
-            have hm := mem_dropWhile (p := isW) _ h10 (by decide)
-            split at h
-            · rename_i hok; cases h
-              rw [if_pos (lineOk_app _ m hm hok)]
-              obtain ⟨-, t3⟩ := takeWhile_app (p := (· != 10)) _ m ⟨10, hm, by decide⟩
-              rw [t3]; exact ⟨rfl, suf _ ((List.dropWhile_suffix _).trans sd)⟩
-            · cases h
-          · rename_i hlk; rw [if_neg hlk]
+          · cases h
+          rename_i hop; rw [if_neg hop]
+          have hm := mem_dropWhile (p := isW) _ h10 (by decide)
+          rcases hsk : scopeKw.lookup ((c :: a0 :: r1).takeWhile isW) with _ | k
+          · simp only [hsk] at h ⊢
             split at h
             · rename_i hdk
               split at h
               · rename_i hdn
                 cases h; rw [if_pos hdk]
-                have hm := mem_dropWhile (p := isW) _ h10 (by decide)
                 have hne : (c :: a0 :: r1).dropWhile isW ≠ [] := fun e => by rw [e] at hm; simp at hm
                 rw [if_pos (declNext_app 0 _ m (by rw [← hl]; exact last_of_suffix sd hne) hdn)]
                 exact ⟨rfl, suf _ sd⟩
               · cases h
             · cases h; rw [if_neg ‹_›]; exact ⟨rfl, suf _ sd⟩
+          · simp only [hsk] at h ⊢
+            obtain ⟨⟨n, e'⟩, hs, he⟩ := Option.map_eq_some_iff.1 h
+            simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+            obtain ⟨s1, s2⟩ := scopeLine_app k _ m n e' hm hs
+            simp only [s1, Option.map_some]
+            exact ⟨trivial, suf _ (s2.trans sd)⟩
         · cases h
 
 theorem lexes_app {x1 : List UInt8} {x2 : List UInt8} {t1 t2 : List UInt64} (h1 : Lexes x1 t1) (h2 : Lexes x2 t2)

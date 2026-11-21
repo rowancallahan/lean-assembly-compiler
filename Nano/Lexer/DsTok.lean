@@ -222,10 +222,9 @@ theorem go_tok : ∀ (f : Nat) (ts : List UInt64) (cs : List Nat) (sc : Bool) (o
                 · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
                   exact step a cs false o' h1 fa
 
-/-- **the desugared words are well formed** -/
-theorem ds_tokWF {ts ts' : List UInt64} (ht : TokWF ts) (h : ds ts = some ts') : TokWF ts' ∧ ts'.length < 2 ^ 24 := by
+theorem ds0_tokWF {ts ts' : List UInt64} (ht : TokWF ts) (h : ds0 ts = some ts') : TokWF ts' ∧ ts'.length < 2 ^ 24 := by
   obtain ⟨toks, ht⟩ := ht
-  unfold ds at h
+  unfold ds0 at h
   split at h
   · split at h
     · cases h; exact ⟨⟨toks, ht⟩, by omega⟩
@@ -236,6 +235,112 @@ theorem ds_tokWF {ts ts' : List UInt64} (ht : TokWF ts) (h : ds ts = some ts') :
       · cases h2; exact ⟨go_tok _ _ _ _ _ _ ht h1, by omega⟩
       · cases h2
   · cases h
+
+theorem identTok_flat (m r : List UInt64) :
+    identTok (m.flatMap (fun c => [1, c]) ++ 0 :: r) = some (m.flatMap (fun c => [1, c]) ++ [0], r) := by
+  induction m with
+  | nil => simp [identTok]
+  | cons c m ih => simp [identTok, ih]
+
+theorem okTag_le (k : UInt64) (h : okTag k.toNat = true) : k.toNat ≤ 47 := by
+  unfold okTag at h; simp at h; omega
+
+theorem split_sc (n : List UInt8) (r : List UInt64) :
+    splitTok (14 :: ((n.flatMap fun b => [1, b.toUInt64]) ++ [0] ++ r)) =
+      some (14 :: (n.flatMap fun b => [1, b.toUInt64]) ++ [0], r) := by
+  have e : (n.flatMap fun b => [1, b.toUInt64]) = (n.map UInt8.toUInt64).flatMap (fun c => [1, c]) := by
+    simp [List.flatMap_map]
+  rw [e]
+  simp only [List.append_assoc, List.singleton_append, splitTok, show ¬ ((14 : UInt64) = 5) by decide,
+    if_false, if_true, identTok_flat, Option.map_some, List.cons_append, List.nil_append]
+
+/-- the scope frame removes the scope markers: its output is a token buffer -/
+theorem frame_tokWF {ts : List UInt64} (ht : NanoMain.TokLM ts) : ∀ f ph st b, frame f ts ph st = some b → TokWF b := by
+  induction ht with
+  | nil =>
+    intro f ph st b h
+    cases f with
+    | zero => simp [frame] at h
+    | succ f => simp [frame] at h; subst h; exact ⟨[], .nil⟩
+  | @kw r k h5 h14 hok _ ih =>
+    intro f ph st b h
+    cases f with
+    | zero => simp [frame] at h
+    | succ f =>
+      have hk := okTag_le k hok
+      have n : k ≠ 48 ∧ k ≠ 49 ∧ k ≠ 50 ∧ k ≠ 51 := by
+        refine ⟨?_, ?_, ?_, ?_⟩ <;> (intro e; subst e; simp at hk)
+      simp only [frame, n.1, n.2.1, n.2.2.1, n.2.2.2, if_false] at h
+      split at h
+      · cases h
+      simp only [splitTok, h5, h14, if_false] at h
+      obtain ⟨b', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+      obtain ⟨toks, ht'⟩ := ih f 1 st b' h1
+      exact ⟨_, .kw k h5 h14 hok ht'⟩
+  | @num r bs h8 hb _ ih =>
+    intro f ph st b h
+    cases f with
+    | zero => simp [frame] at h
+    | succ f =>
+      simp only [List.cons_append, frame, show ¬ ((5 : UInt64) = 48) by decide, show ¬ ((5 : UInt64) = 49) by decide,
+        show ¬ ((5 : UInt64) = 50) by decide, show ¬ ((5 : UInt64) = 51) by decide, if_false] at h
+      split at h
+      · cases h
+      simp only [splitTok, if_true, List.length_append, h8] at h
+      rw [if_pos (by omega)] at h
+      have e1 : (bs ++ r).take 8 = bs := List.take_left' h8
+      have e2 : (bs ++ r).drop 8 = r := List.drop_left' h8
+      simp only [e1, e2] at h
+      obtain ⟨b', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+      obtain ⟨toks, ht'⟩ := ih f 1 st b' h1
+      exact ⟨_, by simpa using TokL.num bs h8 hb ht'⟩
+  | @id r nm hne _ ih =>
+    intro f ph st b h
+    cases f with
+    | zero => simp [frame] at h
+    | succ f =>
+      simp only [List.cons_append, frame, show ¬ ((14 : UInt64) = 48) by decide, show ¬ ((14 : UInt64) = 49) by decide,
+        show ¬ ((14 : UInt64) = 50) by decide, show ¬ ((14 : UInt64) = 51) by decide, if_false] at h
+      split at h
+      · cases h
+      simp only [splitTok, show ¬ ((14 : UInt64) = 5) by decide, if_false, if_true, List.append_eq, identTok_flat,
+        Option.map_some] at h
+      obtain ⟨b', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+      obtain ⟨toks, ht'⟩ := ih f 1 st b' h1
+      exact ⟨_, by simpa using TokL.id nm hne ht'⟩
+  | @sc r o n _ ih =>
+    intro f ph st b h
+    cases f with
+    | zero => simp [frame] at h
+    | succ f =>
+      unfold LexSpec.scopeTok at h
+      split at h
+      · cases o
+        · simp (config := {decide := true}) only [Bool.false_eq_true, if_false, if_true, List.singleton_append, frame] at h
+          split at h
+          · exact ih _ _ _ _ h
+          · cases h
+        · simp (config := {decide := true}) only [if_false, if_true, List.singleton_append, frame] at h
+          split at h
+          · exact ih _ _ _ _ h
+          · cases h
+      · cases o
+        · simp (config := {decide := true}) only [Bool.false_eq_true, if_false, if_true, List.cons_append, frame,
+            split_sc] at h
+          split at h
+          · exact ih _ _ _ _ h
+          · cases h
+        · simp (config := {decide := true}) only [if_false, if_true, List.cons_append, frame] at h
+          split at h
+          · simp only [split_sc] at h; exact ih _ _ _ _ h
+          · cases h
+
+/-- **the desugared words are well formed** -/
+theorem ds_tokWF {ts ts' : List UInt64} (ht : NanoMain.TokLM ts) (h : ds ts = some ts') :
+    TokWF ts' ∧ ts'.length < 2 ^ 24 := by
+  unfold ds at h
+  obtain ⟨b, hb, h2⟩ := Option.bind_eq_some_iff.1 h
+  exact ds0_tokWF (frame_tokWF ht _ _ _ _ hb) h2
 
 end DsSpec
 
@@ -292,9 +397,42 @@ theorem noMatch_tok {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) (hm
     subst this
     simp [matchTok]
 
+/-- a token buffer has no scope markers: the frame passes it unchanged -/
+theorem frame_id {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) :
+    ∀ f, ts.length < f → ∀ ph, (ph = 0 ∨ ph = 1) → ∀ st, frame f ts ph st = some ts := by
+  induction ht with
+  | nil => intro f hf; obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩; simp [frame]
+  | @kw r toks k h5 h14 hok _ ih =>
+    intro f hf ph hph st; obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by simp at hf; omega⟩
+    have hk := okTag_le k hok
+    have n : k ≠ 48 ∧ k ≠ 49 ∧ k ≠ 50 ∧ k ≠ 51 := by
+      refine ⟨?_, ?_, ?_, ?_⟩ <;> (intro e; subst e; simp at hk)
+    have h2 : ph ≠ 2 := by omega
+    simp only [frame, n.1, n.2.1, n.2.2.1, n.2.2.2, h2, if_false, splitTok, h5, h14]
+    rw [ih f (by simp at hf; omega) 1 (.inr rfl) st]; rfl
+  | @num r toks bs h8 _ _ ih =>
+    intro f hf ph hph st; obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by simp at hf; omega⟩
+    have h2 : ph ≠ 2 := by omega
+    simp only [List.cons_append, frame, show ¬ ((5 : UInt64) = 48) by decide, show ¬ ((5 : UInt64) = 49) by decide,
+      show ¬ ((5 : UInt64) = 50) by decide, show ¬ ((5 : UInt64) = 51) by decide, h2, if_false, splitTok, if_true,
+      List.length_append, h8]
+    rw [if_pos (by omega)]
+    have e1 : (bs ++ r).take 8 = bs := List.take_left' h8
+    have e2 : (bs ++ r).drop 8 = r := List.drop_left' h8
+    simp only [e1, e2]
+    rw [ih f (by simp [h8] at hf; omega) 1 (.inr rfl) st]; simp
+  | @id r toks nm hne _ ih =>
+    intro f hf ph hph st; obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by simp at hf; omega⟩
+    have h2 : ph ≠ 2 := by omega
+    simp only [List.cons_append, frame, show ¬ ((14 : UInt64) = 48) by decide, show ¬ ((14 : UInt64) = 49) by decide,
+      show ¬ ((14 : UInt64) = 50) by decide, show ¬ ((14 : UInt64) = 51) by decide, h2, if_false, splitTok,
+      show ¬ ((14 : UInt64) = 5) by decide, if_true, List.append_eq, identTok_flat, Option.map_some]
+    rw [ih f (by simp at hf; omega) 1 (.inr rfl) st]; simp
+
 /-- a token buffer without the name `match` desugars to itself -/
 theorem ds_id {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) (hm : matchTok ∉ toks) (hl : ts.length < 2 ^ 24) :
     ds ts = some ts := by
-  unfold ds; rw [if_pos hl, if_pos (noMatch_tok ht hm _ (by omega))]
+  unfold ds; rw [frame_id ht _ (by omega) 0 (.inl rfl) [], Option.bind_some]
+  unfold ds0; rw [if_pos hl, if_pos (noMatch_tok ht hm _ (by omega))]
 
 end DsSpec

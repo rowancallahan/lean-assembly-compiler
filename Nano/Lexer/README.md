@@ -16,7 +16,9 @@ keyword/operator tag facts (`op_tags`, `kw_tags`, `and255'`) are closed by `deci
 Guarantee: soundness only (no completeness: an input the lexer rejects, `s10 x = []`, is simply outside the theorem).
 Check: `lake build Nano.Lexer.MainTokWF`. Limit: inputs shorter than 2^32 bytes.
 
-Trivia (syntax-1, Testing/notes/SYNTAX_EXP.md): dash-dash lines; nested block comments; doc comments with Lean's
-whitespace skip after the opener (`docWs`); `@[…]` of names/spaces/commas (`attrEnd`); `namespace`/`open`/`section`/`end`
-lines of names/dots/spaces without the word `in` (`lineOk`); `private`. The compiler's own source stays in the bootstrap
-subset (`Testing/scripts/subset_check.sh`); comments are allowed there.
+Trivia (syntax-1, Testing/notes/SYNTAX_EXP.md "Reject rules"): dash-dash lines; nested block comments; doc comments with
+Lean's whitespace skip after the opener (`docWs`); `@[inline|reducible, …]` (`attrEnd`); `private`; each modifier only
+where Lean's `declModifiers` allows it (`declNext`), a module doc only before a command (`cmdNext`). Scope lines
+`namespace N`/`section`/`end [N]` (`scopeLine`, `nsName`) become marker tokens (48-51) that `DsSpec.frame` (stage `t10`,
+Nano/Lexer/Dsg.lean `t16`/`t19`) allows only around the whole program; `open` is rejected. The compiler's own source
+stays in the bootstrap subset (`Testing/scripts/subset_check.sh`); comments are allowed there.

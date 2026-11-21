@@ -141,9 +141,10 @@ def trivia(rng):
 
 def render_new(rng, prog, ns, rate):
     """text of NEW: def-level trivia + token-level trivia"""
-    lines = [f"/-! fuzz program -/", f"namespace {ns}", "open Nat"]
+    # the frame rule (SYNTAX_EXP.md): scopes open before every def and close after the last; `open` is rejected
+    lines = [f"/-! fuzz program -/", f"namespace {ns}"]
     sec = rng.random() < 0.5
-    if sec: lines.append("section S")
+    if sec: lines.append("section")
     for name, ps, body in prog:
         mods = []
         if rng.random() < 0.3:   # docstrings; Lean skips whitespace, `--` lines and plain block comments after the opener
@@ -174,9 +175,9 @@ def render_new(rng, prog, ns, rate):
             if txt.endswith("\n"):
                 txt += " " * (hi + 2); col = hi + 2
         lines.append(" ".join(mods) + ("\n" if mods and rng.random() < 0.5 else " ") + txt)
-    if sec: lines.append("end S")
     lines.append(" ".join(LOOP))
-    lines.append(f"end {ns}")
+    if sec: lines.append("end")
+    if rng.random() < 0.8: lines.append(f"end {ns}")
     return "\n".join(lines) + "\n"
 
 def render_lean(prog, ns):
