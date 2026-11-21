@@ -7,9 +7,13 @@ proof file are unchanged. The proof plan is `Testing/notes/NATIVE_ARM_PROOF_PLAN
 |---|---|
 | `Nano/V2Self/C/GenArm.lean` | the back end: `a31` (= `g41` with A64 output). Nano subset, same style as `Gen.lean`; plain defs, no proofs |
 | `build_self_A.py` | writes `self_A.lean` / `self_A_input.txt`: Base + Lex2 + Par1 + Own + Gen + GenArm + driver `m = a31 …` (generated, not committed) |
+| `compile.sh`, `run.sh` | **use it**: `./compile.sh prog.lean > prog.a64`, `./run.sh prog.lean input output` (native on ARM64, else qemu-aarch64) |
+| `GA_arm.bin`, `SHA256SUMS` | the native-ARM compiler (C with the GenArm back end) as native A64 code; it compiles itself to itself |
 | `test_native.sh` | builds everything with B2 and runs the checks below |
+| `cross_native.sh` | cross-hosting matrix: RISC-V-hosted vs rv2arm-hosted vs native-hosted builds of both compilers |
+| `bench.sh` | instruction counts and qemu wall time, RISC-V vs rv2arm vs native |
 | `diff_run.sh` | one program, one input: RISC-V (B2) vs native A64, status + output bytes |
-| `fuzz_native.py` | differential fuzzer (nanogen + nanofuzz.mutate + mutated examples / C's own source) |
+| `fuzz_native.py` | differential fuzzer, families `FAM=gen` (nanogen + mutation + mutated examples / C's source), `arith` (UInt64 expressions + Python model), `calls` (helper DAGs, recursion), `big` (big buffers, inputs to 64 KB) |
 | `dyn_count.sh` | dynamic instruction count of generated code under QEMU (exec log, one instruction per TB) |
 | `edge/` | targeted programs: large constants (movz/movn/movk paths), frames past the ldur range, OOM (−1), capacity (−2) |
 
@@ -79,7 +83,24 @@ blocks (`addi a0, x0, −1`: 1 word with movn), so K = 2 is the best uniform cho
 
 So V is ≈ 2.3× smaller and ≈ 1.9× faster than the best uniform layout, and ≈ 3.5× faster than rv2arm.
 
-## Run
-`./test_native.sh` (all checks), `python3 fuzz_native.py SEED N WORKDIR [MUT]` (after test_native.sh built the
-binaries). Native code for one program: `grep -v '^--' prog.lean | qemu-aarch64 shim_arm GA_arm.bin > prog.a64`,
-then `qemu-aarch64 shim_arm prog.a64 < input > output`.
+## Use
+```
+./compile.sh prog.lean > prog.a64          # compile on ARM (the compiler itself is native A64)
+./run.sh prog.a64 input.txt output.txt     # run (prog.lean also works: compiles first)
+```
+On x86-64 Linux both run under qemu-aarch64 (`apt install qemu-user gcc-aarch64-linux-gnu`; the shim is built on first
+use). On an ARM64 Mac/Linux they run natively (the shim is `cc`-built; on macOS it may need the JIT entitlement, as
+`arm/README.md` says; not tried on a Mac). Rebuild `GA_arm.bin` from `B2.bin` alone: `./test_native.sh DIR`, then
+`DIR/GA_arm.bin` (it must equal the checked-in one: `sha256sum -c SHA256SUMS`).
+
+Tests: `./test_native.sh` (build, fixpoints, examples + edge), `./cross_native.sh`, `FAM=… python3 fuzz_native.py SEED N
+WORKDIR [MUT]`, `./bench.sh [DIR] [selfdyn]`.
+
+## Known limits
+* Unproven. The proven compiler is RISC-V (`C_correctLO`) and ARM via rv2arm (`C_correct_armDM`, `C_correct_armSail`).
+* Accept set: the 2^18-word code limit is checked on A64 words (native code is smaller, so in practice a superset of
+  B2's; never seen to differ).
+* Dynamic count ≈ RISC-V (+0–6%): a checked push is 4 A64 instructions vs 3 RV (no register-register compare-and-branch).
+* No register 31, small instruction vocabulary (27 forms): chosen for provability, not peak speed (no csel,
+  pre/post-index, register allocation; still the stack machine of Gen).
+* Same memory/heap limits as RISC-V: work memory from the shim (1 GiB), buffer capacity 2^19 words (−2 beyond).
