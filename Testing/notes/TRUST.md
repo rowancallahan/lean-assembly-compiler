@@ -18,8 +18,9 @@ How the ARM theorems are built (affects trust; owner, 2026-11-20):
   `C_correct_arm` over the `A64Sem` interface). A native ARM backend is planned (ROADMAP); until then ARM code inherits
   RISC-V's shape (about 3.6x more ARM instructions than RISC-V on rle.lean).
 - **Statement level.** RISC-V: `CompileCorrect riscv compileC`, machine defined in `Spec/`. Sail ARM:
-  `CompileCorrect armSail …`, same `Spec/` definition, but the `armSail` machine is defined OUTSIDE `Spec/` (gap; owner
-  approved moving it into `Spec/`, pending). DeepMind ARM: `CompileCorrectP armDM (ArmLoader XD WD) …`, i.e. only for
+  `CompileCorrect armSail …`, machine defined in `Spec/ARM/Sail.lean` (spec-arm; pending owner approval of the new
+  `Spec/` text). DeepMind ARM: `CompileCorrectLoaded armDM ArmDMExecutable ArmDMWritable …` (`Spec/ARM/DeepMind.lean`,
+  `Spec/Loader.lean`), i.e. only for
   start states where the loader mapped the code executable and the input/output/work blocks readable+writable
   (DeepMind's model has page permissions; Sail ARM has none, so the condition is always true there).
 - **ARM self-hosting** (the ARM build of the compiler compiling itself) is tested (cross_check 8/8, fuzzing), not a

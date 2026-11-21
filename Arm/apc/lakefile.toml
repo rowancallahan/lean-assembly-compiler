@@ -5,7 +5,7 @@ defaultTargets = ["Apc"]
 [[lean_lib]]
 name = "Spec"
 srcDir = "../.."
-globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree", "Spec.Machines", "Spec.Top", "Spec.Alloc"]
+globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree", "Spec.Machines", "Spec.Top", "Spec.Alloc", "Spec.Loader", "Spec.ARM.DeepMind"]
 
 [[lean_lib]]
 name = "Compiler"

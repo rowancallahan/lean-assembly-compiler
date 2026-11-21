@@ -5,7 +5,8 @@ moreLeanArgs = ["--tstack=400000", "--threads=2"]
 # Module names follow the folders; no lib root files (globs only).
 [[lean_lib]]
 name = "Spec"
-globs = ["Spec.+"]
+# Spec/ARM/* import the ARM models, which this project does not have; Arm/sail and Arm/apc build them
+globs = ["Spec.Alloc", "Spec.ArrCode", "Spec.Code", "Spec.Encode", "Spec.Implements1", "Spec.Loader", "Spec.Machines", "Spec.Riscv", "Spec.RiscvMachine", "Spec.Top", "Spec.Tree", "Spec.Ty"]
 
 # the self-hosted nano compiler C (Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}: source and proof together per stage, Main/REVIEW.lean): THE compiler of this repo
 [[lean_lib]]
