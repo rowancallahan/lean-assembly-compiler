@@ -229,7 +229,9 @@ theorem ds_tokWF {ts ts' : List UInt64} (ht : TokWF ts) (h : ds ts = some ts') :
   split at h
   · split at h
     · cases h; exact ⟨⟨toks, ht⟩, by omega⟩
-    · obtain ⟨o, h1, h2⟩ := Option.bind_eq_some_iff.1 h
+    · split at h
+      · cases h
+      obtain ⟨o, h1, h2⟩ := Option.bind_eq_some_iff.1 h
       split at h2
       · cases h2; exact ⟨go_tok _ _ _ _ _ _ ht h1, by omega⟩
       · cases h2

@@ -8,26 +8,35 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
+theorem ok_251 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 251) :
+    Spec251 inp (defMean inp κC ms PC.d251) := by
+  intro a0 a1 a2 a3 a4
+  refine defMean_den (C.g47 a0 a1 a2 a3 a4) PC.b251 ([.b a0, .w a1, .w a2, .w a3, .w a4] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b251
+  den_unfold
+  den
+
+theorem ok_252 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 252) :
+    Spec252 inp (defMean inp κC ms PC.d252) := by
+  intro a0
+  refine defMean_den (C.g48 a0) PC.b252 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b252
+  den_unfold
+  den
+
+theorem ok_253 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 253) :
+    Spec253 inp (defMean inp κC ms PC.d253) := by
+  intro a0 a1
+  refine defMean_den (C.g49 a0 a1) PC.b253 ([.b a0, .w a1] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b253
+  den_unfold
+  den
+
 theorem ok_254 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 254) :
     Spec254 inp (defMean inp κC ms PC.d254) := by
-  intro a1 a2
-  refine defMean_den (Sh.g42 inp a1 a2) PC.b254 ([.b a1, .w a2] ++ List.replicate 5 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2 a3
+  refine defMean_den (C.g50 a0 a1 a2 a3) PC.b254 ([.b a0, .b a1, .w a2, .w a3] ++ List.replicate 9 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b254
-  den_unfold
-  den
-
-theorem ok_255 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 255) :
-    Spec255 inp (defMean inp κC ms PC.d255) := by
-  intro a1
-  refine defMean_den (Sh.g41 inp a1) PC.b255 ([.b a1]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b255
-  den_unfold
-  den
-
-theorem ok_256 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 256) :
-    Spec256 inp (defMean inp κC ms PC.d256) := by
-  refine defMean_den (Sh.m inp) PC.b256 ([]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b256
   den_unfold
   den
 

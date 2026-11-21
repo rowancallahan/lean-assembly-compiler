@@ -8,43 +8,11 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_102 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 102) :
-    Spec102 inp (defMean inp κC ms PC.d102) := by
+theorem ok_98 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 98) :
+    Spec98 inp (defMean inp κC ms PC.d98) := by
   intro a0 a1 a2
-  refine defMean_den (C.v111 a0 a1 a2) PC.b102 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b102
-  den_unfold
-  den
-
-theorem ok_103 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 103) :
-    Spec103 inp (defMean inp κC ms PC.d103) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v112 a0 a1 a2) PC.b103 ([.b a0, .w a1, .w a2] ++ List.replicate 10 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b103
-  den_unfold
-  den
-
-theorem ok_104 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 104) :
-    Spec104 inp (defMean inp κC ms PC.d104) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v113 a0 a1 a2) PC.b104 ([.b a0, .w a1, .w a2] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b104
-  den_unfold
-  den
-
-theorem ok_105 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 105) :
-    Spec105 inp (defMean inp κC ms PC.d105) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v114 a0 a1 a2) PC.b105 ([.b a0, .w a1, .w a2] ++ List.replicate 10 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b105
-  den_unfold
-  den
-
-theorem ok_106 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 106) :
-    Spec106 inp (defMean inp κC ms PC.d106) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v115 a0 a1 a2) PC.b106 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b106
+  refine defMean_den (C.v104b a0 a1 a2) PC.b98 ([.b a0, .w a1, .w a2] ++ List.replicate 45 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b98
   den_unfold
   den
 

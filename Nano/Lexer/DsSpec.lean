@@ -5,7 +5,8 @@ the token words `ts'` that the parser reads.  A token is `5` + 8 value words, `1
 where μ = `MU`, an identifier no Lean text can spell; `| _ => e` becomes `else e`; a FIRST arm `| (x, y) => e` becomes
 `let (x, y) := μ; e`.  Matches are tracked per paren depth (`cs`, innermost first): 0 none, 1 open (no catch-all arm
 yet), 2 closed.  A match ends at the `)` of its depth, the next `def` (depth 0 only) or the end of the text, and must be
-closed by then; an arm after the catch-all arm is rejected; a match inside a scrutinee is rejected. -/
+closed by then; an arm after the catch-all arm is rejected; a match inside a scrutinee is rejected; two literal arms of
+one match with the same value are rejected (`dupOk`; Lean: redundant alternative). -/
 import Nano.Main.Prelude
 import Nano.Lexer.Lex2Spec
 namespace DsSpec
@@ -87,6 +88,41 @@ def go : Nat → List UInt64 → List Nat → Bool → Option (List UInt64)
       if cs.length = 1 ∧ cs.head? ≠ some 1 then (go f r [0] false).map (1 :: ·) else none
     else (go f r cs false).map (a ++ ·)
 
+/-- **no redundant arm**: two literal arms of one match never have the same value (Lean rejects a redundant
+alternative; a literal word is its value mod 2^64).  Matches and arms are found as `go` finds them.  Each match gets a
+fresh number at its `with` (`m`: the last one); `ids`: per paren depth (innermost first) the number of the match open
+there (0: none, or after its catch-all arm); `seen`: the (match number, literal) pairs of the arms read so far;
+`sc`: inside a scrutinee.  Only `true` matters (a text `go` rejects may pass). -/
+def dupOk : Nat → List UInt64 → List Nat → List (Nat × List UInt64) → Nat → Bool → Bool
+  | 0, _, _, _, _, _ => false
+  | _ + 1, [], _, _, _, _ => true
+  | f + 1, ts, ids, seen, m, sc => match splitTok ts with
+    | none => true
+    | some (a, r) =>
+      if sc then
+        if a = WITH then
+          match r with
+          | 18 :: r1 => match pat r1 with
+            | some (.lit w, r2) => dupOk f r2 ((m + 1) :: ids.tail) ((m + 1, w) :: seen) (m + 1) false
+            | some (_, r2) => dupOk f r2 (0 :: ids.tail) seen (m + 1) false
+            | none => true
+          | _ => true
+        else dupOk f r ids seen m true
+      else if a = MATCH then dupOk f r ids seen m true
+      else if a = [18] then
+        match ids.head? with
+        | some k =>
+          if k = 0 then dupOk f r ids seen m false
+          else match pat r with
+            | some (.lit w, r2) => if seen.contains (k, w) then false else dupOk f r2 ids ((k, w) :: seen) m false
+            | some (_, r2) => dupOk f r2 (0 :: ids.tail) seen m false
+            | none => true
+        | none => dupOk f r ids seen m false
+      else if a = [6] then dupOk f r (0 :: ids) seen m false
+      else if a = [7] then dupOk f r ids.tail seen m false
+      else if a = [1] then dupOk f r [0] seen m false
+      else dupOk f r ids seen m false
+
 /-- every token is well formed and none is `match` -/
 def noMatch : Nat → List UInt64 → Bool
   | 0, _ => false
@@ -95,10 +131,11 @@ def noMatch : Nat → List UInt64 → Bool
     | none => false
     | some (a, r) => a != MATCH && noMatch f r
 
-/-- **the desugaring**: fewer than 2^24 words in and out; a text without `match` is unchanged -/
+/-- **the desugaring**: fewer than 2^24 words in and out; a text without `match` is unchanged; no redundant arm -/
 def ds (ts : List UInt64) : Option (List UInt64) :=
   if ts.length < 2 ^ 24 then
     if noMatch (ts.length + 1) ts then some ts
+    else if !dupOk (ts.length + 1) ts [0] [] 0 false then none
     else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
   else none
 

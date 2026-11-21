@@ -21,13 +21,5 @@ theorem lex165 : lexAll (x165.length + 1) x165 = some w165 := by decide +kernel
 theorem tok165 : tokens w165 = some S165 := by decide +kernel
 theorem nl165 : x165.getLast? = some 10 := by decide +kernel
 theorem chk165 : chkDef (pDef F D165 T165) di165 d165 T166 = true := by decide +kernel
-theorem lex166 : lexAll (x166.length + 1) x166 = some w166 := by decide +kernel
-theorem tok166 : tokens w166 = some S166 := by decide +kernel
-theorem nl166 : x166.getLast? = some 10 := by decide +kernel
-theorem chk166 : chkDef (pDef F D166 T166) di166 d166 T167 = true := by decide +kernel
-theorem lex167 : lexAll (x167.length + 1) x167 = some w167 := by decide +kernel
-theorem tok167 : tokens w167 = some S167 := by decide +kernel
-theorem nl167 : x167.getLast? = some 10 := by decide +kernel
-theorem chk167 : chkDef (pDef F D167 T167) di167 d167 T168 = true := by decide +kernel
 
 end SrcGen

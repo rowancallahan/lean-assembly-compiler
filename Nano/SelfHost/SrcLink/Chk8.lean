@@ -5,6 +5,46 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
+theorem lex67 : lexAll (x67.length + 1) x67 = some w67 := by decide +kernel
+theorem tok67 : tokens w67 = some S67 := by decide +kernel
+theorem nl67 : x67.getLast? = some 10 := by decide +kernel
+theorem chk67 : chkDef (pDef F D67 T67) di67 d67 T68 = true := by decide +kernel
+theorem lex68 : lexAll (x68.length + 1) x68 = some w68 := by decide +kernel
+theorem tok68 : tokens w68 = some S68 := by decide +kernel
+theorem nl68 : x68.getLast? = some 10 := by decide +kernel
+theorem chk68 : chkDef (pDef F D68 T68) di68 d68 T69 = true := by decide +kernel
+theorem lex69 : lexAll (x69.length + 1) x69 = some w69 := by decide +kernel
+theorem tok69 : tokens w69 = some S69 := by decide +kernel
+theorem nl69 : x69.getLast? = some 10 := by decide +kernel
+theorem chk69 : chkDef (pDef F D69 T69) di69 d69 T70 = true := by decide +kernel
+theorem lex70 : lexAll (x70.length + 1) x70 = some w70 := by decide +kernel
+theorem tok70 : tokens w70 = some S70 := by decide +kernel
+theorem nl70 : x70.getLast? = some 10 := by decide +kernel
+theorem chk70 : chkDef (pDef F D70 T70) di70 d70 T71 = true := by decide +kernel
+theorem lex71 : lexAll (x71.length + 1) x71 = some w71 := by decide +kernel
+theorem tok71 : tokens w71 = some S71 := by decide +kernel
+theorem nl71 : x71.getLast? = some 10 := by decide +kernel
+theorem chk71 : chkDef (pDef F D71 T71) di71 d71 T72 = true := by decide +kernel
+theorem lex72 : lexAll (x72.length + 1) x72 = some w72 := by decide +kernel
+theorem tok72 : tokens w72 = some S72 := by decide +kernel
+theorem nl72 : x72.getLast? = some 10 := by decide +kernel
+theorem chk72 : chkDef (pDef F D72 T72) di72 d72 T73 = true := by decide +kernel
+theorem lex73 : lexAll (x73.length + 1) x73 = some w73 := by decide +kernel
+theorem tok73 : tokens w73 = some S73 := by decide +kernel
+theorem nl73 : x73.getLast? = some 10 := by decide +kernel
+theorem chk73 : chkDef (pDef F D73 T73) di73 d73 T74 = true := by decide +kernel
+theorem lex74 : lexAll (x74.length + 1) x74 = some w74 := by decide +kernel
+theorem tok74 : tokens w74 = some S74 := by decide +kernel
+theorem nl74 : x74.getLast? = some 10 := by decide +kernel
+theorem chk74 : chkDef (pDef F D74 T74) di74 d74 T75 = true := by decide +kernel
+theorem lex75 : lexAll (x75.length + 1) x75 = some w75 := by decide +kernel
+theorem tok75 : tokens w75 = some S75 := by decide +kernel
+theorem nl75 : x75.getLast? = some 10 := by decide +kernel
+theorem chk75 : chkDef (pDef F D75 T75) di75 d75 T76 = true := by decide +kernel
+theorem lex76 : lexAll (x76.length + 1) x76 = some w76 := by decide +kernel
+theorem tok76 : tokens w76 = some S76 := by decide +kernel
+theorem nl76 : x76.getLast? = some 10 := by decide +kernel
+theorem chk76 : chkDef (pDef F D76 T76) di76 d76 T77 = true := by decide +kernel
 theorem lex77 : lexAll (x77.length + 1) x77 = some w77 := by decide +kernel
 theorem tok77 : tokens w77 = some S77 := by decide +kernel
 theorem nl77 : x77.getLast? = some 10 := by decide +kernel
@@ -21,17 +61,5 @@ theorem lex80 : lexAll (x80.length + 1) x80 = some w80 := by decide +kernel
 theorem tok80 : tokens w80 = some S80 := by decide +kernel
 theorem nl80 : x80.getLast? = some 10 := by decide +kernel
 theorem chk80 : chkDef (pDef F D80 T80) di80 d80 T81 = true := by decide +kernel
-theorem lex81 : lexAll (x81.length + 1) x81 = some w81 := by decide +kernel
-theorem tok81 : tokens w81 = some S81 := by decide +kernel
-theorem nl81 : x81.getLast? = some 10 := by decide +kernel
-theorem chk81 : chkDef (pDef F D81 T81) di81 d81 T82 = true := by decide +kernel
-theorem lex82 : lexAll (x82.length + 1) x82 = some w82 := by decide +kernel
-theorem tok82 : tokens w82 = some S82 := by decide +kernel
-theorem nl82 : x82.getLast? = some 10 := by decide +kernel
-theorem chk82 : chkDef (pDef F D82 T82) di82 d82 T83 = true := by decide +kernel
-theorem lex83 : lexAll (x83.length + 1) x83 = some w83 := by decide +kernel
-theorem tok83 : tokens w83 = some S83 := by decide +kernel
-theorem nl83 : x83.getLast? = some 10 := by decide +kernel
-theorem chk83 : chkDef (pDef F D83 T83) di83 d83 T84 = true := by decide +kernel
 
 end SrcGen

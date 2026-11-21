@@ -317,6 +317,54 @@ def t9 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
       else t9 n t e d s 0 (t6 16777216 t i e o)
     else if c == 1 then bnew else if d == 0 then if bget s 0 == 1 then bnew else o else bnew
 
+def t14 (u : Buf) (k : UInt64) (t : Buf) (j : UInt64) : UInt64 :=
+  if bget u (k + 1) == bget t (j + 1) then if bget u (k + 2) == bget t (j + 2) then if bget u (k + 3) == bget t (j + 3) then if bget u (k + 4) == bget t (j + 4) then if bget u (k + 5) == bget t (j + 5) then if bget u (k + 6) == bget t (j + 6) then if bget u (k + 7) == bget t (j + 7) then if bget u (k + 8) == bget t (j + 8) then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+
+def t13 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → UInt64
+  | 0, u, k, id, t, j => 1
+  | n + 1, u, k, id, t, j =>
+    if k + 8 < bsize u then
+      if bget u k == id then if t14 u k t j == 1 then 1 else t13 n u (k + 9) id t j else t13 n u (k + 9) id t j
+    else 0
+
+def t15 (u : Buf) (id : UInt64) (t : Buf) (j : UInt64) : Buf :=
+  bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush u id) (bget t (j + 1))) (bget t (j + 2))) (bget t (j + 3))) (bget t (j + 4))) (bget t (j + 5))) (bget t (j + 6))) (bget t (j + 7))) (bget t (j + 8))
+
+def t12 : Nat → Buf → UInt64 → UInt64 → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, t, i, d, s, u, m, c => 0
+  | n + 1, t, i, d, s, u, m, c =>
+    if i < bsize t then
+      let e := t0 t i;
+      if e == 0 then 0
+      else if c == 1 then
+        if t3 t i e == 1 then
+          if bget t e == 18 then
+            if bget t (e + 1) == 5 then
+              if e + 10 < bsize t then if bget t (e + 10) == 19 then
+                t12 n t (e + 11) d (bset s d (m + 1)) (t15 u (m + 1) t (e + 1)) (m + 1) 0
+              else 0 else 0
+            else
+              let (q, o1) := t7 t (e + 1) 1 bnew;
+              if q == 0 then 0 else t12 n t (q >>> 2) d (bset s d 0) u (m + 1) 0
+          else 0
+        else t12 n t e d s u m 1
+      else if t2 t i e == 1 then t12 n t e d s u m 1
+      else if bget t i == 18 then
+        if bget s d == 0 then t12 n t e d s u m 0
+        else if bget t e == 5 then
+          if e + 9 < bsize t then if bget t (e + 9) == 19 then
+            if t13 16777216 u 0 (bget s d) t e == 1 then 0
+            else t12 n t (e + 10) d s (t15 u (bget s d) t e) m 0
+          else 0 else 0
+        else
+          let (q, o1) := t7 t e 0 bnew;
+          if q == 0 then 0 else t12 n t (q >>> 2) d (bset s d 0) u m 0
+      else if bget t i == 6 then t12 n t e (d + 1) (if d + 1 < bsize s then bset s (d + 1) 0 else bpush s 0) u m 0
+      else if bget t i == 7 then if d == 0 then 0 else t12 n t e (d - 1) s u m 0
+      else if bget t i == 1 then t12 n t e 0 (bset s 0 0) u m 0
+      else t12 n t e d s u m 0
+    else 1
+
 def t11 : Nat → Buf → UInt64 → UInt64
   | 0, t, i => 0
   | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
@@ -324,6 +372,7 @@ def t11 : Nat → Buf → UInt64 → UInt64
 def t10 (t : Buf) : Buf :=
   if bsize t < 16777216 then
     if t11 16777216 t 0 == 1 then t else
+    if t12 16777216 t 0 0 (bpush bnew 0) bnew 0 0 == 0 then bnew else
     let o := t9 16777216 t 0 0 (bpush bnew 0) 0 bnew;
     if bsize o < 16777216 then o else bnew
   else bnew
