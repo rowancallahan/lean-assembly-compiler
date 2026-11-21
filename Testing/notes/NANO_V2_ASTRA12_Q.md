@@ -42,7 +42,7 @@ binary operators `|||` `&&&` `+ -` `*` `<<<` `>>>` (Lean precedences 55 60 65 70
 Output Buf (words): [2 (IRV), 20 (DEF), id 0, npw, nslots, kind 0, nres 1, pre-order AST, 21 (ENDDEF)]; nodes: CONST 1 v | LOCAL 2 slot w | BIN 3 op a b
 (op: add 1 sub 2 mul 3 and 4 or 5 shl 6 shr 7).  Empty Buf = rejected.  One heap Buf h: [0] ok flag, [1] root, [3] position, [4] nparams, params at 9000.., task
 stack at 1000.. (code, arg), operand stack at 5000.., nodes at 10000 + 4 i (tag a b c). -/
-import Nano.V2Self.C.Base
+import Nano.Main.Chain
 namespace C
 
 def y5 : Nat → Buf → Buf

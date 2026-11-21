@@ -5,7 +5,7 @@
 * Dead code: `Testing/scripts/deadcode.sh` on `nano-v2-src` @ `76f26ed8`. Its `Nano/V2Self` equals `main`'s up to the
   bigbox kit.
 * Module reachability: an import-graph walk (each `import` line of every tracked `.lean`) from the top theorems. Roots:
-  `Nano.V2Self.REVIEW`, `Main.ArmTop`, `Blocks.ArmDMTop`/`AxiomsDM`, `Apc.Axioms`, `Arm.Axioms`, the `Arm/apc` bridges,
+  `Nano.Main.REVIEW`, `Main.ArmTop`, `Blocks.ArmDMTop`/`AxiomsDM`, `Apc.Axioms`, `Arm.Axioms`, the `Arm/apc` bridges,
   `Blocks.BlockOK`.
 
 ## 1. Lines per area

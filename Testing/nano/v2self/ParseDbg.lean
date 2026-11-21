@@ -1,5 +1,5 @@
 /- debug driver: runs the Par1 task machine on the lexed input and prints the heap state (status, cursor, task depth, #tokens, operands, nodes, def, def-name position, ...) and 8 tokens around the cursor as 8-byte words. -/
-import Nano.V2Self.C.Par1
+import Nano.Parser.Par1
 namespace C
 
 def z0 (v : UInt64) (o : List UInt8) : List UInt8 :=

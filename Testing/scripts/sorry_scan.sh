@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sorryAx scan: every constant DEFINED in the given lake libraries' modules (default: the default targets, plus Chain434
-# and Nano.V2Self.REVIEW) whose type or value reaches `sorryAx`, transitively through any constant (also outside the
+# and Nano.Main.REVIEW) whose type or value reaches `sorryAx`, transitively through any constant (also outside the
 # libraries).  `#print axioms` checks only named theorems; this catches a module that admitted goals during error
 # recovery, an auxiliary definition, or a `decreasing_by` that fell back to `sorry`.  Also lists every `axiom`
 # declaration the modules reach (expected: the RISC-V model's platform/float opaques only).
@@ -17,7 +17,7 @@ out, libs = sys.argv[1], sys.argv[2:]
 cfg = tomllib.load(open("lakefile.toml", "rb"))
 L = {l["name"]: l for l in cfg["lean_lib"]}
 libs = libs or cfg["defaultTargets"] + ["Chain434"]
-mods = {"Nano.V2Self.REVIEW"} if not sys.argv[2:] else set()
+mods = {"Nano.Main.REVIEW"} if not sys.argv[2:] else set()
 files = {f[:-5].replace("/", "."): f for f in glob.glob("**/*.lean", recursive=True) if not f.startswith((".lake/", "Testing/", "Arm/"))}
 files["Arm.CompilerArm"] = "Arm/CompilerArm.lean"
 for n in libs:

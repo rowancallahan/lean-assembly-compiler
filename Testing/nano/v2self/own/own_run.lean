@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Own
+import Nano.Ownership.Own
 /-! `lake env lean --run Testing/nano/v2self/own/own_run.lean AST.bin...`: runs the ownership stage `C.o41` on Par1 AST
 dumps (8-byte LE words); prints ACCEPT (output = input) / REJECT (empty) per file. -/
 def readWords (path : String) : IO (List UInt64) := do

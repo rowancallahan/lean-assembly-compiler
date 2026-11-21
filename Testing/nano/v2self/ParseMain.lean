@@ -1,6 +1,6 @@
 /- driver for running the S lexer + Par1 parser as a RISC-V program: output = every AST word as 8 little-endian bytes.
 selfcompile.lean concatenates Base, Lex2, Par1, this file. -/
-import Nano.V2Self.C.Par1
+import Nano.Parser.Par1
 namespace C
 
 def z0 (v : UInt64) (o : List UInt8) : List UInt8 :=

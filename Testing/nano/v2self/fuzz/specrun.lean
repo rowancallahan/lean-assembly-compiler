@@ -1,4 +1,4 @@
-import Nano.V2Self.Proof.Parser.ParSpec
+import Nano.Parser.ParSpec
 open ParSpec
 /- usage: specrun DIR N : for each DIR/p{i}.txt print `i REJECT` or `i w1 w2 …` (serialize (refParse (lex src))) -/
 def main (args : List String) : IO Unit := do

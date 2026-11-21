@@ -4,7 +4,7 @@
 # reference semantics (semrun).  UNPROVEN glue, like the shims.
 # usage (from anywhere):  run_examples.sh [prog.lean ...]      default: all *.lean next to this script
 #   B2=path/to/B2.bin   another compiler binary (default ../B2.bin, checked in; rebuild: ../boot/fixpoint.sh)
-#   NOSEM=1             skip semrun (it needs Lean 4.29 and a built `lake build Nano.V2Self.Proof.Main.Main`)
+#   NOSEM=1             skip semrun (it needs Lean 4.29 and a built `lake build Nano.Main.Main`)
 #   NANORUN=1           use the interpreter run/nanorun.c instead of QEMU (no riscv64 toolchain or QEMU needed)
 # Needs (default): riscv64-linux-gnu-gcc and qemu-riscv64 (Debian/Ubuntu: gcc-riscv64-linux-gnu qemu-user-static).
 set -euo pipefail

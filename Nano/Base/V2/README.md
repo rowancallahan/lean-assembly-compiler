@@ -25,4 +25,4 @@ import `Sim`/`Enc`/`Gen`, and `Testing/nano/v2f/run.lean`, `Testing/nano/v2self/
 axioms of the final theorems: `Testing/scripts/review_axioms.sh`.
 
 ## Limits
-Only the RISC-V back end; the instruction set is what `Gen` emits (no compressed forms). Cleanups here must keep names used by `Nano/V2Self/Proof/Machine`.
+Only the RISC-V back end; the instruction set is what `Gen` emits (no compressed forms). Cleanups here must keep names used by `Nano/Run`.

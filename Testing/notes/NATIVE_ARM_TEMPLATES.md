@@ -1,7 +1,7 @@
 # Gen (RISC-V / J) vs GenArm (native A64): template correspondence
 
-Sources (branch nap-m2, read-only): `Nano/V2Self/C/Gen.lean` (G), `Nano/V2Self/C/GenArm.lean` (A),
-`Nano/V2Self/Proof/Machine/{Call,CallA,Expr,Heap,Loop,Templates,EVX,EVXL,NdSem,NdDef,StartCode,ArmEnc}.lean`.
+Sources (branch nap-m2, read-only): `Nano/Codegen/Gen.lean` (G), `Nano/Codegen/GenArm.lean` (A),
+`Nano/Run/{Call,CallA,Expr,Heap,Loop,Templates,EVX,EVXL,NdSem,NdDef,StartCode,ArmEnc}.lean`.
 Nothing was built or run; all A64 decodings are by hand from the encoder bases in A:11-48.
 
 ## 0. Conventions
