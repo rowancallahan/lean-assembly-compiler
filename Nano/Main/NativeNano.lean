@@ -64,11 +64,13 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
   have gl : g.length < 2 ^ 64 := by
     have := e70_len (C.o41 (C.y16 (C.s10 x))) C.g_999 ha
     rw [hg]; omega
-  have gb : mC x = C.g40 16777216 x g 0 [] := by rw [hg]; exact g42_e70 x _ C.g_999
+  have gb : mC x = C.g40 16777216 x g 0 [] := by
+    have e0 : mC x = C.g42 x (C.o41 (C.y16 (C.s10 x))) C.g_999 := by unfold mC C.g41; rfl
+    rw [e0, hg, g42_e70]
   have he71 : C.e71 x (C.o41 (C.y16 (C.s10 x))) =
       if (C.e72 16777216 g 0 == 0) = true then [] else
       if (bsize (C.e64 g) == 0) = true then [] else C.e49 16777216 x (C.e64 g) 0 [] := by
-    rw [hg]; rfl
+    rw [hg]; simp only [C.e71]
   rw [he71] at hx'
   by_cases c1 : (C.e72 16777216 g 0 == 0) = true
   · rw [if_pos c1] at hx'; exact absurd rfl hx'
