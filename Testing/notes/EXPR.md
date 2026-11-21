@@ -191,3 +191,18 @@ rejects (`<<<`). With big Nat, nano types literal-only terms as Nat, exactly lik
   the bootstrap subset as nano defs that Gen links in, so they self-host with C.
 Recommendation: start with step (1) and then (2) with `+` and `<` on RISC-V, as the lead suggested. In C's source,
 rewrite o32/o38 as `k1`/`k0` constants or leave them: after step (1) Lean and nano agree on their typing.
+
+### Step 1 exact proposal (ParSpec; for owner review, not implemented)
+Lean's rule is not syntactic. A numeral with no expected type is POSTPONED and defaults to Nat only when nothing
+constrains it later. `let t := 17709; .. rd x t ..` gives `t : UInt64` (Lean accepts; fuzz repro c), while o32's
+`let k := (if .. then 1 else 0); if k == 1` gives `k : Nat` (no constraint). So step 1 is:
+* `Ty.lit` is kept for let-bound slots: `tyShape .lit = some .uw` becomes a "numeral slot" `Ps.sh .lit`, width 1.
+  Reading the slot gives `Ty.lit` again. A slot's final type is decided by its uses (any UInt64 position → UInt64)
+  and otherwise defaults to Nat. The IR is unchanged (values are words), so C's AST and Sem are unchanged. Only the
+  typing judgment and the emitted Expr differ (`have k : Nat`, `instOfNatNat`, `BEq Nat`, `Nat.decLt`).
+* Literal-only arithmetic or comparison (`1 + 2`, `3 < 5`, `35 <<< 51`) that ends up at Nat: comparisons are
+  accepted at Nat (values agree, both are < 2^64). Arithmetic is REJECTED until bignum (step 2). This also removes
+  the fuzz "Lean rejects" cases `put [] (35 <<< 51)`. `let t := []` (no element type) is rejected separately.
+* Implementation: Par1 (C's source) and ParRun/ParInv (the parser refinement, ~23K lines) follow. Then C's text
+  changes, so B2/B3, Cert, SrcLink and GA_arm regenerate behind the gate. The parser owner (SYNTAX-EXP) should own the
+  Par1/ParInv part; emitSpec, E and `Ev` get the Nat instances here.
