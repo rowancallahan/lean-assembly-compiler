@@ -1,0 +1,4 @@
+reply: session_01MfKuVdPLvBuV5j9a1hUQC5
+targets: Blocks.ArmDMTop Blocks.AxiomsDM Blocks.AxiomsDMN Nano.Run.NatT.Base
+dir: Arm/apc
+axioms: yes
