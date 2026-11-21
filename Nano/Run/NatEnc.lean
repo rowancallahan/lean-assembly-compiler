@@ -72,8 +72,9 @@ theorem atomize_j : ∀ (n : Nat) (l : List J) (tl : List NTm), atomize n l = so
           simp only [Option.map_some, Option.some.injEq] at h
           subst h
           rw [List.flatMap_cons, atomize_j n _ r hr]
-          conv => lhs; rw [← hp]
-          exact List.take_append_drop _ _
+          have e := List.take_append_drop t.j.length (i :: l)
+          rw [hp] at e
+          exact e
       · exact absurd h (by simp)
 
 /-! ## the encoder -/
