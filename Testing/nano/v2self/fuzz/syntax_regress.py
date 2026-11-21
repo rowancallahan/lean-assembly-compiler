@@ -59,6 +59,14 @@ REJ_NANO_ONLY = [  # Lean accepts, nano rejects (stricter, allowed): the frame r
     ('A noncomputable def', 'noncomputable ' + M),
     ('A opaque', 'opaque g : UInt64\n' + M),
 ]
+# class B (literal typing): Lean rejects or computes in Nat, nano accepts until the B check lands; reported, not counted (move to CASES then)
+PENDING_B = [
+    ('M1 literal arithmetic in a comparison', 'def g (n : UInt64) : UInt64 := if 3 - 4 == 0 then 1 else 2\n' + M),
+    ('M15 tuple-let as a comparison operand in a recursive call', 'def f : Nat → List UInt8 → UInt64 → UInt64 → UInt64\n'
+     '  | 0, x, i, a => a\n  | n + 1, x, i, a => f n x (i + 1) (if 5 == (let (a1, b1) := (rd x 5, rd x 2); a1) then 1 else 2)\n'
+     'def m (x : List UInt8) : List UInt8 := put [] (f 3 x 0 0)\n'),
+    ('M12 numeral left of a shift', 'def g (a : UInt64) : UInt64 := 7 + (a >>> 2)\n' + M),
+]
 W = tempfile.mkdtemp(prefix='synreg_')
 for c, s in (('riscv64-linux-gnu-gcc', 'shim_rv'), ('aarch64-linux-gnu-gcc', 'shim_arm')):
     subprocess.run([c, '-O2', '-static', f'{V}/run/shim/{s}.c', '-o', f'{W}/{s}'], check=True)
@@ -75,5 +83,8 @@ for name, text, lean in CASES:
     for cn, cmd in COMP:
         acc = len(subprocess.run(cmd, input=text.encode(), capture_output=True, timeout=300).stdout) > 0
         if acc != lean: bad += 1; print(f'FAIL {cn}: {name}: nano {"accepts" if acc else "rejects"}, Lean {"accepts" if lean else "rejects"}')
+for name, text in PENDING_B:
+    acc = len(subprocess.run(COMP[0][1], input=text.encode(), capture_output=True, timeout=300).stdout) > 0
+    print(f'pending B: {name}: nano {"accepts" if acc else "rejects"} (Lean rejects or differs)')
 print(f'syntax_regress: {len(CASES)} cases x {len(COMP)} compilers, {bad} failures')
 sys.exit(1 if bad else 0)
