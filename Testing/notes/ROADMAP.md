@@ -688,6 +688,11 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
   decl-modifier check in the trusted desugar spec; reject fuzz checks Lean-rejects ⇒ nano-rejects.
 - Lean parser as the model (owner, 2026-11-21): nano's syntax rules follow Lean 4's own parser (src/Lean/Parser) rule by
   rule, with file:line citations in Testing/notes/LEAN_RULES.md; elaborator-dependent meaning (literal defaulting,
-  name resolution) is handled by rejecting ambiguous programs + differential fuzz against real Lean. Later, once nano
-  has monads/structures/typeclasses: port a cut-down Lean parser for nano's subset into nano, real Lean as test oracle
-  (no formal equivalence: Lean's parser is partial/meta code and not provable as is).
+  name resolution) is handled by rejecting ambiguous programs + differential fuzz against real Lean. TARGET (owner): nano's parser
+  becomes a transcription of Lean 4's own parser for nano's subset (same rule structure, names and order, each rule
+  citing its Lean source), written in nano once nano has monads/structures/typeclasses; real Lean is the test oracle
+  (no formal equivalence: Lean's parser is partial/meta code and not provable as is). Until then new syntax follows
+  Lean's parser rule by rule.
+- Why nano exists next to Lean (note for readers): Lean 4 self-hosts but its code generator (Lean → IR → C → clang)
+  is unverified; nano proves source-to-machine-code correctness against Sail/DeepMind ISA models with no C compiler in
+  the trust base, and proves its own binary is its compiled source.
