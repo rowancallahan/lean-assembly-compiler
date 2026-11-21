@@ -60,7 +60,7 @@ EXPL += [
   'open("Nano/" + {"Base": "Main/Chain", "Lex2": "Lexer/Lex2", "Par1": "Parser/Par1", "Own": "Ownership/Own", "Gen": "Codegen/Gen"}[p] + ".lean")'),
  ("Testing/nano/v2self/ast_dump.lean", "ast.txt Nano/V2Self/Proof 20", "ast.txt Nano/SelfHost 20"),
  ("Nano/Tests/MainCert.lean", "Nano/V2Self/Proof/MainCert", "Nano/Tests/MainCert"),
- ("README.md", "(`Nano/V2Self`, start at `Nano/V2Self/REVIEW.lean`)", "(`Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}`, start at `Nano/Main/REVIEW.lean`)"),
+ ("README.md", "(`Nano/V2Self`, start at `Nano/Main/REVIEW.lean`)", "(`Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}`, start at `Nano/Main/REVIEW.lean`)"),
  ("README.md", "Nano (Base + V2Self)", "Nano (Base + stage folders)"),
  ("Testing/scripts/review_axioms.sh", "Nano/V2Self/REVIEW.lean", "Nano/Main/REVIEW.lean"),
 ]
