@@ -35,6 +35,25 @@ then C → D → E → F (need the cleaned-up generic layer).
   Side conditions found: `ldp` needs `t ≠ u` (the model rejects equal load targets); `ldur`/`stur`/`ldp` are stated
   with 8-aligned addresses like `ldr`/`str`. Sail ARM instance of `A64SemN`: not started.
 
+* C (link values): DONE on branch `link-layout` (38504ff): `CallProbe.St.wk` → `St.ly : LinkLay` (off / un / inv),
+  jal links `b + lo (pc+1)`, the global bound became `LinkOK C s` (per return point). REVIEW pinned axioms unchanged.
+* D (general layout layer): `Proof/Machine/GTarget.lean`: `Img` (code bytes, `ly`, anchors `vis`), `GTarget.Rel` at
+  anchors only, segment law `Laws.seg`, `gsim`; every uniform `JTarget` embeds (`toG`, `rel_toG`, `laws_toG`).
+  Host*/TopOn over GTarget: in progress (FABLE-M2, branch m2-host; agreed extra laws `off_le` (anchors), `vis_link`,
+  `vis_ret`, `vis_err`, and `Img.dead` = J registers not related at an anchor).
+* B (per-template lemmas, GenArm pinned at native-arm d6db803): the J ↔ A64 correspondence of all 15 template kinds
+  is in `Testing/notes/NATIVE_ARM_TEMPLATES.md` (written from the sources, not machine-checked).
+  `Proof/Machine/ArmNat.lean`: `NMid` (machine state at an absolute code word index vs a register/memory view) and
+  the single-instruction steps from `A64SemN` (movz, movn, movk, add/sub imm, add lsl 3 → x16, alu, cbz, cbnz,
+  subs+b.cond, b, bl, br, ldr, str, ldur, stur, ldp, 8-byte store). `Proof/Machine/ArmNatTm.lean`: templates done:
+  push, pop-two, BIN (non-mul). TODO: madd (mul), ldrb register offset, strb + byte store, li (movz/movn/movk chunk
+  walk `a7`), slot access `a9` (3 forms), LOCAL, pop-into-slots, prims (ISIZE/LEN, RD, BNEW, BSIZE, BGET, BSET,
+  BPUSH/PUT), IF head, LOOP head/step/exit/CONTINUE, call, prologue, epilogue, stubs, start code; then the native
+  `GTarget` instance (image + anchors from the template list) and its `seg` law from these lemmas and the J template
+  runs.
+* Findings: after BGET/BSET the J temporaries t0/t1 differ from x5/x6 (dead at the boundary; hence `Img.dead`);
+  start code is 34 A64 words for 32 J instructions; li is 1..4 words, slot access 1 or 2 words (locals ≥ 33).
+
 ## What in the current interface blocks it (cross-ref Testing/notes/CLEANUP_PLAN.md)
 * step 7 `EncOK`: code must be `enc` of Gen's RV bytes → native generator not expressible. Needed (F).
 * step 9 GenRef's `CG` over raw RV words: needed for E (lockstep), the largest item.
