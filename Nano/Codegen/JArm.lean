@@ -94,7 +94,7 @@ def e21 (c : Buf) (i : UInt64) : UInt64 :=
 def e22 (c : Buf) (i : UInt64) : UInt64 :=
   let v := e0 c i;
   let k := e25 v;
-  if 8 < k then (if k < 13 then e5 v else e4 v) else e4 v
+  if k == 13 then 0 else if 8 < k then (if k < 13 then e5 v else e4 v) else e4 v
 /-- **field C** -/
 def e23 (c : Buf) (i : UInt64) : UInt64 :=
   let v := e0 c i;
@@ -106,7 +106,7 @@ def e23 (c : Buf) (i : UInt64) : UInt64 :=
   else if k == 13 then e13 (e9 v)
   else if 8 < k then (if k < 13 then e13 (e8 v) else 0) else 0
 /-- **ALU op** -/
-def e24 (c : Buf) (i : UInt64) : UInt64 := let v := e0 c i; e15 (e3 v) (v >>> 25)
+def e24 (c : Buf) (i : UInt64) : UInt64 := let v := e0 c i; if e25 v == 8 then e15 (e3 v) (v >>> 25) else 0
 
 /-! ## matching -/
 def e60 (a b : UInt64) : UInt64 := if a == b then 1 else 0
