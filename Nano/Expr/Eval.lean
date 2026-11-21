@@ -70,7 +70,7 @@ def evalX (P : Prog) : Nat → List V → X → Option V
           let .w y ← evalX P f env b | none
           pure (.w (← binV n x y))
         | _, _ => do
-          let vs ← evalL P f env as
+          let vs ← as.mapM (evalX P f env)
           prim n vs <|> ((P.lookup n).bind fun body => (strip vs.length body).bind fun b => evalX P f vs.reverse b)
       | _ => none
 /-- conditions: `Eq Bool (BEq.beq ..) true` and `LT.lt ..` -/
@@ -90,10 +90,6 @@ def evalB (P : Prog) : Nat → List V → X → Option Bool
       let .w y ← evalX P f env b | none
       pure (decide (x < y))
     | _ => none
-def evalL (P : Prog) : Nat → List V → List X → Option (List V)
-  | 0, _, _ => none
-  | _ + 1, _, [] => some []
-  | f + 1, env, a :: as => do pure ((← evalX P f env a) :: (← evalL P f env as))
 end
 
 /-- run a program's `m` on an input: the output bytes -/

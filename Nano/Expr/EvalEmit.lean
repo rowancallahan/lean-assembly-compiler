@@ -58,4 +58,28 @@ theorem ite_lt_case (P : Prog) (f : Nat) (venv : List V) (r : Sh) (a b t e : X) 
     evalX P (f + 2) venv (iteX r 2 a b t e) = if x < y then evalX P (f + 1) venv t else evalX P (f + 1) venv e := by
   by_cases h : x < y <;> simp_all [iteX, apps, U, evalX, evalB, spine]
 
+/-- the pair case -/
+theorem pair_case (P : Prog) (f : Nat) (venv : List V) (A B a b : X) (va vb : V)
+    (ha : evalX P f venv a = some va) (hb : evalX P f venv b = some vb) :
+    evalX P (f + 1) venv (apps (.c "Prod.mk" [0, 0]) [A, B, a, b]) = some (.p va vb) := by
+  simp [apps, evalX, spine, ha, hb]
+
+/-- buffer prims (no input argument): the emitted application computes Sem's prim on related values -/
+theorem bget_case (P : Prog) (f : Nat) (venv : List V) (a b : X) (l : List UInt64) (i : UInt64)
+    (ha : evalX P f venv a = some (.b l)) (hb : evalX P f venv b = some (.w i)) :
+    evalX P (f + 1) venv (apps (.c "bget" []) [a, b]) = some (.w (l.getD i.toNat 0)) := by
+  simp [apps, evalX, spine, binV, ha, hb, prim]
+
+theorem bpush_case (P : Prog) (f : Nat) (venv : List V) (a b : X) (l : List UInt64) (v : UInt64)
+    (ha : evalX P f venv a = some (.b l)) (hb : evalX P f venv b = some (.w v)) :
+    evalX P (f + 1) venv (apps (.c "bpush" []) [a, b]) = some (.b (l ++ [v])) := by
+  simp [apps, evalX, spine, binV, ha, hb, prim]
+
+/-- `rd`: the input is the evaluator's `.l inp` binder; Sem reads `cx.inp` -/
+theorem rd_case (cx : Ctx) (P : Prog) (f : Nat) (venv : List V) (a b : X) (i : UInt64)
+    (hk : evalX P f venv a = some (.l cx.inp)) (hb : evalX P f venv b = some (.w i)) :
+    evalX P (f + 1) venv (apps (.c "rd" []) [a, b]) = some (.w (cx.inp.getD i.toNat 0).toUInt64) ∧
+      NanoMain.prim cx 2 [.w i] = .ok [.w (cx.inp.getD i.toNat 0).toUInt64] :=
+  ⟨by simp [apps, evalX, spine, binV, hk, hb, ExprSpec.prim], by simp [NanoMain.prim]⟩
+
 end ExprSpec
