@@ -5,9 +5,9 @@ import re, subprocess, sys, os
 here = "Testing/nano/v2self/boot"
 LIST = "--list" in sys.argv
 S = open("Testing/nano/v2self/self_S.lean").read()
-S = S.replace("import Nano.V2Self.Prelude\n", "")
+S = S.replace("import Nano.Main.Prelude\n", "")
 if not LIST: S = S.replace("List UInt8", "Array UInt8").replace("[]", "#[]")
-pre = open("Nano/V2Self/Prelude.lean").read() if LIST else open(f"{here}/BootPrelude.lean").read()
+pre = open("Nano/Main/Prelude.lean").read() if LIST else open(f"{here}/BootPrelude.lean").read()
 if LIST: pre = re.sub(r"/-.*?-/", "", pre, count=1, flags=re.S)
 main = '''
 def readAll (s : IO.FS.Stream) : IO ByteArray := do

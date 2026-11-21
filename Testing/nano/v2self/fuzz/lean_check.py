@@ -40,7 +40,7 @@ def layout_only(r, tag):
     """a Lean parse error in a valid program's exact text that the comment-blanked text has too: Lean's offside rule
     (S has no layout rule), not a comment divergence"""
     fn = f"{D}/lean_{SEED}_{tag}_{r['i']}"
-    hdr = "import Nano.V2Self.Prelude\nset_option maxRecDepth 10000\n\n"
+    hdr = "import Nano.Main.Prelude\nset_option maxRecDepth 10000\n\n"
     open(fn + ".x.lean", "w").write(hdr + r["src"] + "\n"); open(fn + ".s.lean", "w").write(hdr + strip(r["src"]) + "\n")
     ex, st = parse_errors(lean(fn + ".x.lean")), parse_errors(lean(fn + ".s.lean"))
     pos = lambda es: [e.split(".lean:", 1)[1].split(" error")[0] for e in es]
@@ -50,11 +50,11 @@ def batch(items, tag):
     """(b1) the exact NEW texts must have no Lean parse error; (b2) the Lean copies (`lsrc`, or the text itself for
     mutants) evaluate to the QEMU outputs"""
     fn = f"{D}/lean_{SEED}_{tag}.lean"
-    parts = ["import Nano.V2Self.Prelude", "set_option maxRecDepth 10000", ""]
+    parts = ["import Nano.Main.Prelude", "set_option maxRecDepth 10000", ""]
     for r in items: parts.append(r["src"])
     open(fn + ".exact.lean", "w").write("\n".join(parts) + "\n")
     perr = parse_errors(lean(fn + ".exact.lean"))
-    parts = ["import Nano.V2Self.Prelude", "set_option maxRecDepth 10000", ""]
+    parts = ["import Nano.Main.Prelude", "set_option maxRecDepth 10000", ""]
     for r in items: parts.append(r.get("lsrc", r["src"]))
     for r in items:
         nsl = r["ns"] + ("L" if "lsrc" in r else "")
@@ -76,7 +76,7 @@ def batch(items, tag):
 
 def lean_one(r, tag):
     fn = f"{D}/lean_{SEED}_{tag}_{r['i']}.x.lean"
-    open(fn, "w").write("import Nano.V2Self.Prelude\nset_option maxRecDepth 10000\n\n" + r["src"] + "\n")
+    open(fn, "w").write("import Nano.Main.Prelude\nset_option maxRecDepth 10000\n\n" + r["src"] + "\n")
     return lean(fn)
 
 if __name__ == "__main__":

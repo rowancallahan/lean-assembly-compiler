@@ -32,7 +32,7 @@ Baseline, not ours: `Nano.V2S.Asm` and `Nano.ElabBProof` fail on 4.34.1, on rv-r
 
 ## 1. Trivia in the lexer
 
-### What is accepted (spec: `LexSpec.step`, `Nano/V2Self/Proof/Lex/Lex2Spec.lean`)
+### What is accepted (spec: `LexSpec.step`, `Nano/Lexer/Lex2Spec.lean`)
 New `step` cases, emitting **no tokens**:
 - `--` up to (not including) the newline;
 - a block comment from slash-dash to the matching dash-slash, **nested** as in Lean (`blockEnd`, depth counter); this
@@ -52,7 +52,7 @@ New `step` cases, emitting **no tokens**:
 - Not covered: `protected`, `noncomputable`, `partial`, `set_option … in`, `variable`, `universe`, `#eval`. Each is one
   more `kwX` entry and one more `s3'_eq` length case.
 
-### Implementation (C, `Nano/V2Self/C/Lex2.lean`)
+### Implementation (C, `Nano/Lexer/Lex2.lean`)
 - `s3` (keyword chain) gets 5 entries: kind 92 (skip the line) for namespace/open/section/end, kind 93 for private.
 - `s4` gets 3 kinds: 94 `--`, 95 slash-dash, 96 `@[`.
 - New scanners: `s12 n x i b` gives the first position ≥ i holding byte b, or the end. `s11 n x i d` scans a nested
@@ -98,7 +98,7 @@ New `step` cases, emitting **no tokens**:
 
 ## 2. `match` (new stage `t10` between lexer and parser)
 
-### What is accepted (spec: `DsSpec.ds`, `Nano/V2Self/Proof/Lex/DsSpec.lean`)
+### What is accepted (spec: `DsSpec.ds`, `Nano/Lexer/DsSpec.lean`)
 - `match E with | 3 => a | 7 => b | y => c` desugars at token level to
   `let $ := E; if $ == 3 then a else if $ == 7 then b else let y := $; c`.
   - `$` (identifier `14 1 36 0`) cannot be spelled in Lean, so it cannot clash with user names.
@@ -124,7 +124,7 @@ New `step` cases, emitting **no tokens**:
     120 MiB; the nanorun default is 80.
 
 ### Verification (4.34.1, exp-syntax-match = exp-syntax with rv-regen-434 + match)
-- `lake build Nano.V2Self.REVIEW` plus Tests.SelfInPath / MainCert / AuditWitness and Main.ArmTop: all OK.
+- `lake build Nano.Main.REVIEW` plus Tests.SelfInPath / MainCert / AuditWitness and Main.ArmTop: all OK.
 - `Testing/scripts/review_axioms.sh`: **`OK: 8 theorems, axioms as pinned`**.
 - `t10_sound` and `hsrc_C`: [propext, Classical.choice, Quot.sound].
 - No `sorry`, `native_decide` or `bv_decide`. `decide +kernel` is used for C's own token list and the witnesses.
@@ -173,7 +173,7 @@ New `step` cases, emitting **no tokens**:
 
 Every definition below is listed in REVIEW §3 or used by `pOf`/`mC`. Each is shown as a verbatim `git diff` against `origin/release-434`.
 
-### (1) `LexSpec.step` and its new helpers (Nano/V2Self/Proof/Lex/Lex2Spec.lean)
+### (1) `LexSpec.step` and its new helpers (Nano/Lexer/Lex2Spec.lean)
 ```diff
 @@ -3,6 +3,9 @@
  whitespace (space, newline) is skipped; the operator table is searched longest-first; a word is a maximal run of
@@ -183,7 +183,7 @@ Every definition below is listed in REVIEW §3 or used by `pOf`/`mC`. Each is sh
 +(slash-dash ... dash-slash, docstrings included; unterminated: rejected); an attribute `@[ … ]` up to the first `]` (none: rejected); the
 +words `namespace`, `open`, `section`, `end` up to the newline; the word `private`.
  Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
- import Nano.V2Self.Prelude
+ import Nano.Main.Prelude
  namespace LexSpec
 @@ -40,6 +43,21 @@ def kwTable : List (List UInt8 × UInt64) :=
     ([98, 115, 101, 116], 46),
@@ -250,7 +250,7 @@ Every definition below is listed in REVIEW §3 or used by `pOf`/`mC`. Each is sh
 +def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
 ```
 
-The new trusted definitions (`MU`, `MATCH`, `WITH`, `WILD`, `identTok`, `splitTok`, `Pat`, `pat`, `armCode`, `cell`, `go`, `noMatch`, `ds`, `LexesD`) are all of Nano/V2Self/Proof/Lex/DsSpec.lean (≈100 lines). The owner should read that file whole.
+The new trusted definitions (`MU`, `MATCH`, `WITH`, `WILD`, `identTok`, `splitTok`, `Pat`, `pat`, `armCode`, `cell`, `go`, `noMatch`, `ds`, `LexesD`) are all of Nano/Lexer/DsSpec.lean (≈100 lines). The owner should read that file whole.
 
 **Why `pOf` has to change for `match`.** The lead preferred leaving the statement untouched and proving the desugaring
 semantics-preserving inside the proof. That is not possible here. The meaning of a text is `pOf` (lex, then

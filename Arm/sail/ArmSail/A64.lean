@@ -1,5 +1,5 @@
 /- **`A64Sem armSail TT TT`**: the abstract AArch64 interface of the ARM adapter
-(`Nano/V2Self/Proof/Machine/A64Sem.lean`) on the official Sail ARM model (`armSail`). Sail does not model page
+(`Nano/Run/A64Sem.lean`) on the official Sail ARM model (`armSail`). Sail does not model page
 permissions here (MMU off, EL3), so both permission predicates are `True` and the loader contract `ArmLoader TT TT`
 holds for every start state. Every field from the Sail `full_*` lemmas (`Fields.lean`). -/
 import ArmSail.Fields

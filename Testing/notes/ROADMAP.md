@@ -621,7 +621,7 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
 Top level becomes symmetric per target: `Spec/` (RISC-V + ARM machines), `Nano/` (compiler + target-independent proofs),
 `Riscv/` (model regen, step lemmas = today's Nano/Base/Riscv, RISC-V target proofs), `Arm/` (models, step lemmas, ARM
 target, later the native ARM backend), `Legacy/`, `Testing/`. Done after cleanup step 8 separates the RISC-V-specific
-parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same checks as reorg-nano.
+parts from Nano/Run, so the move is complete in one go. Same checks as reorg-nano.
 - Spec/ scope (owner): Spec/ = what "correct" means (machines, CompileCorrect/Runs, Encode, memory rules). Generated Sail
   models stay external deps; each target folder holds its regen scripts + provenance, step lemmas, codegen/target proofs.
   Later Spec/ reorg: move the trusted SOURCE-language definitions (lexer spec, grammar/pOf, semantics; today in

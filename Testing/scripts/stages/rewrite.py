@@ -3,7 +3,7 @@
 Module paths change, def/theorem/namespace names do not. Mapping is rule-based so files added on in-flight branches map too."""
 import os, re, subprocess, sys
 # (old path relative to Nano/V2Self, new path relative to Nano/); file rules for single files, dir rules per whole segment
-FILES = {"C/Lex2": "Lexer/Lex2", "C/Dsg": "Lexer/Dsg", "C/Par1": "Parser/Par1", "C/Own": "Ownership/Own", "C/Gen": "Codegen/Gen", "C/GenArm": "Codegen/GenArm",
+FILES = {"C/Lex2": "Lexer/Lex2", "C/Par1": "Parser/Par1", "C/Own": "Ownership/Own", "C/Gen": "Codegen/Gen", "C/GenArm": "Codegen/GenArm",
          "C/Base": "Main/Chain", "Prelude": "Main/Prelude", "REVIEW": "Main/REVIEW"}
 DIRS = {"Proof/Lex": "Lexer", "Proof/Parser": "Parser", "Proof/Own": "Ownership", "Proof/Gen": "Codegen",
         "Proof/Machine": "Run", "Proof/Cert": "SelfHost/Cert", "Proof/CertArm": "SelfHost/CertArm",

@@ -1,4 +1,4 @@
-import Nano.V2Self.Proof.Parser.ParRun
+import Nano.Parser.ParRun
 open ParSpec ParRun
 /- usage: runrun DIR N : for each DIR/p{i}.txt print `i REJECT` or `i w1 w2 …` (Layer 2 `runParse` on the Lex2-spec tokens of the source) -/
 def main (args : List String) : IO Unit := do

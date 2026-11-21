@@ -17,10 +17,10 @@ Sequential `lake build <module>` over 401 modules under Nano/V2Self. Most module
   - error: Nano/V2Self/Proof/MainCertC5.lean:99:13: (deterministic) timeout at `whnf`, maximum number of heartbeats (200000) has been reached
 
 ## Banned/axiom grep (Nano/V2Self, file:line)
-Nano/V2Self/REVIEW.lean:2:Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
-Nano/V2Self/REVIEW.lean:17:#print axioms NanoMain.C_correctLO
-Nano/V2Self/REVIEW.lean:21:#print axioms Cert.sem_C
-Nano/V2Self/REVIEW.lean:32:#print axioms NanoMain.self_correct_C
+Nano/Main/REVIEW.lean:2:Build: `lake build Nano.Main.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
+Nano/Main/REVIEW.lean:17:#print axioms NanoMain.C_correctLO
+Nano/Main/REVIEW.lean:21:#print axioms Cert.sem_C
+Nano/Main/REVIEW.lean:32:#print axioms NanoMain.self_correct_C
 Nano/V2Self/Proof/ParCapBnd.lean:122:#print axioms NanoMain.C_correctLO
 
 ## Axioms

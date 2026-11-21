@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Lex2
+import Nano.Lexer.Lex2
 /- reference lexer for S over `List Char` (independent of C.s*), differential test: S text files + random strings.
 run: lean --run Testing/nano/v2self/lex2_test.lean FILE...  (prints mismatch count) -/
 def isW (c : Char) : Bool := c.isAlphanum && c.toNat < 128 || c == '_' || c == '\''

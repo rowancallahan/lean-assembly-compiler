@@ -1,7 +1,7 @@
-import Nano.V2Self.Proof.Parser.ParSpec
+import Nano.Parser.ParSpec
 open ParSpec
 /- usage: lake env lean --run Testing/nano/v2self/srclink/gen.lean SRC OUTDIR GROUPTOKS
-Regenerates the kernel-checked source link Nano/V2Self/Proof/SrcLink/*.lean for the text SRC: the text is cut before each
+Regenerates the kernel-checked source link Nano/SelfHost/SrcLink/*.lean for the text SRC: the text is cut before each
 line starting with `def`; per def i: its bytes x_i, words w_i (= lexAll x_i), tokens S_i (= tokens w_i), and the
 reference parse step pDef F D_i T_i = (di_i, d_i, T_{i+1}).  Every piece is validated here before it is written. -/
 partial def nd : Nd → String
@@ -77,14 +77,14 @@ def main (args : List String) : IO Unit := do
   -- data modules
   for gi in [0:groups.size] do
     let (a, b) := groups[gi]!
-    let mut s := hdr ["Nano.V2Self.Proof.SrcLink.SrcLink"]
+    let mut s := hdr ["Nano.SelfHost.SrcLink.SrcLink"]
     for i in [a:b] do
       let (x, w, S, di, da) := rows[i]!
       s := s ++ s!"def x{i} : List UInt8 := {lst toString x}\n" ++ s!"def w{i} : List UInt64 := {lst toString w}\n" ++
         s!"def S{i} : List Tok := {lst tokS S}\n" ++ s!"def di{i} : DefI := {diS di}\n" ++ s!"def d{i} : DefA := {daS da}\n"
     IO.FS.writeFile s!"{out}/Data{gi}.lean" (s ++ "\nend SrcGen\n")
   -- chain module
-  let mut c := hdr ((List.range groups.size).map fun g => s!"Nano.V2Self.Proof.SrcLink.Data{g}")
+  let mut c := hdr ((List.range groups.size).map fun g => s!"Nano.SelfHost.SrcLink.Data{g}")
   c := c ++ s!"def F : Nat := {F}\n"
   c := c ++ s!"def T{n} : List Tok := []\ndef X{n-1} : List UInt8 := x{n-1}\ndef W{n-1} : List UInt64 := w{n-1}\ndef Ls{n} : List DefA := []\n"
   for k in [0:n] do
@@ -97,7 +97,7 @@ def main (args : List String) : IO Unit := do
   -- check modules
   for gi in [0:groups.size] do
     let (a, b) := groups[gi]!
-    let mut s := hdr ["Nano.V2Self.Proof.SrcLink.Chain"]
+    let mut s := hdr ["Nano.SelfHost.SrcLink.Chain"]
     s := s ++ "set_option maxRecDepth 100000\n\n"
     for i in [a:b] do
       s := s ++ s!"theorem lex{i} : lexAll (x{i}.length + 1) x{i} = some w{i} := by decide +kernel\n"
@@ -106,7 +106,7 @@ def main (args : List String) : IO Unit := do
       s := s ++ s!"theorem chk{i} : chkDef (pDef F D{i} T{i}) di{i} d{i} T{i+1} = true := by decide +kernel\n"
     IO.FS.writeFile s!"{out}/Chk{gi}.lean" (s ++ "\nend SrcGen\n")
   -- top module
-  let mut t := hdr ((List.range groups.size).map (fun g => s!"Nano.V2Self.Proof.SrcLink.Chk{g}") ++ ["Nano.V2Self.Proof.Cert.PC"])
+  let mut t := hdr ((List.range groups.size).map (fun g => s!"Nano.SelfHost.SrcLink.Chk{g}") ++ ["Nano.SelfHost.Cert.PC"])
   t := t ++ "set_option maxRecDepth 100000\n\n"
   t := t ++ s!"theorem lx{n-1} : LexSpec.Lexes X{n-1} W{n-1} := lexAll_sound lex{n-1}\n"
   t := t ++ s!"theorem tk{n-1} : tokens W{n-1} = some T{n-1} := by\n  show tokens w{n-1} = some (S{n-1} ++ [])\n  rw [List.append_nil]; exact tok{n-1}\n"

@@ -5,7 +5,7 @@ Gen's BPUSH / BSET / PUT update buffers IN PLACE; `NanoMain.Sem` is pure.  `let 
 gave [1] (C) vs [0] (Lean) (NANO_V2_MAIN.md "FINDING", `alias_d`).  Fix: a stage between Par1 and Gen that rejects
 non-linear buffer use.  Driver (build_self_S.py): `m x = g41 x (o41 (y16 (s10 x)))`.
 
-## Spec: `OwnSpec.Linear p := ∃ Ks, progOk [] [] Ks p = true` (Nano/V2Self/Proof/Own/OwnSpec.lean, on ParSpec.Nd)
+## Spec: `OwnSpec.Linear p := ∃ Ks, progOk [] [] Ks p = true` (Nano/Ownership/OwnSpec.lean, on ParSpec.Nd)
 * KINDS (existential, per def, static per slot): 0 word, 1 owned buffer, 2 read-only buffer (a borrowed param).
   Params = `K.take npw`; let slots: value kinds = slot kinds; CALL args fit the callee param kinds; CONTINUE payload fits
   the state kinds ⇒ "K s = 0 ⇒ the slot holds `.w`" is an invariant of `NanoMain.ev` (no scoping assumption).
@@ -19,7 +19,7 @@ non-linear buffer use.  Driver (build_self_S.py): `m x = g41 x (o41 (y16 (s10 x)
 * Rejected: `f b b`, `bset b 0 (bsize (bpush b 1))`, `let c := bpush b 7; … b …`, a read-only param transferred.
   Accepted: `f h (bget h 0)`, `v205 16777216 h …` then `h` again (v205's `h` is read-only).
 
-## Implementation: `C.o41` (Nano/V2Self/C/Own.lean, S subset, ~45 defs `o0..o41`)
+## Implementation: `C.o41` (Nano/Ownership/Own.lean, S subset, ~45 defs `o0..o41`)
 Per def: kind INFERENCE (mode 1, unverified heuristic) = rounds of the same walk until no change (params start "unused"
 3; strong evidence = prim buffer args / owned callee params / owned states; an unused param ends read-only; a let
 slot used as a buffer makes its LOCAL source one; pairs keep source tags in mode 1), then VERIFY (mode 0 = `chk`).  Inference is a black box for the proof: it runs on its own s / f / v; verify runs on

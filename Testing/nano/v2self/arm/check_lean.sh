@@ -6,11 +6,11 @@
 set -euo pipefail
 D=$(cd "$(dirname "$0")" && pwd); R=$(cd "$D/../../../.." && pwd); V=$D/..; T=$(mktemp -d)
 export LEAN_PATH=$T
-mkdir -p "$T/Spec" "$T/Nano/V2Self/Proof/Machine" "$T/Testing/nano/v2self/arm"
+mkdir -p "$T/Spec" "$T/Nano/Run" "$T/Testing/nano/v2self/arm"
 cd "$R"
 lean -o "$T/Spec/Machines.olean" Spec/Machines.lean
 lean -o "$T/Spec/Top.olean" Spec/Top.lean
-lean -o "$T/Nano/V2Self/Proof/Machine/Call.olean" Nano/V2Self/Proof/Machine/Call.lean > /dev/null
+lean -o "$T/Nano/Run/Call/olean" Nano/Run/Call.lean > /dev/null
 lean -o "$T/Testing/nano/v2self/arm/ArmBlock.olean" "$D/ArmBlock.lean"
 QRV=${QRV:-$(command -v qemu-riscv64-static || command -v qemu-riscv64)}
 riscv64-linux-gnu-gcc -O2 -static "$V/run/shim/shim_rv.c" -o "$T/shim_rv"

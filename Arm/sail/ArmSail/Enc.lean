@@ -3,7 +3,7 @@
 `subs` (`cond_sub`). Copied from `Arm/apc` (`Blocks/Enc`, `Apc/Sym`, `Blocks/A64DM`, `Blocks/KBr`, `BridgeBr.sx2`),
 where they are proved for the DeepMind surrogate; none of them mentions a model, so importing them would only drag
 in the DeepMind package. -/
-import Nano.V2Self.Proof.Machine.A64Sem
+import Nano.Run.A64Sem
 import Arm.Small
 open Sail
 namespace ArmSail

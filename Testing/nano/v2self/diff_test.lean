@@ -1,4 +1,4 @@
--- differential test: the nano-subset stages (Nano/V2Self) against the Nano/V2S stages
+-- differential test: the nano-subset stages (Nano/<stages>) against the Nano/V2S stages
 -- (run: lake env lean Testing/nano/v2self/diff_test.lean; every #eval prints the number of MISMATCHES, 0 expected)
 import Legacy.Nano.V2Self.Legacy.Lex
 import Legacy.Nano.V2Self.Legacy.Inl

@@ -1,4 +1,4 @@
-# NANO_V2_CG: C's fused code generator (Opus box) — `Nano/V2Self/C/Gen.lean`, entry `C.g41 : Buf → Buf`
+# NANO_V2_CG: C's fused code generator (Opus box) — `Nano/Codegen/Gen.lean`, entry `C.g41 : Buf → Buf`
 
 Input = the parser's flat pre-order AST (NANO_V2_IR.md v2 with the Opus changes agreed 2026-11-17), output = RV64
 machine-code bytes (little-endian words), or the EMPTY Buf on any unsupported form, a frame over 250 words, a result
@@ -107,14 +107,14 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 - g39 refactored (same behaviour): step g54 (def header or one item), stop flag g55, stop result g56; the recursive
   body is now tiny — Lean's equation lemmas for the old body cost > 7 GB.  Fixed point: B3 == B2 = 252,316 bytes,
   sha256 d7f3bba6…d9158cef; front end ACCEPT (72 defs); cg_chain 40/40 + 15/15; witness rc 0.
-- g39 PROOF STATUS (Nano/V2Self/Proof/Gen/GenRef.lean, no sorry, file 8 s / 1.8 GB): Reach (progress | error | code too
+- g39 PROOF STATUS (Nano/Codegen/GenRef.lean, no sorry, file 8 s / 1.8 GB): Reach (progress | error | code too
   big), item/fixup stacks as lists, the CG/CT/CGs reference relation over Gen's own emitter words; value-mode visits
   CONST, LOCAL, BIN, IF, LET, PAIR, CALL, PRIM proved (VS, given the IH for later cursors); operand sequences (seq).
   Technique notes: unfold Gen's big defs with `extract_lets` + `clear_value` (zeta-reduction blows up exponentially);
   never leave a `match` on an unreduced g19/g20 for defeq — rewrite with g19_eq/g20_eq first (kernel blowup otherwise).
 - Hardening: B₃ identical with the work memory pre-filled 0xA5 / 0x5A (`FILL=` in selfrun.py); B₂ on a tiny source
   under Sail: QEMU == Sail == B1, writes only in output + work, OOM flag with 8-byte work.
-- ASTRA-11 PROBE 2 (codegen, non-leaf call with a live stack value): `Nano/V2Self/Proof/Machine/Call.lean`, no sorry, axioms
+- ASTRA-11 PROBE 2 (codegen, non-leaf call with a live stack value): `Nano/Run/Call.lean`, no sorry, axioms
   propext + Quot.sound, 3 s.  Abstract RV64 subset (`J`: addi ld sd jal jalr bgeu; word memory; non-wrap proved
   before every address use); templates exactly as Gen emits them: `push` (g21/g22, checked), `pro` (g38 prologue),
   `copy`/`epi` (g29 + g37 epilogue).  `call_live`: caller at `jal ra f` with p argument words on top of a live stack;
@@ -135,14 +135,14 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   parser invariant (Entry/Step obligations).
 - nano-v2 merged into nano-v2-src (c5dd2a1): the Sail layer (Nano/V2/Enc, Sim, Flat) and Front's ownership fix are now
   here; self_S.lean still ACCEPT (186 defs; large files need `ulimit -s unlimited; lean --tstack=4000000 --run`).
-- BRIDGE part 1 (encoders): `Nano/V2Self/Proof/Machine/Bridge.lean`, no sorry, standard axioms, 2 s.  C's g1 (R), g2 (I),
+- BRIDGE part 1 (encoders): `Nano/Run/Bridge.lean`, no sorry, standard axioms, 2 s.  C's g1 (R), g2 (I),
   g3 (S), g4 (B), g5 (J) produce exactly nano-v2's encR/encIt/encSt/encBt/encJt words with the signed immediate
   `sI v` (two's-complement reading of C's UInt64), hence g10 = addi, g11 = ld, g12 = sd, g4 = beq/bne/bltu/bgeu,
   g5 0 = jal x0 as `I.enc` — the words Enc/Sim tie to Sail; calls/returns go straight to Sail: `g5_wJ` (C's
   `jal rd` = `Proven.wJ rd o`, for `G.step_jal`) and `g2_jalr` (C's `jalr x0, rs` = the word of `G.step_jalr`).
   Still to do: lbu/sb/R-op corollaries, and the state link CallProbe.J ↔ nano-v2 St/pstep ↔ Sail (a
   code-agnostic `Rel`).
-- BRIDGE part 2 (state link): `Nano/V2Self/Proof/Machine/SimW.lean`, no sorry, axioms = the Sail extern set + standard (same
+- BRIDGE part 2 (state link): `Nano/Run/SimW.lean`, no sorry, axioms = the Sail extern set + standard (same
   as nano-v2's sim_star), 4 s, 1.7 GB.  `RelW` (J state ↔ Sail: code as C's words at `base`, x0 = 0, J's code base
   `b` = base, work cells as 8 LE bytes).  Per instruction: sim_addi, sim_ld, sim_sd, sim_bgeu8, sim_jal (C's `g5`
   word, byte return address), sim_jalr (C's return word).  `encJ` = the word C emits per J instruction; `Safe` =
@@ -150,7 +150,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   on code `W = C.map encJ` is a run of retired Sail instructions keeping `RelW`.  J now carries the code base
   (`St.b`): `jal` stores `b + 4(pc+1)`, `jalr` jumps to `(x − b)/4` (call_live re-proved).  Not bridged yet: J's
   alu/slli/lbu (added for the expression templates; `Safe` is False for them until their sims exist).
-- TEMPLATES (Opus box): `Nano/V2Self/Proof/Machine/Templates.lean`, no sorry.  Value contract `PV C pc len n V` (with n words
+- TEMPLATES (Opus box): `Nano/Run/Templates.lean`, no sorry.  Value contract `PV C pc len n V` (with n words
   of room the fragment pushes `V s`, keeps s0, t5 and every cell ≥ old t6; `V` stable under such changes).
   `if_eq` / `if_lt`: Gen's IF layout (A; B; pop2; beq/bltu t0,t1,+8; jal ELSE; T; jal END; E) pushes
   `if VA = VB (resp. VA < VB) then VT else VE`.  J gained `beq`/`bltu` (SimW: sim_beq8/sim_bltu8).
@@ -161,13 +161,13 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   EV has an invariant parameter `Inv` (input / heap / input-register facts; `InvOK`: Inv reads only x8, x28, x29,
   x30 and memory outside [t5, s0 + 8p + 16)) and x0 = 0.  `ifE_eq` / `ifE_lt`: IF under EV (room n+1 from n),
   scoping: B reads none of A's lets, T/E none of A's or B's.
-  LOOP: `Nano/V2Self/Proof/Machine/Loop.lean` `loop_ok` (no sorry): Gen's head (ld fuel; beq fuel,x0,+2; jal STEP; zero arm)
+  LOOP: `Nano/Run/Loop.lean` `loop_ok` (no sorry): Gen's head (ld fuel; beq fuel,x0,+2; jal STEP; zero arm)
   and STEP (fuel − 1 stored; step arm exits to E or CONTINUEs to HEAD), by induction on the fuel; arms, head
   invariant P and results abstract; result = inductive `LoopR` (zero / exit / cont).
   Multi-word values: contract `EVw` (w words, component i at t6 − 8(i+1)); `pairE` (PAIR = A ++ B), `letW` (LET of
   width w via `popN_run`, env updated by `setSlots`), `contE` (CONTINUE: state value, pop into slots 1..npw−1, jal
   HEAD; reaches HEAD with t6 restored and the frame = setSlots env' 1 (new state): loop_ok's continue branch).
-  FIXUPS: `Nano/V2Self/Proof/Gen/Fixup.lean` (no sorry): `off_eq` (C's `(b − a) <<< 2` = ofInt 4(b − a)), `g13_encJ`
+  FIXUPS: `Nano/Codegen/Fixup.lean` (no sorry): `off_eq` (C's `(b − a) <<< 2` = ofInt 4(b − a)), `g13_encJ`
   (C's jump word = encJ (jal x0 (b − a))), `g20_ok` (patching placeholder p: length kept, word p = the jump to the
   current end, all other words unchanged), `g19_ok` (emit = append the jump).
   Next: the g39 work-item invariant (emitted code ↔ AST walk) that instantiates these templates.
@@ -180,7 +180,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   def's words = `pro ++ body ++ epi` with all fixups patched (Fixup.g20_ok), so the templates (EV/EVw/IF/LET/LOOP/
   CONTINUE/CALL) apply bottom-up.  Width facts come from Gen's pre-pass (g53 = 1).  Heap prims via EVH (Sonnet).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
-- EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Machine/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
+- EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/Run/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
   `const_run`/`const_oom` (CONST: li g23 incl. the 8-byte chain, then the checked push), `local_run`/`local_oom` (LOCAL w words,
   slot k<p at s0+16+8(p-1-k), k≥p at s0-8(k-p+1); the pushes in order), `bin_run` (all 8 ops through `aluf`; pops 2, result over the
@@ -200,7 +200,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 
 ## HANDOFF — Gen soundness-on-success (Opus box, 2026-11-18; program level done 2026-11-19)
 
-State: nano-v2-src; Nano/V2Self/Proof/Gen/GenRef.lean builds, no sorry, axioms propext/Classical.choice/Quot.sound
+State: nano-v2-src; Nano/Codegen/GenRef.lean builds, no sorry, axioms propext/Classical.choice/Quot.sound
 (file ≈ 15 s, ≈ 2 GB). Bootstrap: fixpoint.sh gives B3 == B2 = 252,316 bytes, sha256 d7f3bba6…d9158cef.
 
 Proved (GenRef.lean):
@@ -214,7 +214,7 @@ Proved (GenRef.lean):
   `g28_ok` (all exits patched to the epilogue start, r unchanged or error), `pi_g29` (epilogue), `root_visit`,
   the boundary predicate `Bnd`, the def context `dK`, the def-code relation `DefC`.
 
-DONE (2026-11-19, Nano/V2Self/Proof/Gen/GenTop.lean, ≈ 4 s, no sorry, axioms propext/Classical.choice/Quot.sound):
+DONE (2026-11-19, Nano/Codegen/GenTop.lean, ≈ 4 s, no sorry, axioms propext/Classical.choice/Quot.sound):
 - `end_step` (ENDDEF item: tag 21, exits patched (patchR), epilogue; else error), `def_run` (one def ⇒ `DPost`:
   DefC, new `Bnd`, def-start table pushed, cursor i' ≥ i + 8, r1/r2 = this def's npw/nres), `DefsC` (chain of DefC,
   header list hs), `prog_run` (all defs up to |X|), `g56_res` (stop branch), `G_stop`, `g53_x` (width pass returns
@@ -228,12 +228,12 @@ DONE (2026-11-19, Nano/V2Self/Proof/Gen/GenTop.lean, ≈ 4 s, no sorry, axioms p
   `dsimp` (struct eta)).  Workarounds used: `g35_fun` (equation at function level, RHS = the same source text);
   `m28` (generic matcher equation, applied by `rw [m28 p f]` with explicit p, f); take g19/g20 results as hypotheses.
 
-DONE (2026-11-19, width pass): Nano/V2Self/Proof/Gen/GenWidth.lean (≈ 8 s): width relation `W X D p q top i w i'` /
+DONE (2026-11-19, width pass): Nano/Codegen/GenWidth.lean (≈ 8 s): width relation `W X D p q top i w i'` /
 `Ws` (CONST 1, LOCAL w, BIN/PRIM operands 1, IF arms equal, LET value = slot width, PAIR Σ, CALL Σargs = callee
 npw and width = callee nres (D = (npw, nres) of the defs so far, callee id < |D|), LOOP only as def body
 (top = true) with both arms = nres, CONTINUE arg + 1 = npw and width nres), `WDefs` (each def: header 20,
 body W of width nres, ENDDEF 21), **`g53_ok`**: |x| < 2^31 ∧ (g53 x).2 ≠ 0 ⇒ ∃ hs D i', WDefs x [] 1 hs D i' ∧ |x| ≤ i'.
-Nano/V2Self/Proof/Gen/GenAll.lean: `Sk` (AST spans, `sk_det`), `cg_sk`/`ct_sk`/`cgs_sk`, `w_sk`/`ws_sk`,
+Nano/Codegen/GenAll.lean: `Sk` (AST spans, `sk_det`), `cg_sk`/`ct_sk`/`cgs_sk`, `w_sk`/`ws_sk`,
 `cg_w_end`/`ct_w_end`/`cgs_ws_end` (CG and W nodes at the same word end at the same word), `chains`, and
 **`gen41_full`**: |x| < 2^31 ∧ g41 c x ≠ [] ⇒ bget x 0 = 2 ∧ ∃ hs T o D, DefsC x g_999 bnew 1 (g34 bnew) hs T |x| o ∧
 WDefs x [] 1 hs D |x| ∧ hs ≠ [] ∧ main (last def) npw 0 / nres 1 ∧ output = g40 … (startW (word 0 patched) main-start).
@@ -343,7 +343,7 @@ OPEN (in order of value):
 ## HANDOFF — Safe retrofit (Opus box A, 2026-11-19)
 
 Goal (owner): make the template runs SAFE J runs (`SimW.SStar K C`) so `SimW.sim_starW` lifts them to Sail.
-File Nano/V2Self/Proof/Machine/SafeRun.lean (spec at its top). Tools: `sstar_of_run` (a `run C k a = some b` whose every
+File Nano/Run/SafeRun.lean (spec at its top). Tools: `sstar_of_run` (a `run C k a = some b` whose every
 intermediate state is `SimW.Safe` is an `SStar`), `SR K C k a` (safe prefix; `SR.add`, `SR.one`), `SimW.SStar.trans/one/star`.
 DONE twins (std axioms): push_sr/push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word),
 popSlot_srun, popN_srun, pro_srun (proA), copy_sr, epi_srun, bpush_srun, bset_srun, bget_srun, rd_srun.
@@ -386,7 +386,7 @@ Generator for twins of long straight-line runs: /scratchpad gen.py idea — take
 `simp [run, step, SET] at hc; subst hc; simp [Safe, SET] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩`.
 
 ### EVS — Safe contract retrofit: split plan (Opus box E, 2026-11-19)
-Shared definitions are FIXED in `Nano/V2Self/Proof/Machine/EVSDefs.lean` (do not change statements without telling E/owner):
+Shared definitions are FIXED in `Nano/Run/EVSDefs.lean` (do not change statements without telling E/owner):
 `Lay KL hb E0 p s` (work region ⊇ [hb, E0), base = KL.base, frame top s0+8p+16 ≤ E0, t6 / s0 8-aligned; premise of
 every run, re-established by `Lay.post` / `Lay.post'`), `HAl H` (heap cells aligned; premise + conclusion), `InpW`
 (input byte cells are work cells, from the invariant), `Lay.wok` (cell in [hb, E0), aligned ⇒ `wok`), and the safe
@@ -428,7 +428,7 @@ Remaining hypotheses of gen_runS (all stated explicitly):
 OOM/capacity exits: deferred (owner, 2026-11-19); needs a semantics separating OOM/capacity from ill-formed heaps.
 
 ### gen_runS — remaining hypotheses and owners (E, 2026-11-19)
-Statement: `Templates.gen_runS` (Nano/V2Self/Proof/Machine/GenRunS.lean).  Already derived from Gen: widths, OpV, npw/nslots/
+Statement: `Templates.gen_runS` (Nano/Run/GenRunS.lean).  Already derived from Gen: widths, OpV, npw/nslots/
 nres < 251, npw ≤ nslots, main npw 0 / nres 1, def-phase code < 2^24 words.
 (a) Gen-side size facts (E / owner; a Gen change was proposed, compiler edits are not permitted to E):
   - `hdb : ∀ d ∈ ds, DB d` (header fields and body node fields < 2^32; Gen sees serialized UInt64 words, so it cannot

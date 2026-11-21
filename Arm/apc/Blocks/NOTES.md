@@ -112,7 +112,7 @@ Permissions for `A64Sem`'s W^X split: `XD s a` = byte executable, `WD s a` = rea
 Per-form fields, in `A64Sem`'s exact statement (`GoesK`, `FetchX`, `PcOK`): `F_movz`, `F_movk`, `F_addi`,
 `F_subi`, `F_alu` (8 ops, madd with general x17), `F_cmpbr` (subs + b.cond, two steps), `F_cbz`, `F_b`, `F_bl`,
 `F_br`, `F_ldr`, `F_str`, `F_ldrb`, `F_strb` (stores: observed memory = `store8`/`store1`, permissions kept).
-`a64DM : A64Sem armDM XD WD` (`A64Inst.lean`), against the real `Nano/V2Self/Proof/Machine/A64Sem.lean` (its closure
+`a64DM : A64Sem armDM XD WD` (`A64Inst.lean`), against the real `Nano/Run/A64Sem.lean` (its closure
 builds on 4.34.1 since 12ddcd53; the earlier verbatim copy is gone). The loader layout is the per-start-state
 `JT.ArmLoader XD WD`, the premise of `CompileCorrectP` / `CompileRunsP` (it replaced f8e28ee's `JT.LoaderPerm`), not a field.
 

@@ -5,7 +5,7 @@ proof file are unchanged. The proof plan is `Testing/notes/NATIVE_ARM_PROOF_PLAN
 
 | file | what |
 |---|---|
-| `Nano/V2Self/C/GenArm.lean` | the back end: `a31` (= `g41` with A64 output). Nano subset, same style as `Gen.lean`; plain defs, no proofs |
+| `Nano/Codegen/GenArm.lean` | the back end: `a31` (= `g41` with A64 output). Nano subset, same style as `Gen.lean`; plain defs, no proofs |
 | `build_self_A.py` | writes `self_A.lean` / `self_A_input.txt`: Base + Lex2 + Par1 + Own + Gen + GenArm + driver `m = a31 …` (generated, not committed) |
 | `test_native.sh` | builds everything with B2 and runs the checks below |
 | `diff_run.sh` | one program, one input: RISC-V (B2) vs native A64, status + output bytes |

@@ -1,7 +1,7 @@
 # rv2arm proof notes: the plan for `armTarget.step_ok` (code UNPROVEN; these notes are the proof plan)
 
 The code is `rv2arm.lean` (nano). `rv2arm.py` is a test oracle and emits the same bytes.
-J semantics: `CallProbe.step` in `Nano/V2Self/Proof/Machine/Call.lean`. The RV words are those of `SimW.encJX`.
+J semantics: `CallProbe.step` in `Nano/Run/Call.lean`. The RV words are those of `SimW.encJX`.
 Instruction choice follows `Testing/notes/NANO_V2_ARM.md` §0-min (2026-11-20):
 * no `ldur`/`stur`;
 * no SP-relative form (sp is never used);
@@ -119,7 +119,7 @@ Removed in two steps:
 * `C[pc]? = some j`,
 * `validJ C.length pc j` (rv2arm's validation at the J level, plus `imm12` for addi/ld/sd/lbu/sb: RV's 12-bit
   immediates, which rv2arm gets for free from the encoding; = `ArmEnc.armOK`, lake-built by O in
-  `Nano/V2Self/Proof/Machine/ArmEnc.lean`),
+  `Nano/Run/ArmEnc.lean`),
 * `s.wk = 3` (link width 16),
 * `AccOK C D (pc, s)` (memory accesses in D; a `jalr` target is a block address; NO WRAP: 0 ≤ x[rs] + imm < 2^64
   for addi/ld/sd/lbu/sb, the no-wrap part of `JLay.SafeX`), and
