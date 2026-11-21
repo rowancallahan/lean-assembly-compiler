@@ -6,6 +6,11 @@ usage: nanofuzz.py SEED N WORKDIR [MUT=0.5] [INPUTS=4] [SHRINK=1]
   Each program (raw text, comments included) is compiled by B2 under nanorun, run by nanorun on INPUTS random inputs,
   and checked against the reference semantics (semrun_batch.lean, the pipeline of semrun.lean in one Lean process).
   Also: every B2 rejection is checked with the reference (must be REJ) and with `lean` on the Prelude + program.
+  Accept side (owner rule: every program nano accepts is accepted by Lean with the same result): every program B2
+  accepts is elaborated by `lake env lean` (`import Nano.Main.Prelude`, batches of 100 programs in one file, one
+  namespace each, a flagged program re-checked alone on its exact text) and its `#eval m INPUT` must equal B2's output on
+  every input B2 ran to completion.  Otherwise a FAIL, classed NANO-ACCEPTS-LEAN-REJECTS or VALUE (as lean_check.py).
+  JOBS (env, default 4) Lean processes in parallel.
   Outputs: WORKDIR/summary.txt and WORKDIR/alarms/*.lean (minimized repros; see shrink()).
 Categories: ALARM = B2 accepts what the reference rejects, B2 output differs from OK output, B2 traps, or B2 accepts a
 program Lean rejects.  GAP = B2 rejects what the reference accepts (completeness, not soundness)."""
@@ -17,7 +22,8 @@ ROOT = os.path.abspath(os.path.join(V2, '../../..'))
 B2 = os.path.join(V2, 'B2.bin')
 PRELUDE = os.path.join(ROOT, 'Nano/Main/Prelude.lean')
 SEMBATCH = os.path.join(HERE, 'semrun_batch.lean')
-LEAN_ENV = dict(os.environ)
+LEAN_ENV = dict(os.environ, PATH=os.path.expanduser('~/.elan/bin') + os.pathsep + os.environ.get('PATH', ''),
+                ELAN_NO_OVERRIDE_NOTICE='1')
 
 SEED, N, WORK = int(sys.argv[1]), int(sys.argv[2]), os.path.abspath(sys.argv[3])
 MUT = float(sys.argv[4]) if len(sys.argv) > 4 else 0.5
@@ -102,7 +108,84 @@ def ref_batch(names, inputs_of):
 def lean_ok(name, text):
     t = os.path.join(WORK, name + '.chk.lean')
     with open(t, 'w') as f: f.write(open(PRELUDE).read() + '\n' + text)
-    return subprocess.run(['lean', t], capture_output=True).returncode == 0
+    return subprocess.run(['lean', t], capture_output=True, env=LEAN_ENV).returncode == 0
+
+# ---- accept side: Lean must accept every B2-accepted program, with B2's outputs (approach of lean_check.py)
+LHDR = "import Nano.Main.Prelude\nset_option maxRecDepth 10000\nset_option maxErrors 100000\n\n"
+
+def lake_lean(fn):
+    p = subprocess.run(['lake', 'env', 'lean', '-DmaxErrors=1000000', fn], cwd=ROOT, env=LEAN_ENV,
+                       capture_output=True, text=True, timeout=3600)
+    return p.stdout + p.stderr
+
+def err_lines(out):
+    """(line, message) of every error Lean reports"""
+    return [(int(m[1]), m[2]) for m in re.finditer(r'\.lean:(\d+):\d+: error: ?(.*)', out)]
+
+def evals(out):
+    got = {}
+    for m in re.finditer(r'\((\d+),\s*(\d+),\s*\[([0-9,\s]*)\]\)', out):
+        got[(int(m[1]), int(m[2]))] = bytes(int(x) for x in m[3].split(',') if x.strip())
+    return got
+
+def lit(b): return '[' + ', '.join(str(c) for c in b) + ']'
+
+def expected(v):
+    """{k: B2 output} for the inputs B2 ran to completion (a 1 GiB rerun counts)"""
+    e = {}
+    for k, (st, out) in enumerate(v['b2r']):
+        if st == 'ok': e[k] = out
+        elif st == 'oom' and v['b2big'] and v['b2big'][k][0] == 'ok': e[k] = v['b2big'][k][1]
+    return e
+
+def lean_value(nm, j, v, got):
+    for k, o in sorted(expected(v).items()):
+        if got.get((j, k)) != o:
+            g = got.get((j, k))
+            return ('VALUE', f'input {k}: lean {lit(g) if g is not None else "no result"}, b2 {lit(o)}')
+    return None
+
+def lean_alone(nm, j, v, tag):
+    fn = os.path.join(WORK, f'lean_{tag}_{nm}.lean')
+    ev = [f'#eval ({j}, {k}, m {lit(inp)})' for k, inp in enumerate(v['inputs'])]
+    with open(fn, 'w') as f: f.write(LHDR + v['text'] + '\n' + '\n'.join(ev) + '\n')
+    out = lake_lean(fn)
+    errs = err_lines(out)
+    if errs: return ('NANO-ACCEPTS-LEAN-REJECTS', f'line {errs[0][0]}: {errs[0][1][:200]} ({os.path.basename(fn)})')
+    return lean_value(nm, j, v, evals(out))
+
+def lean_batch(tag, items):
+    """items: [(name, verdict)]; returns [(name, class, detail)]"""
+    fn = os.path.join(WORK, f'lean_{tag}.lean')
+    parts, rng, ln = [LHDR.rstrip('\n'), ''], [], LHDR.count('\n') + 1
+    for j, (nm, v) in enumerate(items):
+        body = f'namespace Nf{j}\n' + v['text'] + f'\nend Nf{j}'
+        n = body.count('\n') + 1; rng.append((ln, ln + n)); ln += n; parts.append(body)
+    erng = []
+    for j, (nm, v) in enumerate(items):
+        a = ln
+        for k, inp in enumerate(v['inputs']):
+            parts.append(f'#eval ({j}, {k}, Nf{j}.m {lit(inp)})'); ln += 1
+        erng.append((a, ln))
+    with open(fn, 'w') as f: f.write('\n'.join(parts) + '\n')
+    out = lake_lean(fn)
+    errl = [l for l, _ in err_lines(out)]
+    got = evals(out)
+    res = []
+    for j, (nm, v) in enumerate(items):
+        flagged = any(a <= l < b for l in errl for a, b in (rng[j], erng[j]))
+        if any(l >= ln or l < rng[0][0] for l in errl): flagged = True   # an error outside every program: all alone
+        r = lean_alone(nm, j, v, tag) if flagged else lean_value(nm, j, v, got)
+        if r: res.append((nm,) + r)
+    return res
+
+def lean_accept_check(info, names):
+    acc = [(nm, info[nm]) for nm in names if info[nm]['b2c'] == 'acc']
+    chunks = [acc[j:j + 100] for j in range(0, len(acc), 100)]
+    with cf.ThreadPoolExecutor(int(os.environ.get('JOBS', '4'))) as ex:
+        outs = list(ex.map(lambda t: lean_batch(f'b{t[0]}', t[1]), enumerate(chunks)))
+    nruns = sum(len(expected(v)) for _, v in acc)
+    return len(acc), nruns, [r for o in outs for r in o]
 
 def evaluate(items):
     """items: list of (name, text, inputs). Returns {name: verdict dict}."""
@@ -117,10 +200,10 @@ def evaluate(items):
         info[nm] = {'b2c': cstat, 'b2r': b2r, 'b2big': b2big, 'inputs': inputs, 'text': text}
     refs = ref_batch([nm for nm, _, _ in items], {nm: inp for nm, _, inp in items})
     with cf.ThreadPoolExecutor(4) as ex:
-        leans = dict(zip([nm for nm, _, _ in items],
-                         ex.map(lambda it: lean_ok(it[0], it[1]), items)))
+        rej = [it for it in items if info[it[0]]['b2c'] == 'rej']
+        leans = dict(zip([nm for nm, _, _ in rej], ex.map(lambda it: lean_ok(it[0], it[1]), rej)))
     for nm in info:
-        info[nm]['lean'] = leans[nm]
+        info[nm]['lean'] = leans.get(nm)
         info[nm]['ref'] = [refs[(nm, k)] for k in range(len(info[nm]['inputs']))]
     return info
 
@@ -198,12 +281,19 @@ def main():
             print(f'{nm}: {cat} -> minimized to {len(small.splitlines())} lines')
             with open(os.path.join(WORK, 'alarms', nm + '.min.lean'), 'w') as f: f.write(small)
             minimized[nm] = small
+    nacc, nruns, lfails = lean_accept_check(info, [nm for nm, _, _ in items])
+    for nm, c, d in lfails:
+        print(f'FAIL lean accept-side {nm}: {c}: {d}')
+        with open(os.path.join(WORK, 'alarms', nm + '.leanfail.lean'), 'w') as f: f.write(info[nm]['text'])
     total = len(items)
     with open(os.path.join(WORK, 'summary.txt'), 'w') as f:
         f.write(f'seed={SEED} programs={total} mutated={sum(1 for n,_,_ in items if n[0]=="m")} inputs/program={NIN}\n')
         for c, k in sorted(cnt.items(), key=lambda t: -t[1]): f.write(f'{k:5d}  {c}\n')
         f.write(f'alarms={len(alarms)}\n')
         for nm, cat in alarms: f.write(f'  {nm}: {cat}\n')
+        lc = collections.Counter(c for _, c, _ in lfails)
+        f.write(f'lean accept-side: {nacc} b2-accepted programs, {nruns} runs compared; FAIL {len(lfails)} {dict(lc)}\n')
+        for nm, c, d in lfails: f.write(f'  FAIL {nm}: {c}: {d}\n')
     print(open(os.path.join(WORK, 'summary.txt')).read())
 
 if __name__ == '__main__':
