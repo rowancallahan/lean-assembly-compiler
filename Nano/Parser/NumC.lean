@@ -130,6 +130,15 @@ def u26 (b : Buf) (bt : UInt64) (v : Buf) (j e s : UInt64) : Buf × (UInt64 × U
 -- task record n := (k, a, c)
 def u27 (t : Buf) (n k a c : UInt64) : Buf := u20 (u20 (u20 t (3 * n) k) (3 * n + 1) a) (3 * n + 2) c
 
+-- the work buffers are below 2^40 words (1)
+def u35 (v t b : Buf) : UInt64 :=
+  if bsize v < 1099511627776 then (if bsize t < 1099511627776 then (if bsize b < 1099511627776 then 1 else 0) else 0) else 0
+
+def u36 (b t g s : Buf) : UInt64 :=
+  if bsize b < 1099511627776 then
+    (if bsize t < 1099511627776 then (if bsize g < 1099511627776 then (if bsize s < 1099511627776 then 1 else 0) else 0) else 0)
+  else 0
+
 -- lw: the NODE task at the cursor c (tt: the tasks below it)
 def u29 (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UInt64) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64)))) :=
@@ -176,6 +185,7 @@ def u28 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → Buf → 
   | 0, x, d, b, bt, v, vt, t, tt, c => (b, (v, (vt, (c, 0))))
   | n + 1, x, d, b, bt, v, vt, t, tt, c =>
     if tt == 0 then (b, (v, (vt, (c, 1))))
+    else if u35 v t b == 0 then (b, (v, (vt, (c, 0))))
     else
       let k := bget t (3 * tt - 3);
       let a := bget t (3 * tt - 2);
@@ -387,6 +397,7 @@ def u40 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → UInt64 �
   | 0, x, d, b, bt, t, tt, c, g, s, st, gb => (g, (c, 0))
   | n + 1, x, d, b, bt, t, tt, c, g, s, st, gb =>
     if tt == 0 then (g, (c, 1))
+    else if u36 b t g s == 0 then (g, (c, 0))
     else
       let k := bget t (3 * tt - 3);
       let a := bget t (3 * tt - 2);
