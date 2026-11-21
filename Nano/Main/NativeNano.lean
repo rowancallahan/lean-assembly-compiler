@@ -4,10 +4,12 @@ buffer `e70`, the word-size check `e72`, the J → AArch64 translator `e64` of N
 `C_correct_nano` / `C_runs_nano`, from `StepOK` (Run/JArmStep.lean: the 21 per-atom facts of the translator) and the
 proved parts: the translator's core theorem `e64_natEncJ` (Run/JArmCore.lean), `jArmBits`, Gen's buffer
 (`g42_e70`, `e70_len`, Run/JArmGen.lean), `cjUnique`, `natLawsOK`, the host lift (`C_correct_g`).
-KNOWN WART: `genNano` guards `C.e71` by "the AST list is shorter than 2^31".  The nano code's own test
-(`2147483647 < bsize x` in `e70`) reads the length modulo 2^64, and `GenOKG` quantifies over all source texts, so the
-list bound (needed for `e70_len`) is put in the Lean wrapper, as `compileGen` does for the text length (≤ 2^20).  For a
-source the front end accepts the guard holds (`ParSerLen.ser_lt`); removing it needs `GenOKG` to pass that fact. -/
+NO WRAPPER GUARD: `genNano` is exactly the function the bootstrap program runs.  The nano code's own test
+(`2147483647 < bsize x` in `e70`) reads the AST list's length modulo 2^64, while `e70_len` needs the list itself to be
+shorter than 2^31.  That bound is no longer tested in Lean: `GenOKG` (Main/TopOn.lean) hands it to the image part, and
+`C_correct_g` / `C_runs_g` supply it from `src_ast_len` (the AST of an accepted source within the text bound is
+`serialize p`, `ParSerLen.ser_lt`).  The unconditional part, `genNano x ≠ [] → mC x ≠ []`, needs no bound: `e71 ≠ []`
+gives `bsize (e70 …) ≠ 0` by `e64`'s own test, so `g40`'s first iteration runs (`g40_first`). -/
 import Nano.Main.NativeEnc
 import Nano.Run.JArmCore
 import Nano.Run.JArmInst
@@ -16,9 +18,8 @@ import Nano.Codegen.JArmTop
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc JT CallProbe
 
-/-- the native code generator in nano, from source text (see KNOWN WART above for the guard) -/
-def genNano (x : List UInt8) : List UInt8 :=
-  if (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 then C.e71 x (C.o41 (C.y16 (C.s10 x))) else []
+/-- the native code generator in nano, from source text -/
+def genNano (x : List UInt8) : List UInt8 := C.e71 x (C.o41 (C.y16 (C.s10 x)))
 
 /-- **the native AArch64 compiler** -/
 noncomputable def compileNano : SrcC → Option CompiledA := compileGen genNano
@@ -52,6 +53,25 @@ theorem wordBytes_tU (A : List Nat) : wordBytes ((A.map Nat.toUInt64).map UInt64
     simp only [List.map_cons, wordBytes, List.flatMap_cons] at ih ⊢
     rw [ih, e x]
 
+/-- `g40` never drops what it has emitted -/
+theorem g40_ne (c : List UInt8) (w : Buf) : ∀ (n : Nat) (i : UInt64) (o : List UInt8), o ≠ [] → C.g40 n c w i o ≠ []
+  | 0, i, o, h => by rw [C.g40]; exact h
+  | n + 1, i, o, h => by
+    rw [C.g40]
+    by_cases hi : i < bsize w
+    · rw [if_pos hi]
+      exact g40_ne c w n _ _ (by simp [put])
+    · rw [if_neg hi]; exact h
+
+/-- `g40` on a buffer of non-zero size emits bytes (its first iteration runs; no bound on the list length) -/
+theorem g40_first (c : List UInt8) (w : Buf) (n : Nat) (h : bsize w ≠ 0) : C.g40 (n + 1) c w 0 [] ≠ [] := by
+  have h0 : (0 : UInt64) < bsize w := by
+    rw [UInt64.lt_iff_toNat_lt]
+    have : (bsize w).toNat ≠ 0 := fun e => h (UInt64.toNat_inj.1 e)
+    exact Nat.pos_of_ne_zero this
+  rw [C.g40, if_pos h0]
+  exact g40_ne c w n _ _ (by simp [put])
+
 variable {M : Machine} {X W : M.State → Nat → Prop}
 
 /-- **the nano native generator meets the general generator interface** -/
@@ -59,14 +79,9 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
   -- the output as an opaque list (no unfolding of the generator in definitional checks)
   obtain ⟨Bx, hBx⟩ : ∃ Bx, Bx = genNano x := ⟨_, rfl⟩
   rw [← hBx]
-  by_cases ha : (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31
-  case neg => exact absurd (by unfold genNano; rw [if_neg ha]) hx
-  have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.s10 x))) := by unfold genNano; rw [if_pos ha]
+  have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.s10 x))) := by unfold genNano; rfl
   have hx' : C.e71 x (C.o41 (C.y16 (C.s10 x))) ≠ [] := by rw [← hgn]; exact hx
   obtain ⟨g, hg⟩ : ∃ g, g = C.e70 (C.o41 (C.y16 (C.s10 x))) C.g_999 := ⟨_, rfl⟩
-  have gl : g.length < 2 ^ 64 := by
-    have := e70_len (C.o41 (C.y16 (C.s10 x))) C.g_999 ha
-    rw [hg]; omega
   have gb : mC x = C.g40 16777216 x g 0 [] := by
     have e0 : mC x = C.g42 x (C.o41 (C.y16 (C.s10 x))) C.g_999 := by unfold mC C.g41; rfl
     rw [e0, hg, g42_e70]
@@ -91,9 +106,16 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
   by_cases d1 : (bsize g == 0) = true
   · rw [if_pos d1] at h64'; exact absurd rfl h64'
   rw [if_neg d1] at h64'
+  -- C's own output is non-empty (no bound on the AST list): `g40`'s first iteration runs
+  have hmne : mC x ≠ [] := by
+    rw [gb]
+    exact g40_first x g 16777215 (fun e => d1 (by rw [e]; rfl))
+  refine ⟨hmne, fun ha => ?_⟩
+  have gl : g.length < 2 ^ 64 := by
+    have := e70_len (C.o41 (C.y16 (C.s10 x))) C.g_999 ha
+    rw [hg]; omega
   by_cases d2 : 262144 < bsize g
   · rw [if_pos d2] at h64'; exact absurd rfl h64'
-  have hne0 : g ≠ [] := fun e => d1 (by rw [e]; rfl)
   have hd2 : ¬ 262144 < g.length := fun h => d2 (by
     rw [bsize_tU]
     apply UInt64.lt_iff_toNat_lt.2
@@ -108,11 +130,6 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
     rw [gb]
     have := g40_le4 x g gl 16777216 0 [] (by omega) (by omega)
     simpa using this
-  have hmne : mC x ≠ [] := by
-    rw [hm]
-    cases g with
-    | nil => exact absurd rfl hne0
-    | cons w r => simp [ArmRA.le4]
   by_cases hex : ∃ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 ∧ (∀ j ∈ Cj, SimW.JOK j) ∧
       mC x = C.g40 16777216 c (Cj.map CallProbe.encG) 0 []
   · obtain ⟨c, Cj, hl, hj, e⟩ := hex
@@ -133,10 +150,10 @@ theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun 
       have hwA' : C.e64 (Cj.map encG) = A.map Nat.toUInt64 := hwA
       rw [he71, hwA', e49_wordBytes x _ 16777216 (by rw [List.length_map]; omega) (by rw [List.length_map]; omega),
         wordBytes_tU]
-    refine ⟨hmne, I, by rw [hI, hBx, hcode], fun c' Cj' h1 h2 h3 => ?_⟩
+    refine ⟨I, by rw [hI, hBx, hcode], fun c' Cj' h1 h2 h3 => ?_⟩
     have : Cj' = Cj := cjUnique c' c Cj' Cj h1 hl h2 hj (h3.symm.trans e)
     rw [this]; exact hV
-  · exact ⟨hmne, ⟨Bx, CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
+  · exact ⟨⟨Bx, CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
       fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩
 
 /-- **the nano native compiler is correct on AArch64** (any machine with the A64 steps) -/
