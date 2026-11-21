@@ -37,11 +37,11 @@ theorem genOKG_enc (U : CjUnique) {enc : List UInt8 → List UInt8} (hE : EncOKN
   · obtain ⟨c, Cj, hl, hj, e⟩ := hex
     have hn := hE.2 c Cj hl hj (by rw [← e]; exact hx')
     obtain ⟨I, hI, hV⟩ := natEncJ_img hn
-    refine ⟨hm, I, by rw [hI, ← e]; rfl, fun c' Cj' h1 h2 h3 => ?_⟩
+    refine ⟨hm, fun _ => ⟨I, by rw [hI, ← e]; rfl, fun c' Cj' h1 h2 h3 => ?_⟩⟩
     have : Cj' = Cj := U c' c Cj' Cj h1 hl h2 hj (h3.symm.trans e)
     rw [this]; exact hV
-  · exact ⟨hm, ⟨enc (mC x), CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
-      fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩
+  · exact ⟨hm, fun _ => ⟨⟨enc (mC x), CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
+      fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩⟩
 
 /-- **the native compile is correct on AArch64** (option E), for any machine with the A64 steps and any translator
 that meets `EncOKN` -/
