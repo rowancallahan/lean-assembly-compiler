@@ -1,0 +1,231 @@
+i01_charlit_name             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Type mismatch
+i02_quote_prefix             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT missing end of character literal
+i03_underscore_use           NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT don't know how to synthesize placeholder for argument `b`
+i04_underscore_param         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+i05_underscore_defname       NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token '_'; expected identifier
+i06_kw_at                    NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token 'at'; expected '(', ':=', 'rec', '|' or term
+i07_kw_fun                   NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token 'fun'; expected identifier
+i08_kw_sorry                 same                       nano: REJECT                             lean: REJECT Aborting evaluation since the expression depends on the 'sorry' axiom,
+i09_kw_in_param              NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT unexpected token 'in'; expected '_' or identifier
+i10_root_clash_id            NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT `id` has already been declared
+i11_root_clash_max           same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+i12_prelude_clash_rd         same                       nano: REJECT                             lean: REJECT `rd` has already been declared
+i13_ident_prime              same                       nano: ACCEPT out=03  lean: ACCEPT out=03
+i14_dup_params               same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+i15_dup_params2              same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+i16_param_shadows_def        same                       nano: ACCEPT out=07  lean: ACCEPT out=07
+i17_let_shadow               same                       nano: ACCEPT out=0c  lean: ACCEPT out=0c
+i18_dot_name                 nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+i19_bang_name                same                       nano: REJECT                             lean: REJECT unexpected token 'f!'; expected identifier
+i20_guillemet                nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+i21_digit_ident              same                       nano: ACCEPT out=04  lean: ACCEPT out=04
+i22_dup_def                  same                       nano: REJECT                             lean: REJECT `f` has already been declared
+l01_let_newline              nano-stricter              nano: REJECT                             lean: ACCEPT out=06
+l02_let_semi_newline         same                       nano: ACCEPT out=06  lean: ACCEPT out=06
+l03_let_pair                 same                       nano: ACCEPT out=0b  lean: ACCEPT out=0b
+l04_let_typed                nano-stricter              nano: REJECT                             lean: ACCEPT out=06
+l05_arg_col0                 NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Type mismatch
+l06_body_col0                same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+l07_op_col0                  same                       nano: ACCEPT out=03  lean: ACCEPT out=03
+l08_app_arg_col0_top         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+l09_let_body_col0            same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+l10_def_on_same_line         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+l11_two_defs_no_nl           nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+l12_const_def                same                       nano: ACCEPT out=2a  lean: ACCEPT out=2a
+l13_let_in_arg               same                       nano: ACCEPT out=05  lean: ACCEPT out=05
+l14_let_tuple_nested         same                       nano: ACCEPT out=0b  lean: ACCEPT out=0b
+l15_empty_input              same                       nano: ACCEPT out=00  lean: ACCEPT out=00
+n01_leading_zeros            same                       nano: ACCEPT out=07  lean: ACCEPT out=07
+n02_wrap2e64                 same                       nano: ACCEPT out=05  lean: ACCEPT out=05
+n03_hex                      nano-stricter              nano: REJECT                             lean: ACCEPT out=10
+n04_bin                      nano-stricter              nano: REJECT                             lean: ACCEPT out=03
+n05_underscore               nano-stricter              nano: REJECT                             lean: ACCEPT out=e8
+n06_sci                      same                       nano: REJECT                             lean: REJECT 3:47: error(lean.synthInstanceFailed): failed 
+n07_decimal_point            same                       nano: REJECT                             lean: REJECT 3:47: error(lean.synthInstanceFailed): failed 
+n08_octal                    nano-stricter              nano: REJECT                             lean: ACCEPT out=07
+n09_numword                  same                       nano: REJECT                             lean: REJECT unexpected identifier; expected ')', ',' or ':'
+n10_256_put                  same                       nano: ACCEPT out=41  lean: ACCEPT out=41
+n11_nat_lit_cmp              RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+n12_let_lit                  RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+n13_let_lit_then_u64         same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+n14_lit_arith_in_put         same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+n15_lit_arith_mixed          same                       nano: ACCEPT out=04  lean: ACCEPT out=04
+n16_lit_lt                   RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+n17_lit_mul_big              RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+n18_fuel_big                 RESULT-DIFF                nano: ACCEPT out=00  lean: ACCEPT out=03
+n19_fuel_small               same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+n20_shl_64                   same                       nano: ACCEPT out=05  lean: ACCEPT out=05
+n21_shr_65                   same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+n22_shl_var                  nano-stricter              nano: REJECT                             lean: ACCEPT out=80
+n23_lit_cmp_lt_wrap          RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+n24_lit_shift_nat            same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+n25_lit_or                   same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+o01_prec_mix                 same                       nano: ACCEPT out=2f  lean: ACCEPT out=2f
+o02_left_assoc_sub           same                       nano: ACCEPT out=fb  lean: ACCEPT out=fb
+o03_shift_chain              same                       nano: ACCEPT out=14  lean: ACCEPT out=14
+o04_and_or                   same                       nano: ACCEPT out=07  lean: ACCEPT out=07
+o05_eqchain                  same                       nano: REJECT                             lean: REJECT unexpected token '=='; expected 'then'
+o06_lt_chain                 same                       nano: REJECT                             lean: REJECT unexpected token '<'; expected 'then'
+o07_cond_arith               same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+o08_cond_or                  same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+o09_dangling_else            same                       nano: ACCEPT out=08  lean: ACCEPT out=08
+o10_else_greedy              same                       nano: ACCEPT out=04  lean: ACCEPT out=04
+o11_if_in_operand            nano-stricter              nano: REJECT                             lean: ACCEPT out=03
+o12_if_paren_op              same                       nano: ACCEPT out=03  lean: ACCEPT out=03
+o13_if_multiline             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT Type mismatch
+o14_unary_minus              nano-stricter              nano: REJECT                             lean: ACCEPT out=fb
+o15_ne                       nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+o16_le                       nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+o17_gt                       nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+o18_and_andand               nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+o19_div                      nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+o20_mod_zero                 nano-stricter              nano: REJECT                             lean: ACCEPT out=07
+o21_pow                      nano-stricter              nano: REJECT                             lean: ACCEPT out=19
+o22_xor                      nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+o23_app_prec                 same                       nano: ACCEPT out=0c  lean: ACCEPT out=0c
+o24_nested_paren_if_cond     same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t01_cmt_eof_nonl             same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t02_nested_block             same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t03_block_dashdash_slash     same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t04_block_slash_dash_slash   same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t05_doc_before_def           same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t06_doc_midexpr              NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token '/--'; expected ')' or term
+t07_moddoc_mid               same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t08_unterminated             same                       nano: REJECT                             lean: REJECT unterminated comment
+t09_cmt_in_expr              same                       nano: ACCEPT out=06  lean: ACCEPT out=06
+t10_tab_code                 same                       nano: REJECT                             lean: REJECT tabs are not allowed; please configure your editor to expand them
+t11_tab_in_comment           same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t12_crlf                     same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t13_lone_cr_in_cmt           same                       nano: REJECT                             lean: REJECT unexpected identifier; expected command
+t14_arrow_dashdash           NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token '<-'; expected 'then'
+t15_lt_slashdash             same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t16_minus_minus_binary       same                       nano: ACCEPT out=04  lean: ACCEPT out=04
+t17_block_in_line            same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t18_dashdash_in_block        same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+t19_attr_mid                 NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token '@['; expected ')' or term
+t20_unicode_cmt              same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+d01_loop_ok                  same                       nano: ACCEPT out=66  lean: ACCEPT out=66
+d02_loop_bars_misaligned     NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=66  lean: REJECT Missing cases:
+d03_loop_bar_col0            same                       nano: ACCEPT out=66  lean: ACCEPT out=66
+d04_loop_rhs_col0            NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=66  lean: REJECT expected alternative right-hand-side to start in a column greater than
+d05_loop_one_line            same                       nano: ACCEPT out=66  lean: ACCEPT out=66
+d06_loop_arms_swapped        nano-stricter              nano: REJECT                             lean: ACCEPT out=66
+d07_loop_k_plus_2            same                       nano: REJECT                             lean: REJECT Missing cases:
+d08_nonterminating_fuel      same                       nano: REJECT                             lean: REJECT fail to show termination for
+d09_two_defs_order           same                       nano: REJECT                             lean: REJECT 3:31: error(lean.unknownIdentifier): Unknown i
+d10_self_nontail             nano-stricter              nano: REJECT                             lean: ACCEPT out=04
+d11_no_m                     same                       nano: REJECT                             lean: REJECT 4:6: error(lean.unknownIdentifier): Unknown id
+d12_m_wrong_type             same                       nano: REJECT                             lean: REJECT Application type mismatch: The argument
+d13_where                    nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+d14_partial                  nano-stricter              nano: REJECT                             lean: ACCEPT out=05
+d15_ret_type_missing         nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+d16_param_type_missing       same                       nano: REJECT                             lean: REJECT 3:7: error(lean.inferBinderTypeFailed): Failed
+d17_private                  same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+d18_private_expr             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token 'private'; expected ')' or term
+d19_protected_def            same                       nano: REJECT                             lean: REJECT protected declarations must be in a namespace
+d20_noncomputable            same                       nano: REJECT                             lean: REJECT 4:4: error(lean.dependsOnNoncomputable): faile
+d21_abbrev                   nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+d22_theorem_between          nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+d23_implicit_binder          same                       nano: REJECT                             lean: REJECT don't know how to synthesize implicit argument `a`
+d24_fun                      nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+d25_hash_eval                nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+d26_set_option               nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+d27_inline_attr              same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+d28_unknown_attr             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT Unknown attribute `[bogus]`
+d29_implemented_by           RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=65
+d30_attr_inline_loop         same                       nano: ACCEPT out=66  lean: ACCEPT out=66
+d31_export_attr              same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+d32_attr_two                 same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+d33_attr_comment_hides_bracket nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+d34_attr_after_private       NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT unexpected token '@['; expected 'abbrev', 'axiom', 'builtin_initialize
+d35_attr_on_m                same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+d36_attr_extern              NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT unexpected token ']'; expected string literal
+m01_basic                    same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m02_dup_literal              NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT 3:77: error(lean.redundantMatchAlt): Redundant
+m03_dup_wrap                 NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=03  lean: REJECT 3:76: error(lean.redundantMatchAlt): Redundant
+m04_big_pat                  same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m05_only_wild                same                       nano: ACCEPT out=03  lean: ACCEPT out=03
+m06_only_var                 same                       nano: ACCEPT out=62  lean: ACCEPT out=62
+m07_pair_first               same                       nano: ACCEPT out=63  lean: ACCEPT out=63
+m08_arm_after_wild           same                       nano: REJECT                             lean: REJECT 3:76: error(lean.redundantMatchAlt): Redundant
+m09_nonexhaustive            same                       nano: REJECT                             lean: REJECT Failed to compile pattern matching: Stuck at
+m10_arms_misaligned          NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token '|'; expected ')', ',' or ':'
+m11_rhs_col_lt_bar           NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT expected alternative right-hand-side to start in a column greater than
+m12_arms_same_line           same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m13_nested_match_arm         same                       nano: ACCEPT out=05  lean: ACCEPT out=05
+m14_nested_unparen           same                       nano: REJECT                             lean: REJECT 3:111: error(lean.redundantMatchAlt): Redundan
+m15_scrut_literal            same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m16_pat_sub                  nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+m17_or_pat                   nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+m18_var_arm_shadow           nano-stricter              nano: REJECT                             lean: ACCEPT out=61
+m19_match_in_let             same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+m20_match_at_def_top         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m21_match_bar_col0           same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+m22_pair_second_arm          nano-stricter              nano: REJECT                             lean: ACCEPT out=63
+m23_wild_var_pair            same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+p01_rd_oob                   same                       nano: ACCEPT out=00  lean: ACCEPT out=00
+p02_bget_oob                 same                       nano: ACCEPT out=00  lean: ACCEPT out=00
+p03_bset_oob                 same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+p04_bset_oob_get             same                       nano: ACCEPT out=07  lean: ACCEPT out=07
+p05_put_trunc                same                       nano: ACCEPT out=2c01  lean: ACCEPT out=2c01
+p06_len_vs_len'              same                       nano: ACCEPT out=03  lean: ACCEPT out=03
+p07_bset_idx_huge            same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+p08_rd_idx_wrap              same                       nano: ACCEPT out=61  lean: ACCEPT out=61
+p09_empty_list_lit           same                       nano: ACCEPT out= [a0 = 1 (ok, empty output), a1 = 0 output] lean: ACCEPT out=
+p10_put_list_lit             same                       nano: ACCEPT out=0102  lean: ACCEPT out=0102
+p11_tuple_param              same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+p12_let_tuple_scope          same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+p13_tuple_triple             nano-stricter              nano: REJECT                             lean: ACCEPT out=06
+p14_tuple_left_nest          same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+p15_arrow_type_curry         nano-stricter              nano: REJECT                             lean: ACCEPT out=03
+s01_ns_then_use_outside      NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=02  lean: REJECT 6:47: error(lean.unknownIdentifier): Unknown i
+s02_ns_use_inside            nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+s03_ns_qualified             nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+s04_open_use                 same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+s05_end_mismatch             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Invalid name after `end`: Expected `A`, but found `B`
+s06_end_without_open         NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Invalid `end`: There is no current scope to end
+s07_missing_end              same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+s08_open_unknown             NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unknown namespace `Foo`
+s09_section_named_end_unnamed NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Missing name after `end`: Expected the current scope name `S`
+s10_section_unnamed_end_named NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT Unexpected name `S` after `end`: The current section is unnamed
+s11_ns_dotted_end_partial    same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+s12_m_inside_ns              NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT 7:6: error(lean.unknownIdentifier): Unknown id
+s13_two_ns_same_name         nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s14_open_in                  nano-stricter              nano: REJECT                             lean: ACCEPT out=02
+s15_open_same_line           nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s16_end_name_next_line_indented nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s17_end_in_cmt               nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s18_open_nat                 same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+s19_ns_shadow_root           nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s20_open_hiding_renaming     nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s21_universe_variable        nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+s22_section_variable         nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+y01_let_lit_put              same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+y02_let_lit_bind_then_cmp    RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+y03_cmp_lit_var              same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+y04_cmp_var_lit              same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+y05_match_scrut_lit          RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+y06_tuple_lit                RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+y07_call_arg_lit             same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+y08_if_branch_lit            same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+y09_cmp_lit_lit_shift        RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+y10_cmp_lit_lit_big          RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+y11_cmp_lit_lit_big2         RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+y12_cmp_lit_lit_mul          same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+y13_cmp_lt_lit_wrap          RESULT-DIFF                nano: ACCEPT out=01  lean: ACCEPT out=02
+y14_lit_only_ctor            same                       nano: ACCEPT out=07  lean: ACCEPT out=07
+y15_let_then_if_lit          RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+y16_let_use_u64_later        same                       nano: ACCEPT out=ff  lean: ACCEPT out=ff
+y17_let_chain_cmp_nat        RESULT-DIFF                nano: ACCEPT out=02  lean: ACCEPT out=01
+y18_let_then_put_and_cmp     same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+y19_loop_init_lit            same                       nano: ACCEPT out=fe  lean: ACCEPT out=fe
+y20_cond_both_sides_vars     same                       nano: ACCEPT out=02  lean: ACCEPT out=02
+a1_let_rhs_arg_le_let_col    NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=61  lean: REJECT unexpected token ';'; expected ')', ',' or ':'
+a2_match_rhs_arg_eq_bar      NANO-ACCEPTS-LEAN-REJECTS  nano: ACCEPT out=01  lean: REJECT unexpected token; expected ')', ',' or ':'
+a3_if_else_col0_in_let       same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+a4_if_then_col0_top          same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+a5_cond_arg_col0_top         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+a6_toplevel_app_col0         same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+a7_toplevel_app_samecol      same                       nano: ACCEPT out=01  lean: ACCEPT out=01
+a8_let_bodyline_same_col     nano-stricter              nano: REJECT                             lean: ACCEPT out=01
+a9_let_semi_next_col0        nano-stricter              nano: REJECT                             lean: ACCEPT out=01
