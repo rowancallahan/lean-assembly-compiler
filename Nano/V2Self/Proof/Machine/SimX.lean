@@ -1,12 +1,12 @@
 /- Machine bridge (Opus box E): Sail sims of the start code's extra instructions (srli, beq +28, bne +16, sb), in the
-form of SimW's sims (a J step on a matching word is one retired Sail instruction keeping `RelW`).  Wiring them into
-`SimW.Safe` / `encJ` / `sim_stepW` is a shared edit (A's Safe retrofit), proposed separately. -/
+form of SimW's sims (a J step on a matching word is one retired Sail instruction keeping `RelW`).  They are wired in per
+instruction kind by `JT.rvSteps` (Machine/RvTarget.lean), over `encJX` / `SafeX`. -/
 import Nano.V2Self.Proof.Machine.SimW
 namespace SimW
 open Proven Nano.V2B
 
 /-- **srli rd, a, sh** -/
-theorem sim_srliW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_srliW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a sh : Nat} (hC : K.W[pc]? = some (I.i .srli rd a (sh : Int)).enc) (hrd : rd < 32) (ha : a < 32) (hsh : sh < 64) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (s.x a >>> sh.toUInt64)) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -31,7 +31,7 @@ theorem pc_plus28 (b pc : Nat) : BitVec.ofNat 64 (b + 4 * pc) + 28#64 = BitVec.o
   apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
 
 /-- **beq a, b, +28** (the start code's copy-loop exit) -/
-theorem sim_beq28 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_beq28 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .beq a b 28).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧ RelW K (if s.x a = s.x b then ((pc : Int) + 7).toNat else pc + 1, s) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -55,7 +55,7 @@ theorem sim_beq28 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK :
     rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
 
 /-- **bne a, b, +16** (the start code's empty-buffer check) -/
-theorem sim_bne16 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_bne16 {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a b : Nat} (hC : K.W[pc]? = some (I.br .bne a b 16).enc) (ha : a < 32) (hb : b < 32) :
     ∃ t', Retires t t' ∧ RelW K (if s.x a ≠ s.x b then ((pc : Int) + 4).toNat else pc + 1, s) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -106,7 +106,7 @@ theorem sbm_extract (x v : UInt64) (k j : Nat) (hk : k < 8) (hj : j < 8) :
     · rw [g255e _ (by omega)]; simp [show ¬ 8 * j + i - 8 * k < 8 by omega]
 
 /-- **sb b, off(a)** (the start code's output copy): the byte lands in its aligned word cell (`sbm`) -/
-theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_sbW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {b a : Nat} {off : Int} (hC : K.W[pc]? = some (I.sb b a off).enc) (hb : b < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
     (hw : sok K (CallProbe.ea (s.x a) off)) :
@@ -183,80 +183,7 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
 
 /-! ## SimW's `encJ` words of the new instructions are the `I.enc` words the sims take -/
 
-/-! ## the start code's Safe layer: `encJX` (beq offsets in instructions, like bgeu), `SafeX` (Safe plus beq +7,
-srli, bne +4, sb), `sim_stepX` / `SStarX`, and `SStar → SStarX` (A's template twins carry over) -/
-
-/-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
-theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJX)
-    {a b : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K a t) (hS : SafeX K C a) (hs : CallProbe.step C a = some b) :
-    ∃ t', Retires t t' ∧ RelW K b t' := by
-  obtain ⟨pc, s⟩ := a
-  have hWpc : ∀ i, C[pc]? = some i → K.W[pc]? = some (encJX i) := by intro i h; rw [hW]; simp [h]
-  simp only [SafeX] at hS
-  simp only [CallProbe.step] at hs
-  cases hc : C[pc]? with
-  | none => rw [hc] at hS; exact hS.elim
-  | some i =>
-    rw [hc] at hS hs
-    cases i with
-    | addi rd rs imm =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_addi hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | ld rd rs off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_ld hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | sd b' a' off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_sd hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | bgeu a' b' o =>
-      obtain ⟨h1, h2, ho⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs
-      rcases ho with rfl | rfl | rfl
-      · exact sim_bgeu8 hK hR (hWpc _ hc) h1 h2
-      · exact sim_bgeu12 hK hR (hWpc _ hc) h1 h2
-      · exact sim_bgeu16 hK hR (hWpc _ hc) h1 h2
-    | jal rd off =>
-      obtain ⟨h1, h2, h3, h4, h5⟩ := hS
-      have hl : C.length = K.W.length := by rw [hW]; simp
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_jal hK hR h1 (hWpc _ hc) h2 h3 h4 (by rw [← hl]; exact h5)
-    | jalr rd rs =>
-      obtain ⟨rfl, h2, j, hj⟩ := hS
-      have hb : s.b = K.base := hR.bb
-      simp only [Option.some.injEq] at hs; subst hs
-      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) (by rw [hj, hR.w4])
-      refine ⟨t', ht, ?_⟩
-      have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
-      simp [this, CallProbe.wr]; exact hr
-    | beq a' b' o =>
-      obtain ⟨h1, h2, ho⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs
-      rcases ho with rfl | rfl
-      · exact sim_beq8 hK hR (hWpc _ hc) h1 h2
-      · exact sim_beq28 hK hR (hWpc _ hc) h1 h2
-    | bltu a' b' o =>
-      obtain ⟨h1, h2, rfl⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_bltu8 hK hR (hWpc _ hc) h1 h2
-    | alu op rd a' b' =>
-      obtain ⟨h1, h2, h3, h4, h5⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_aluW hK hR (hWpc _ hc) h1 h2 h3 h4 h5
-    | slli rd rs sh =>
-      obtain ⟨h1, h2, h3⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_slliW hK hR (hWpc _ hc) h1 h2 h3
-    | lbu rd rs off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_lbuW hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
-    | srli rd rs sh =>
-      obtain ⟨h1, h2, h3⟩ := hS
-      have hw := hWpc _ hc; simp only [encJX] at hw; rw [encJ_srli _ _ _ h1 h2 h3] at hw
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_srliW hK hR hw h1 h2 h3
-    | bne a' b' o =>
-      obtain ⟨h1, h2, rfl⟩ := hS
-      have hw := hWpc _ hc; simp only [encJX] at hw; rw [encJ_bne _ _ h1 h2] at hw
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_bne16 hK hR hw h1 h2
-    | sb b' a' off =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      have hw := hWpc _ hc; simp only [encJX] at hw; rw [encJ_sb _ _ _ h1 h2 h3 h4] at hw
-      simp only [Option.some.injEq] at hs; subst hs; exact sim_sbW hK hR hw h1 h2 h3 h4 h5 h6
-
+/-! ## the words of the safe layer: `encJX` (beq offsets in instructions, like bgeu) for `SafeX` (JLay: beq +2 / +7,
+srli, bne +4, sb); the per-instruction dispatch is `rvSteps`, Machine/RvTarget.lean -/
 
 end SimW

@@ -1,5 +1,5 @@
 /- Closing the link template ↔ Sail: for every J instruction the expression templates use, the word C's encoders emit
-(`CallProbe.encG`, Proof/ExprExact.lean) is the word nano-v2/Sail runs (`SimW.encJ`, which `sim_stepW` consumes). -/
+(`CallProbe.encG`, Proof/ExprExact.lean) is the word nano-v2/Sail runs (`SimW.encJ`, which the `SimW.sim_*` lemmas consume). -/
 import Nano.V2Self.Proof.Machine.ExprExact
 import Nano.V2Self.Proof.Machine.RvEnc
 import Nano.V2Self.Proof.Machine.JLay
@@ -11,7 +11,7 @@ theorem sI_iu (z : Int) (h1 : -2 ^ 63 ≤ z) (h2 : z < 2 ^ 63) : sI (iu z) = z :
 
 theorem toU_toNat (n : Nat) (h : n < 2 ^ 64) : n.toUInt64.toNat = n := by simp [Nat.toUInt64]; omega
 
-/-- the side conditions under which `encG i` is `SimW.encJ i` (the same ones `SimW.Safe` asks) -/
+/-- the side conditions under which `encG i` is `SimW.encJ i` (register and immediate ranges, as in `SimW.SafeX`) -/
 def GoodW : J → Prop
   | .addi rd rs imm => rd < 32 ∧ rs < 32 ∧ -2048 ≤ imm ∧ imm < 2048
   | .ld rd rs off => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048

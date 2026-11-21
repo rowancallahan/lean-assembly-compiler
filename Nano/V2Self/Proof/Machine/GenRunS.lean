@@ -1,4 +1,4 @@
-/- EVS P7 (Opus box E): **Gen's program on Sail**.  `gen_runS`: on g41 success, the emitted program C (stubs ++ def
+/- EVS P7 (Opus box E): **Gen's program as a safe J run** (target-independent).  `gen_runS`: on g41 success, the emitted program C (stubs ++ def
 templates ++ start code) runs from word 0 as a SafeX J run to the host's return address with main's buffer bytes at a3;
 a target turns it into machine steps (`JT.sim_star`). -/
 import Nano.V2Self.Proof.Machine.GenRun
@@ -45,7 +45,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
            s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b))) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11) inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
-  obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
+  obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk⟩ := hr
   refine ⟨hg, by simp [stubJ, startJ]; omega, fun i hi => by rw [Nat.zero_add, List.append_assoc, List.getElem?_append_left hi],
     At.cast (At_app3 _ _ _) (by simp [stubJ]), by simp [stubJ, startJ]; omega,
     fun hsc => (prog_good _ ds _ _ hs.length (fun k hk => by

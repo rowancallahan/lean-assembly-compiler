@@ -89,7 +89,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
       rw [Nat.mod_eq_of_lt (show call.workLength < 2 ^ 64 by omega), Nat.mod_eq_of_lt (by omega)]
     simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight, this]
     simp [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, E0]; omega
-  let KL : LayW := ⟨base, T.words Cj, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
+  let KL : LayW := ⟨base, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
     0, T.m0 s⟩
   have hb4 : 4 * Cj.length ≤ 2 ^ 20 := by omega
   obtain ⟨s2, h2, m12, m8, z2, k2, -⟩ := (hrun KL E0 hE0 j0 (by rw [x12]; exact sc.workAligned) (by rw [x12]; omega)
@@ -97,7 +97,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb
     (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
     .room (by decide) (by rw [x12, hx11]; exact hS Tb)
-  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
+  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
   obtain ⟨s', r1, R1⟩ := sim_star L hl h2 hR0
   have cs : ∀ i, i < 11 → Cj[i]? = (stubJ S0)[i]? := fun i hi => by
     have := hst i (by simp [stubJ]; omega); rwa [Nat.zero_add] at this
@@ -164,9 +164,9 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
       rw [Nat.mod_eq_of_lt (show call.workLength < 2 ^ 64 by omega), Nat.mod_eq_of_lt (by omega)]
     simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight, this]
     simp [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, E0]; omega
-  let KL : LayW := ⟨base, T.words Cj, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
+  let KL : LayW := ⟨base, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
     0, T.m0 s⟩
-  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
+  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
   -- the start code's size check
   have hsw := hss
   have q0 : Cj[0]? = some (.jal 0 (S0 : Int)) := by have := hst 0 (by simp [stubJ]); simpa [stubJ] using this
@@ -190,7 +190,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     have : ¬ (sc'.x 30).toNat ≤ (sc'.x 31).toNat := by rw [sc30, sc31]; omega
     simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, c3, e12, sa, sb, sc', CallProbe.wr, CallProbe.upd] at this ⊢
     exact fun hh => absurd hh (Nat.not_le.mpr this)
-  have hsx : SStarX KL Cj (0, s0) (S0 + 4, sc') := sstarX_of_run hrun (fun j hj c hc => by
+  have hsx : SStarX KL Cj (0, s0) (S0 + 4, sc') := SafeRun.sstar_of_run hrun (fun j hj c hc => by
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4) with rfl | rfl | rfl | rfl | rfl
     · simp [CallProbe.run] at hc; subst hc; simp [SafeX, q0]; omega
     all_goals simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, e12, CallProbe.wr, CallProbe.upd] at hc

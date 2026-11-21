@@ -141,7 +141,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     have lt5 := (env_m 0).toNat_lt
     have nz5 : (env_m 0).toNat ≠ 0 := fun e => hz' (UInt64.toNat_inj.mp (by simpa using e))
     have sx3 : SafeX KL C (h + 2, wr s 5 (env_m 0)) := by simp only [SafeX, c2]; simp; omega
-    have s45 : SStarX KL C (S, wr s 5 (env_m 0)) (S + 2, s4) := sstarX_of_run st45 (fun j hj c hc => by
+    have s45 : SStarX KL C (S, wr s 5 (env_m 0)) (S + 2, s4) := sstar_of_run st45 (fun j hj c hc => by
       rcases j with _ | _ | j
       · simp [run] at hc; subst hc; simp only [SafeX, d0]; rw [x51]
         exact ⟨by decide, by decide, by decide, by decide, by omega, by omega⟩
