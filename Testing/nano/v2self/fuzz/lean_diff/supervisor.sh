@@ -3,9 +3,9 @@
 # write Testing/notes/LEAN_DIFF.md from the campaign logs, commit + push branch lean-diff. UNPROVEN glue. Paths: /tmp/claude-0.
 R=/home/user/lean-assembly-compiler; D=$R/Testing/nano/v2self/fuzz/lean_diff; O=/tmp/claude-0/camp2
 while :; do
-  sleep 3600
-  cd $R && git fetch -q origin combined-2 syntax-1 || continue
-  for p in "cur combined-2" "syn syntax-1"; do set -- $p
+  [ -n "$NOSLEEP" ] || sleep 3600; NOSLEEP=
+  cd $R && git fetch -q origin main keep_round1_syntax-1 || continue
+  for p in "cur main" "syn keep_round1_syntax-1"; do set -- $p
     h=$(git rev-parse origin/$2); [ "$(cat $O/$1.head 2>/dev/null)" = "$h" ] && continue
     (cd /tmp/claude-0/wt_$1 && git checkout -q --detach $h) && git show $h:Testing/nano/v2self/B2.bin > /tmp/claude-0/ld/$1.new && mv /tmp/claude-0/ld/$1.new /tmp/claude-0/ld/$1.bin
     gcc_ok=1; echo $h > $O/$1.head
@@ -14,5 +14,5 @@ while :; do
   done
   python3 $D/report.py $O > $R/Testing/notes/LEAN_DIFF.md
   cd $R && git add Testing/notes/LEAN_DIFF.md Testing/nano/v2self/fuzz/lean_diff && git commit -q -m "LEAN_DIFF: hourly tally" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MfKuVYxHRXmZCfK6uNURXy" && git push -q origin HEAD:lean-diff
+Claude-Session: https://claude.ai/code/session_01MfKuVYxHRXmZCfK6uNURXy" && git push -q origin HEAD:keep_round1_lean-diff
 done
