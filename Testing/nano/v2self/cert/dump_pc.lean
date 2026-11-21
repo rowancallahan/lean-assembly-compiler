@@ -1,4 +1,4 @@
-import Nano.V2Self.Proof.Parser.ParSpec
+import Nano.Parser.ParSpec
 open ParSpec
 /- usage: dump_pc FILE : print the reference parse of FILE as Lean definitions `PC.d<i> : DefA` (input of gen_cert.py) -/
 partial def nd : Nd → String

@@ -12,7 +12,7 @@ Proof notes: every per-form Sail lemma `full_X` concludes `∃ s', stepModel s =
 PC = p ∧ s'.mem = M`; `obs_eq` turns `Abs`+`PC` into `obsA p a' M`, so each `A64Sem` field reduces to an equation
 between `obsA`s (`set_obsA`, `jump_obsA`). Permissions are not modelled by Sail (`X = W = True`). -/
 import Spec.Top
-import Nano.V2Self.Proof.Machine.A64Sem
+import Nano.Run.A64Sem
 import Arm.Mem
 import Arm.FullSubs
 import Arm.FullAluAdd

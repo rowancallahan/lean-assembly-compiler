@@ -35,6 +35,38 @@ then C → D → E → F (need the cleaned-up generic layer).
   Side conditions found: `ldp` needs `t ≠ u` (the model rejects equal load targets); `ldur`/`stur`/`ldp` are stated
   with 8-aligned addresses like `ldr`/`str`. Sail ARM instance of `A64SemN`: not started.
 
+* C (link values): DONE on branch `link-layout` (38504ff): `CallProbe.St.wk` → `St.ly : LinkLay` (off / un / inv),
+  jal links `b + lo (pc+1)`, the global bound became `LinkOK C s` (per return point). REVIEW pinned axioms unchanged.
+* D (general layout layer): `Proof/Machine/GTarget.lean`: `Img` (code bytes, `ly`, anchors `vis`), `GTarget.Rel` at
+  anchors only, segment law `Laws.seg`, `gsim`; every uniform `JTarget` embeds (`toG`, `rel_toG`, `laws_toG`).
+  Host*/TopOn over GTarget: in progress (FABLE-M2, branch m2-host; agreed extra laws `off_le` (anchors), `vis_link`,
+  `vis_ret`, `vis_err`, and `Img.dead` = J registers not related at an anchor).
+* B (per-template lemmas, GenArm pinned at native-arm d6db803): the J ↔ A64 correspondence of all 15 template kinds
+  is in `Testing/notes/NATIVE_ARM_TEMPLATES.md` (written from the sources, not machine-checked).
+  `Proof/Machine/ArmNat.lean`: `NMid` (machine state at an absolute code word index vs a register/memory view) and
+  the single-instruction steps from `A64SemN` (movz, movn, movk, add/sub imm, add lsl 3 → x16, alu, cbz, cbnz,
+  subs+b.cond, b, bl, br, ldr, str, ldur, stur, ldp, 8-byte store). `Proof/Machine/ArmNatTm.lean`: templates done:
+  push, pop-two, BIN (all ops, mul via movz x17 + madd), RD, IF head, LOOP head / step (ldr/str slot form); CALL is
+  `n_bl`, else-jump / exits / CONTINUE's jump are `n_b`. TODO: strb + byte store, li (movz/movn/movk chunk
+  walk `a7`), slot access `a9` (3 forms), LOCAL, pop-into-slots, prims (ISIZE/LEN, RD, BNEW, BSIZE, BGET, BSET,
+  BPUSH/PUT), IF head, LOOP head/step/exit/CONTINUE, call, prologue, epilogue, stubs, start code; then the native
+  `GTarget` instance (image + anchors from the template list) and its `seg` law from these lemmas and the J template
+  runs.
+* B, final form (M3 DONE, `Nano/Run/`): the image is a list of ATOMS (`NatImg.lean`: 19 kinds `NTm`, J
+  instructions `.j`, A64 words `.a`, dead flags for t0/t1). Per atom one simulation `ASim` (`NatSim.lean`, cases in
+  `NatA/*.lean`, dispatch `asim_all`). `NatSeg.lean`: `nat_seg` (segment law), `nat_addi`, `nat_ret`, and
+  `natLawsOK : A64SemN M X W → NatLawsOK M X W NatV` (standard axioms; no model mentioned, so Sail only needs an
+  `A64SemN` instance). The whole-template lemmas in `ArmNatTm.lean` / `NatT/` are checks, not on the proof path.
+* Layout facts fixed while assembling: (1) only RETURN POINTS (pc after a `jal 1`) get a link value (`nOff` < 2^64);
+  every other pc gets 2^64·(1+pc) + 4·word index, the same machine address modulo 2^64. J's `jalr` (SafeX: the
+  target's offset is below 2^64) therefore only reaches return points, which is what makes dead registers at a
+  return sound (`NWf.ret`). (2) `GTarget.Laws`: `entry` is `off 0 % 2^64 = 0`, `off_le` only at return points,
+  `addi_ok` only for `addi a0/a1, x0, imm`.
+* M4 remaining: `GenOKG (natTarget M X W NatV) genNative` (GenArm's output is `imgOf tl` of a well-formed atom list
+  whose J program is Gen's), then the unconditional top.
+* Findings: after BGET/BSET the J temporaries t0/t1 differ from x5/x6 (dead at the boundary; hence `Img.dead`);
+  start code is 34 A64 words for 32 J instructions; li is 1..4 words, slot access 1 or 2 words (locals ≥ 33).
+
 ## What in the current interface blocks it (cross-ref Testing/notes/CLEANUP_PLAN.md)
 * step 7 `EncOK`: code must be `enc` of Gen's RV bytes → native generator not expressible. Needed (F).
 * step 9 GenRef's `CG` over raw RV words: needed for E (lockstep), the largest item.
@@ -54,3 +86,20 @@ ldur → sub+ldr, cbnz → cbz+b, movn → movz+movk) to skip step A; B–F stay
 * Accept set: GenArm applies the 2^18-word limit to A64 words, so in principle a program near the limit is accepted
   by one back end and rejected by the other (never seen; native code is smaller). The theorem is per back end, so this
   is not a proof obstacle, only a documented difference.
+
+## Decision 2026-11-21 (owner): option E, register-exact
+* The Gen/GenArm lockstep (step E above) is NOT done. Reasons: only the node-level work-item invariant (`GenE.visit_all`) is
+  generic over the encoders; def level, GenTop, GenAll, the width pass and the template layer are RISC-V-only (estimate
+  8–12 sessions); and `GenOKG` needs `gen x ≠ [] → mC x ≠ []`, false for pure GenArm (size / jump-range limits are on
+  each generator's own word indices; a big constant is 17 RV words, ≤ 4 A64 words).
+* Instead the native generator IS the atom encoder of Gen's J program: `natEncJ` (Nano/Run/NatEnc.lean, Lean spec:
+  greedy parse `atomize` into the atoms of Nano/Run/NatImg.lean, checks `NChk`, bytes `wordBytes (wordsOf tl)`), so the
+  image relation `NatV` holds by construction (`natEncJ_img`). Accept set = Gen's minus the encoder's checks.
+* The release theorem must be about the translator written in nano's bootstrap subset (self-hosting gate); the Lean
+  spec comes first, then the nano program and its program proof (= spec). `Nano/Codegen/GenArm.lean` becomes a test
+  oracle (fuzz the encoder against it). Known difference: `ld 1 12 0; ld 8 12 8` (stubs, start code) is one `ldp`.
+* No dead registers: BGET / BSET tails are 1:1 with J (`lsl x6,x6,#3; add; ldr/str`, new atom `NTm.slli` and A64SemN
+  form `lsl xd,xn,#imm`), +1 word per array get / set; the fused tails `bgetI` / `bsetI` (and the dead flags, which the
+  encoder always sets to false) stay in NatImg for a later J-level optimisation.
+* After the release: J becomes an explicit target-neutral IR emitted by the generator; the encoder's input is `List J`
+  for that reason (the nano translator reads J through one accessor layer over Gen's words).

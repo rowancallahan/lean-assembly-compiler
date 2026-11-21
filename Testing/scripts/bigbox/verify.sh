@@ -198,7 +198,7 @@ s6b() {
   [ -z "${RV_CACHE:-}" ] || { echo "RV_CACHE is gone: build-cache holds Lean 4.29 oleans of the old model"; exit 1; }
   [ "$(git -C "$WORK/deps/sail-riscv-lean" rev-parse HEAD)" = "$RV_REV" ]
   ( cd "$WORK/deps/sail-riscv-lean" && lake build )            # the regenerated model, from source
-  ( cd "$R" && lake build $(cd "$R" && find Nano/V2Self -name '*.lean' | sed 's|/|.|g; s|\.lean$||') )
+  ( cd "$R" && lake build $(cd "$R" && find Nano/Lexer Nano/Parser Nano/Ownership Nano/Codegen Nano/Run Nano/SelfHost Nano/Main Nano/Tests -name '*.lean' | sed 's|/|.|g; s|\.lean$||') )
   ( cd "$R" && Testing/scripts/review_axioms.sh ) | tee "$OUT/s6b-review.log"
   grep -q '^OK:' "$OUT/s6b-review.log"; echo "$(grep '^OK:' "$OUT/s6b-review.log") (model $(Testing/scripts/model_hash.sh "$WORK/deps/sail-riscv-lean" | cut -c1-8)…)" > "$NOTE"
 }

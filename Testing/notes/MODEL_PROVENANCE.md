@@ -69,10 +69,10 @@ Single-file hashes, such as the partitioned definition dump `76a23330…` (ARM_F
   * Then `lake build` on 4.29.0.
   * Regenerating the text from Sail is not reproducible today, because the generator commits are unknown (above).
 * **Theorems that depend on it:**
-  * `Nano/V2Self/REVIEW.lean`: `C_correctLO`, `C_runsO`, `C_runs`, `self_correct_C`, `self_runs_C`.
+  * `Nano/Main/REVIEW.lean`: `C_correctLO`, `C_runsO`, `C_runs`, `self_correct_C`, `self_runs_C`.
   * `Spec/Riscv.lean`, `Spec/RiscvMachine.lean`, `Spec/Implements1.lean` and the `Riscv` lib: `Proven.compile_ok`,
     `gcd_ok`, `msortCode_implements`, … (`Testing/scripts/expected-axioms.txt`).
-  * Path to the model: `Nano/V2Self/Proof/Machine/SimW` → `Nano.V2.Enc` / `Nano.V2.Sim` → `Riscv.Steps.*` → `LeanRV64D`
+  * Path to the model: `Nano/Run/SimW` → `Nano.V2.Enc` / `Nano.V2.Sim` → `Riscv.Steps.*` → `LeanRV64D`
     (module list in `BRANCHES.md`).
   * Model-free: `Cert.sem_C`, `SrcGen.link_pc`, `shiftInv`, and the generic `C_correct_on` / `C_runs_on`.
 * **Not the model (tests only):** `../deps/sailsim/sail-riscv-Linux-x86_64`, a Sail RISC-V C simulator binary from

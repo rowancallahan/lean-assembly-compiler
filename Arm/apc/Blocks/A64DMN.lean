@@ -2,7 +2,7 @@
 DeepMind's model: `movn`, `cbnz`, `ldur`, `stur`, `ldp`, `ldrb` (register offset), `add` (register, lsl #3).
 Per form: `dec_*` (the decoder), `dm_*` (one `Arm64.Step`, in the shape of the other `dm_*` lemmas), `F_*` (the
 `A64SemN` field).  `a64DMN` extends `a64DM`. -/
-import Nano.V2Self.Proof.Machine.A64SemN
+import Nano.Run.A64SemN
 import Blocks.A64Inst
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -43,6 +43,20 @@ theorem F_movn (t : Arm64.State) (d i h : Nat) (hc : armDM.configured t) (hp : J
   refine goes_set hd this ?_
   apply UInt64.toBitVec_inj.mp
   simp [JT.movnV, UInt64.toBitVec_shiftLeft, Nat.mul_comm, show h * 16 % 64 = h * 16 by omega]; rfl
+
+theorem F_movzH (t : Arm64.State) (d i h : Nat) (hc : armDM.configured t) (hp : JT.PcOK armDM (O t)) (hx : JT.FetchX armDM XD t 4)
+    (hd : d < 31) (hi : i < 2 ^ 16) (hh : h < 4)
+    (hw : JT.WordAt (O t) (O t).programCounter.toNat (ArmEnc.movzH d i h)) :
+    JT.GoesK armDM XD WD t (JT.setReg (O t) d ((UInt64.ofNat i) <<< (16 * h).toUInt64)) := by
+  have hA := fetch hc hp hw (xat hx); simp only [ArmEnc.movzH] at hA
+  have := dm_movz (by mask32) (by fldt) hA
+  rw [show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 0 5).toNat = d by fldt,
+    show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 21 2).toNat = h by fldt,
+    show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 5 16).setWidth 64 = BitVec.ofNat 64 i by immt]
+    at this
+  refine goes_set hd this ?_
+  apply UInt64.toBitVec_inj.mp
+  simp [UInt64.toBitVec_shiftLeft, Nat.mul_comm, show h * 16 % 64 = h * 16 by omega]; rfl
 
 /-! ## cbnz -/
 theorem dec_cbnzW (hK : w &&& 0xFF000000#32 = 0xB5000000#32) (ht : (w.extractLsb' 0 5).toNat < 31) :
@@ -118,6 +132,53 @@ theorem F_addLsl3 (t : Arm64.State) (d n m : Nat) (hc : armDM.configured t) (hp 
     show (fm (wd (0x8B000C00 + m * 2 ^ 16 + n * 2 ^ 5 + d))).toNat = m by fldt] at this
   refine goes_set hd this ?_
   apply UInt64.toBitVec_inj.mp; simp [UInt64.toBitVec_shiftLeft]
+
+/-! ## lsl (immediate): `ubfm xd, xn, #immr, #imms` with `imms + 1 = immr` -/
+theorem dec_lslI (hK : w &&& 0xFFC00000#32 = 0xD3400000#32) (hd : (fd w).toNat < 31) (hn : (fn w).toNat < 31) :
+    Arm64.decode w = some (.bitfield .W64 .UBFM (.gpr (fd w)) (.gpr (fn w)) (w.extractLsb' 16 6).toNat
+      (w.extractLsb' 10 6).toNat) := by
+  decsym hK
+  simp only [fromZR' hd, fromZR' hn]
+  rfl
+
+/-- **`lsl xd, xn, #(64 - immr)`** (`ubfm` with `imms + 1 = immr`) -/
+theorem dm_lslI (hK : w &&& 0xFFC00000#32 = 0xD3400000#32) (hd : (fd w).toNat < 31) (hn : (fn w).toNat < 31)
+    (hs : (w.extractLsb' 10 6).toNat + 1 = (w.extractLsb' 16 6).toNat) (h : At t w) :
+    ∃ t', Arm64.Step Pg t t' ∧
+      abs t' = (abs t).setX (fd w).toNat ((abs t).x (fn w).toNat <<< (64 - (w.extractLsb' 16 6).toNat)) ∧
+      Post t t' (t.pc + 4) t.mem := by
+  refine wr1 hd (dec_lslI hK hd hn) h ?_
+  have := rd_gpr t hn
+  have h1 := (w.extractLsb' 16 6).isLt; have h2 := (w.extractLsb' 10 6).isLt
+  generalize (w.extractLsb' 16 6).toNat = r at *; generalize (w.extractLsb' 10 6).toNat = q at *
+  subst hs
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.writeReg,
+    Arm64.evalBitfield, show q % 64 = q by omega, show (q + 1) % 64 = q + 1 by omega,
+    show (Arm64.BitfieldOp.UBFM == Arm64.BitfieldOp.UBFM) = true from rfl, show ¬ q = 63 by omega, *]
+
+theorem F_lslI (t : Arm64.State) (d n sh : Nat) (hc : armDM.configured t) (hp : JT.PcOK armDM (O t)) (hx : JT.FetchX armDM XD t 4)
+    (hd : d < 31) (hn : n < 31) (hs0 : 0 < sh) (hs : sh < 64)
+    (hw : JT.WordAt (O t) (O t).programCounter.toNat (ArmEnc.lslI d n sh)) :
+    JT.GoesK armDM XD WD t (JT.setReg (O t) d ((O t).register n <<< sh.toUInt64)) := by
+  have hA := fetch hc hp hw (xat hx)
+  simp only [ArmEnc.lslI, show (64 - sh) % 64 = 64 - sh by omega] at hA
+  show JT.GoesK armDM XD WD t (JT.setReg (obsDM t) d ((obsDM t).register n <<< sh.toUInt64))
+  rw [regv t hn]
+  have F : ∀ r q : Nat, r < 64 → q < 64 →
+      (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)) &&& 0xFFC00000#32 = 0xD3400000#32 ∧
+      ((wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 16 6).toNat = r ∧
+      ((wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 10 6).toNat = q ∧
+      (fd (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d))).toNat = d ∧ (fn (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d))).toNat = n := by
+    intro r q hr hq
+    exact ⟨by mask32, by fldt, by fldt, by fldt, by fldt⟩
+  obtain ⟨hK, e16, e10, ed, en⟩ := F (64 - sh) (63 - sh) (by omega) (by omega)
+  have := dm_lslI hK (by rw [ed]; exact hd) (by rw [en]; exact hn) (by rw [e16, e10]; omega) hA
+  rw [ed, en, e16, show 64 - (64 - sh) = sh by omega] at this
+  refine goes_set hd this ?_
+  apply UInt64.toBitVec_inj.mp
+  have e1 : sh % 18446744073709551616 = sh := by omega
+  have e2 : sh % 64 = sh := by omega
+  simp [UInt64.toBitVec_shiftLeft, e1, e2]
 
 /-! ## ldur / stur -/
 /-- the effective address of the unscaled forms -/
@@ -289,16 +350,19 @@ theorem dm_ldrbR (hK : w &&& 0xFFE0FC00#32 = 0x38606800#32) (ht : (w.extractLsb'
 
 theorem F_ldrbR (t : Arm64.State) (r n m : Nat) (b : UInt8) (hc : armDM.configured t) (hp : JT.PcOK armDM (O t))
     (hx : JT.FetchX armDM XD t 4) (hr : r < 31) (hn : n < 31) (hm : m < 31)
-    (hlo : armDM.ramStart ≤ ((O t).register n).toNat + ((O t).register m).toNat)
-    (hhi : ((O t).register n).toNat + ((O t).register m).toNat < armDM.ramEnd)
-    (hW : WD t (((O t).register n).toNat + ((O t).register m).toNat))
-    (hv : (O t).memory (UInt64.ofNat (((O t).register n).toNat + ((O t).register m).toNat)) = some b)
+    (hlo : armDM.ramStart ≤ ((O t).register n + (O t).register m).toNat)
+    (hhi : ((O t).register n + (O t).register m).toNat < armDM.ramEnd)
+    (hW : WD t (((O t).register n + (O t).register m).toNat))
+    (hv : (O t).memory (UInt64.ofNat (((O t).register n + (O t).register m).toNat)) = some b)
     (hw : JT.WordAt (O t) (O t).programCounter.toNat (ArmEnc.ldrbR r n m)) :
     JT.GoesK armDM XD WD t (JT.setReg (O t) r b.toUInt64) := by
-  rw [regN t hn, regN t hm] at hlo hhi hW hv
-  have hl : ((abs t).x n).toNat + ((abs t).x m).toNat < 2 ^ 64 := by simp [armDM] at hhi; omega
+  rw [show (O t).register n = UInt64.ofBitVec ((abs t).x n) from regv t hn,
+    show (O t).register m = UInt64.ofBitVec ((abs t).x m) from regv t hm,
+    show (UInt64.ofBitVec ((abs t).x n) + UInt64.ofBitVec ((abs t).x m)).toNat = ((abs t).x n + (abs t).x m).toNat from rfl]
+    at hlo hhi hW hv
+  have hl : ((abs t).x n + (abs t).x m).toNat < 2 ^ 64 := ((abs t).x n + (abs t).x m).isLt
   have hA := fetch hc hp hw (xat hx); simp only [ArmEnc.ldrbR] at hA
-  have ee : (abs t).x n + (abs t).x m = ad (((abs t).x n).toNat + ((abs t).x m).toNat) := by
+  have ee : (abs t).x n + (abs t).x m = ad ((abs t).x n + (abs t).x m).toNat := by
     apply BitVec.eq_of_toNat_eq; simp
   have := dm_ldrbR (by mask32) (by fldt) (by fldt) (by fldt) (by
     rw [show ((wd (0x38606800 + m * 2 ^ 16 + n * 2 ^ 5 + r)).extractLsb' 5 5).toNat = n by fldt,
@@ -397,11 +461,13 @@ theorem F_ldp (t : Arm64.State) (r u n : Nat) (v1 v2 : UInt64) (hc : armDM.confi
 theorem a64DMN : JT.A64SemN armDM XD WD where
   toA64Sem := a64DM
   movn s d i h hc hp hx hd hi hh hw := F_movn s d i h hc hp hx hd hi hh hw
+  movzH s d i h hc hp hx hd hi hh hw := F_movzH s d i h hc hp hx hd hi hh hw
   cbnz s r f hc hp hx hr hf1 hf2 hw := F_cbnz s r f hc hp hx hr hf1 hf2 hw
   ldur s r n a f v hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hv hw := F_ldur s r n a f v hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hv hw
   stur s r n a f hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hw := F_stur s r n a f hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hw
   ldp s r u n v1 v2 hc hp hx hr hu hn hne hal hlo hhi hW hv1 hv2 hw := F_ldp s r u n v1 v2 hc hp hx hr hu hn hne hal hlo hhi hW hv1 hv2 hw
   ldrbR s r n m b hc hp hx hr hn hm hlo hhi hW hv hw := F_ldrbR s r n m b hc hp hx hr hn hm hlo hhi hW hv hw
   addLsl3 s d n m hc hp hx hd hn hm hw := F_addLsl3 s d n m hc hp hx hd hn hm hw
+  lslI s d n sh hc hp hx hd hn hs0 hs hw := F_lslI s d n sh hc hp hx hd hn hs0 hs hw
 
 end Proven.Apc.Blocks

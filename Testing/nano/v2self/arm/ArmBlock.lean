@@ -7,7 +7,7 @@ Contents: `blockJ` = rv2arm's block of a J instruction at the J level (the same 
 link width 16 (`s.wk = 3`); `AccOK` = accesses in D, no wrap; `RelA` = the register/memory/code relation;
 `BlockOK M` = one J step is matched by a run of ≤ 4 machine steps (A64 block) from `RelA` to `RelA`. -/
 import Spec.Top
-import Nano.V2Self.Proof.Machine.Call
+import Nano.Run.Call
 
 namespace ArmBlock
 open CallProbe Proven.Top

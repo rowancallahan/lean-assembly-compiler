@@ -3,6 +3,46 @@
 Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RISC-V first, then ARM.
 "Needs" = what the compiler lacks today (see `Testing/notes/ARRAYS.md` for the current language).
 
+## Invariants (owner, 2026-11-21) — every change must keep both
+1. Strict Lean compatibility: nano's language is a subset of Lean's. Every program nano accepts, Lean accepts with the
+   same results (fuzz: nano-accepts ⇒ Lean-accepts and agrees; any violation is a FAIL).
+2. Strict self-hosting: the compiler (all stages, every target incl. native ARM) is written in nano's bootstrap
+   subset and compiles itself; Testing/scripts/selfhost_gate.sh must pass on every merge.
+   Self-hosting is the PRIMARY goal (owner, 2026-11-21): the aim is a Lean proof about the compiler itself. New
+   features (con-leche's inductives, casesOn, recursion, classes, big Nat, Expr input) are implemented in
+   bootstrap-subset nano. The bootstrap subset grows only slowly and in proven steps: each step regenerates the
+   self-hosted binaries, re-proves the fixpoints and passes the gate.
+3. No @[implemented_by] / @[extern] (or other attributes/keywords that let run-time code differ from the logical
+   definition: export, csimp, unsafe, opaque): attributes are a whitelist of meaning-preserving ones only. (Owner: implemented_by may be supported LATER —
+   then nano compiles the implementation, as Lean's runtime does; banned for now.)
+
+## LONG-TERM GOAL (owner, 2026-11-21): close the loop with con-leche
+Compile con-leche (the CONsistent LEan CHEcker, proven: accepts ⇒ the declarations have a ZFC+inaccessibles model)
+with self-hosted nano to proved ARM and RISC-V code. Then: con-leche's consistency proof + nano's compiler theorem ⇒
+the BINARY only accepts consistent developments, with no trust in Lean's compiler or runtime. Next, use that binary to
+re-check nano's own proofs and con-leche's proofs, so Lean's C++ kernel is no longer the only checker. Remaining trust:
+the ISA models (Sail / DeepMind) + hardware, ZFC + inaccessibles, the mixHashLean port (see con-leche hashing below),
+and the first kernel check of the bootstrap. Steps:
+- after the release, re-check the release theorems with con-leche;
+- an Expr spot check: nano emits Expr, compared with Lean's elaborated Expr; then an evaluator proof tied to
+  con-leche's model;
+- syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
+  end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
+
+## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
+1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
+2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
+   output = Lean's output. Proof: evaluator for nano's Expr fragment, eval(emit a) = nano semantics of a, and the
+   existing compiler theorem. When they don't match, nothing is claimed (elaboration differs), so only fuzz applies.
+3. Expr entry point: a second front door that takes elaborated Expr (e.g. exported from Lean). It is written in
+   nano and self-hosted, an optional input, not the shelved Lean-hosted compile mode. Users who don't trust nano's
+   parser/elaborator can use Lean's elaborator and rely only on the back-end theorem (Expr fragment ⊆ Lean,
+   same Expr ⇒ same output).
+4. Self-consistency check: the compiler compiled by Lean's toolchain (B1) vs. compiled by itself (B2 = B3), plus
+   comparing nano's Expr of its own source with Lean's Expr of it (extends SrcLink). If equal, nano's parser /
+   elaborator don't change the meaning of nano's own code.
+Reuse the earlier Expr-level work in Legacy/Riscv/Frontx (kernel-checked equation per function) where it fits.
+
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |
 |---|---|---|
@@ -621,7 +661,7 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
 Top level becomes symmetric per target: `Spec/` (RISC-V + ARM machines), `Nano/` (compiler + target-independent proofs),
 `Riscv/` (model regen, step lemmas = today's Nano/Base/Riscv, RISC-V target proofs), `Arm/` (models, step lemmas, ARM
 target, later the native ARM backend), `Legacy/`, `Testing/`. Done after cleanup step 8 separates the RISC-V-specific
-parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same checks as reorg-nano.
+parts from Nano/Run, so the move is complete in one go. Same checks as reorg-nano.
 - Spec/ scope (owner): Spec/ = what "correct" means (machines, CompileCorrect/Runs, Encode, memory rules). Generated Sail
   models stay external deps; each target folder holds its regen scripts + provenance, step lemmas, codegen/target proofs.
   Later Spec/ reorg: move the trusted SOURCE-language definitions (lexer spec, grammar/pOf, semantics; today in
@@ -655,3 +695,54 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
 - Open: namespace flattening; out-of-range index semantics (silent default / trap / proven-in-bounds).
 - Order: syntax growth now, in parallel with the native ARM proof (front end vs codegen/run files); core optimizations
   after the native ARM proof lands, applied to both RISC-V and native ARM generators.
+
+## Self-hosting is a hard gate on every merge (owner, 2026-11-21)
+Every PR that touches the compiler (any stage, either generator) must, before merge:
+1. regenerate the self-hosting proofs (Nano/SelfHost: Cert, CertArm, SrcLink, Bridge) for the new compiler source, and
+   build them with REVIEW + review_axioms unchanged ("OK: 8 theorems");
+2. reach the fixpoint on RISC-V: B1 → B2 = checked-in B2.bin, B3 = B2 (sha256 in the PR);
+3. reach the fixpoint for native ARM: GA_arm compiles its own source to itself, and the 3-host cross matrix
+   (RISC-V / rv2arm / native) is identical (Testing/nano/v2self/native_arm/cross_native.sh);
+4. release_check.sh gates fix1/fix23 pass.
+The compiler's OWN source stays in the bootstrap subset (the language as of release-native-arm), even as the
+compiler accepts more (owner, 2026-11-21: avoids confusion). New syntax is for user programs only; a check script fails
+if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outside the subset. Exception (owner,
+2026-11-21): comments are allowed in the compiler source once the comments feature is merged (they change no code). Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
+
+## Native ARM route and IR plan (owner, 2026-11-21)
+- Release (combined-2 / #17): native ARM via option E — the compiler runs Gen, takes its J program, and a thin J → ARM
+  atom translator (fusing J steps into rich A64 instructions, variable length) emits the code. The translator is written
+  in nano's bootstrap subset as part of the compiler, so the native compiler self-hosts; proven on DeepMind ARM
+  (generic over A64SemN, so Sail needs only its instruction facts). GenArm.lean stays as a test oracle.
+- Next after the release: make J an explicit, target-neutral IR that the generator emits (instead of RISC-V words),
+  with RISC-V, ARM (and later x86) as thin proven encoders; grow J with target-friendly ops so encoders can use each
+  ISA's features; do optimizations on J (proven once). Hyper-optimized per-ISA back ends can come later on top.
+- Syntax: nano's accepted language is a SUBSET of Lean's (owner, 2026-11-21): every program nano accepts, Lean
+  accepts with the same results; fuzz FAILs on any nano-accepts/Lean-rejects case. Concretely: misplaced docstrings/attributes are rejected too, via a
+  decl-modifier check in the trusted desugar spec; reject fuzz checks Lean-rejects ⇒ nano-rejects.
+- Lean parser as the model (owner, 2026-11-21): nano's syntax rules follow Lean 4's own parser (src/Lean/Parser) rule by
+  rule, with file:line citations in Testing/notes/LEAN_RULES.md; elaborator-dependent meaning (literal defaulting,
+  name resolution) is handled by rejecting ambiguous programs + differential fuzz against real Lean. TARGET (owner): nano's parser
+  becomes a transcription of Lean 4's own parser for nano's subset (same rule structure, names and order, each rule
+  citing its Lean source), written in nano once nano has monads/structures/typeclasses; real Lean is the test oracle
+  (no formal equivalence: Lean's parser is partial/meta code and not provable as is). Until then new syntax follows
+  Lean's parser rule by rule.
+- Why nano exists next to Lean (note for readers): Lean 4 self-hosts but its code generator (Lean → IR → C → clang)
+  is unverified; nano proves source-to-machine-code correctness against Sail/DeepMind ISA models with no C compiler in
+  the trust base, and proves its own binary is its compiled source.
+- DECIDED (owner, 2026-11-21): stay fully self-hosting, nano style; grow nano itself; no second Lean-hosted mode
+  for now (option (2) below is shelved). Was open: reaching big Lean programs. (1) grow nano itself (strict, self-hosting); (2) add a
+  second mode next to nano: Lean elaborates, nano's proven back end compiles the kernel-checked definition and emits a
+  per-program proof that the machine code computes that definition (trusts Lean's kernel only, not its compiler/IR/C;
+  not self-hosting; like Legacy/'s compile%). Rejected for now: compiling Lean's IR/LCNF (would trust Lean's unverified
+  optimizer). Lean source tour in Testing/notes/lean_tour/ informs this.
+- Lean as blueprint (owner, 2026-11-21): use Lean's compiler as a design source and test oracle only; nano stays a
+  subset of Lean's parser. Track Lean's IR design (LCNF passes, λRC IR, RC/borrow inference, reset/reuse in-place
+  updates, unboxing; Testing/notes/lean_tour/{lcnf,ir}.md) as the reference when J becomes an explicit IR and when
+  optimizing; compare our IR choices against it. Note: Lean emits C (then clang), its whole compile path (LCNF → IR →
+  C → clang → runtime, plus implemented_by/extern) is unverified; nano proves source → machine code.
+- Proven equivalence with Lean where possible (owner, 2026-11-21): Lean parser/lexer pieces that are total (not
+  partial; e.g. char classes, numeral decoding, escapes, keyword lists) get theorems that nano's trusted definitions
+  equal Lean's own functions (or are a subset with equal values); nano's trusted defs may be rewritten to mirror them.
+  Partial/stateful parser code: differential fuzz only; elaborator-dependent meaning: conservative rejection + fuzz.
+  Work: Nano/LeanEquiv/, Testing/notes/LEAN_EQUIV.md.
