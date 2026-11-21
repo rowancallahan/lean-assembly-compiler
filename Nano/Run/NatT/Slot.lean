@@ -70,23 +70,18 @@ theorem n_slotSt (S : A64SemN M X W) {h r n a : Nat} {off : Int} (hM : NMid X W 
 
 /-! ## signed add `a5` (one-word forms; the `li x16` + `add` form is `n_movz`.. + `n_alu`) -/
 
-/-- `add xd, xn, #v`, `0 ≤ v < 4096` -/
+/-- `add xd, xn, #v`, `0 ≤ v < 4096` (the value is `v` as a `UInt64`) -/
 theorem n_addS (S : A64SemN M X W) {h d n : Nat} {v : Int} (hM : NMid X W K A s0 st h s)
     (hB : K.base + 4 * A.length ≤ 2 ^ 32) (hA : A[h]? = some (ArmEnc.addi (armReg d) (armReg n) v.toNat))
     (hd : mapped d = true) (hd0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0) (h1 : 0 ≤ v) (h2 : v < 4096) :
-    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.x n + UInt64.ofInt v)) (h + 1) s' := by
-  obtain ⟨i, rfl⟩ := Int.eq_ofNat_of_zero_le h1
-  exact n_addi S hM hB hA hd hd0 hn hn0 (by omega)
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.x n + UInt64.ofNat v.toNat)) (h + 1) s' :=
+  n_addi S hM hB hA hd hd0 hn hn0 (by omega)
 
-/-- `sub xd, xn, #(-v)`, `-4096 < v < 0` -/
+/-- `sub xd, xn, #(-v)`, `-4096 < v < 0` (the value is `x[n] - (-v)`) -/
 theorem n_subS (S : A64SemN M X W) {h d n : Nat} {v : Int} (hM : NMid X W K A s0 st h s)
     (hB : K.base + 4 * A.length ≤ 2 ^ 32) (hA : A[h]? = some (ArmEnc.subi (armReg d) (armReg n) (-v).toNat))
     (hd : mapped d = true) (hd0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0) (h1 : -4096 < v) (h2 : v < 0) :
-    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.x n + UInt64.ofInt v)) (h + 1) s' := by
-  obtain ⟨i, rfl⟩ := Int.eq_ofNat_of_zero_le (show 0 ≤ -v by omega)
-  have : v = -(i : Int) := by omega
-  subst this
-  have := n_subi S hM hB hA hd hd0 hn hn0 (by omega)
-  simpa [UInt64.ofInt, sub_eq_add_neg] using this
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.x n - UInt64.ofNat (-v).toNat)) (h + 1) s' :=
+  n_subi S hM hB hA hd hd0 hn hn0 (by omega)
 
 end JT
