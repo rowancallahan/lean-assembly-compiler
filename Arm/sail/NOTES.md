@@ -74,3 +74,16 @@ All four are software- or configuration-writable after reset; that path is not p
 Stack pointer: `obsS` reads register 31 as 0 while `armMapping.kept` contains 31, so "sp kept" is `0 = 0` on `armSail`
 (`armDM` observes `t.sp` and has no such gap). The model's SP is `SP_EL0` when `PSTATE.SP = 0`, else `SP_EL3`
 (`SP_read`, `V8Base.lean:63122`); `PSTATE.SP` is not pinned, and no `full_*` conclusion mentions either register.
+
+## Native back end (C → J → JArm) on Sail
+
+* `ArmSail/FieldsN.lean`: the nine `A64SemN` fields beyond `A64Sem` (movn, movz with a shift, cbnz, ldur, stur, ldp,
+  ldrb register offset, add lsl #3, lsl #sh); `ArmSail/A64N.lean`: `a64SailN : JT.A64SemN armSail TT TT`.
+* `ArmSail/TopN.lean`: `C_correct_native_release_armSail : CompileCorrect Proven.Top.armSail compileNano` and
+  `C_runs_native_release_armSail` (the release theorems of Nano/Main/NativeRelease.lean with `a64SailN`, `loader_ok`,
+  `spec_eq`). `ArmSail/AxiomsN.lean`: propext, Classical.choice, Quot.sound only.
+* New Sail step lemmas: Arm/proofs/Arm/FullNative.lean (`full_movn`, `full_add3`, `full_ubfm`, `full_ldrbR`, `full_ldp`,
+  `full_ldurB`). UBFM: `HighestSetBit` is a well-founded loop, unfolded once (`hsb`, the top bit of `N:~imms` is 1);
+  `DecodeBitMasks` per shift after generalizing the length out of the dependent types (`dbm_gen`); `ror_mask`.
+  `ldp`: FEAT_LSE2 is off in the pinned configuration, so two 8-byte reads. The model is not edited.
+* Build (4 cores / 15 GB): model 52 min, `check.sh` ~15 min, `lake build ArmSail ArmSail.AxiomsN` ~35 min fresh.
