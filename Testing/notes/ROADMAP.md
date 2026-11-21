@@ -46,6 +46,13 @@ Next, to remove trust (owner wants all three on the roadmap):
 2. A general proof of Ev against a formal model of Lean's Expr semantics (e.g. con-leche's set-theoretic model).
 3. Re-check all nano proofs with con-leche (an independent verified kernel).
 
+## LONG-TERM (owner, 2026-11-21): kernel as trusted execution for the bootstrap binary
+Theorem `mC source = B2bytes`, proved by kernel evaluation, split into stages with intermediate literals
+(lex → tokens → AST → … → bytes). It is checked by Lean's kernel (removes the Lean-toolchain/B1 trust) and
+re-checked by con-leche (an independent verified kernel). This is diverse double compiling with a proven route.
+Step 1: kernel-evaluate the lexer stage on C's source and time it in both kernels, then extrapolate.
+Feasibility is unmeasured.
+
 ## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
 1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
 2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
