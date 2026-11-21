@@ -20,8 +20,8 @@ theorem n_lenPush (S : A64SemN M X W) {h : Nat} (hM : NMid X W K A s0 st h s) (h
   n_push (r := 29) S hM hB hL h1 a0 a1 a2 a3 (by decide) (by decide) hw
 
 /-- **ISIZE** (prim 1) and **LEN** (prim 3) are the same A64 word sequence -/
-theorem n_isize := @n_lenPush
-theorem n_len := @n_lenPush
+abbrev n_isize := @n_lenPush
+abbrev n_len := @n_lenPush
 
 /-- **BSIZE** (`a13` prim 6): `ldr x5, [x11]; ldr x5, [x5]; str x5, [x11]` -/
 theorem n_bsize (S : A64SemN M X W) {h : Nat} (hM : NMid X W K A s0 st h s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
