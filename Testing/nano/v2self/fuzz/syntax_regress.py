@@ -65,6 +65,8 @@ PENDING_B = [
     ('M15 tuple-let as a comparison operand in a recursive call', 'def f : Nat → List UInt8 → UInt64 → UInt64 → UInt64\n'
      '  | 0, x, i, a => a\n  | n + 1, x, i, a => f n x (i + 1) (if 5 == (let (a1, b1) := (rd x 5, rd x 2); a1) then 1 else 2)\n'
      'def m (x : List UInt8) : List UInt8 := put [] (f 3 x 0 0)\n'),
+    ('M15 tuple-let in an if-branch of a comparison operand', 'def m (x : List UInt8) : List UInt8 := put [] (if 0 == '
+     '(if 318 &&& rd x 5 < rd x 4 then rd x 2 else (let (a0, b0) := (127, 2); a0)) then 1 else 2)\n'),
     ('M12 numeral left of a shift', 'def g (a : UInt64) : UInt64 := 7 + (a >>> 2)\n' + M),
 ]
 W = tempfile.mkdtemp(prefix='synreg_')

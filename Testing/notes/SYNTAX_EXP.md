@@ -424,6 +424,9 @@ False-reject rate (prototype): realistic code: Testing/nano/v2self/examples (8 p
 accepted; C's own source: 272 of 273 defs (the s9 line). Fuzz seed 31 (generator programs, deliberately odd): 48 of 91
 Lean-accepted programs kept. Rejects by rule (programs regained when the rule is switched off): (5) if with a literal
 branch and a let/match branch, no expected type: +24; (1) all-literal arithmetic: +3; (3) shift operand: +1; (2), (4): 0.
+Shape rule (lead/LEAN-DIFF, M15 variants): no let, tuple-let or match on the result spine (through if branches and let
+bodies) of an operator or comparison operand. With it: C's source 273/273 defs (after the s9 rewrite), examples+edge
+12/12, fuzz seed 31 17/91 (the generator will be restricted to the rules).
 Refinement target: rule (5) only needs to catch a postponed `match`, but after desugaring a match looks like a let and if;
 marking desugared matches (or propagating expected types into let values used at UInt64 positions) would recover most.
 M2 is done (syntax-1 3c76bef9): the lexer rejects numerals of 2^64 or more.
