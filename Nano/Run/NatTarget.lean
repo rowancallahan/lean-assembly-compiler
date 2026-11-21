@@ -30,7 +30,8 @@ structure NatLawsOK (M : Machine) (X W : M.State → Nat → Prop) (V : List J �
   off_le : ∀ (C : List J) (I : Img), V C I → ∀ n, n ≤ C.length → I.vis n → I.off n ≤ I.code.length
   vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), V C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), V C I → C[pc]? = some (.jalr 0 1) → I.vis pc
-  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), V C I → C[pc]? = some (.jalr 0 1) → ∀ j, ¬ I.dead pc j
+  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), V C I → C[pc]? = some (.jalr 0 1) →
+    ∀ j, I.dead pc j → Templates.keepR j = false ∧ j ≠ 8 ∧ j ≠ 10 ∧ j ≠ 11
   vis_err : ∀ (C : List J) (I : Img) (pc : Nat) (imm : Int), V C I → C[pc]? = some (.addi 10 0 imm) →
     C[pc + 1]? = some (.addi 11 0 0) → I.vis pc ∧ I.vis (pc + 1) ∧ I.vis (pc + 2)
   seg : ∀ {K : LayW} {C : List J} {I : Img} {s0 : M.State} {a z : Nat × CallProbe.St} {s : M.State} {n : Nat},
