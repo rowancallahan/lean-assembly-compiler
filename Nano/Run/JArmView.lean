@@ -115,7 +115,7 @@ def acode : NTm → UInt64
 
 /-- **the bit-level facts about the translator** -/
 structure JArmBits : Prop where
-  /-! L1 / L6: bytes ↔ words -/
+  -- L1 / L6: bytes ↔ words
   /-- the words of Gen's bytes -/
   l1_words : ∀ ws : Buf, ws.length < 2 ^ 32 → (∀ w ∈ ws, w.toNat < 2 ^ 32) →
     e68 (len' (ws.flatMap ArmRA.le4)) (ws.flatMap ArmRA.le4) 0 bnew = ws
@@ -123,7 +123,7 @@ structure JArmBits : Prop where
   /-- the bytes of the A64 words -/
   l6_bytes : ∀ (k : Nat) (c : List UInt8) (w : Buf), w.length ≤ k → w.length < 2 ^ 32 →
     e49 k c w 0 [] = w.flatMap ArmRA.le4
-  /-! L2: the accessor layer -/
+  -- L2: the accessor layer
   /-- a J word is below 2^32 -/
   l2_lt : ∀ j : J, JOK j → (encG j).toNat < 2 ^ 32
   /-- a word of 2^32 or more is no J instruction -/
@@ -134,14 +134,14 @@ structure JArmBits : Prop where
   l2_C : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e23 c i = jC j
   l2_op : ∀ (c : Buf) (i : UInt64) (op d x y : Nat), bget c i = encG (.alu op d x y) → JOK (.alu op d x y) →
     e24 c i = op.toUInt64
-  /-! L4: signs and registers -/
+  -- L4: signs and registers
   /-- the sign test -/
   l4_neg : ∀ z : Int, -2 ^ 63 ≤ z → z < 2 ^ 63 → e14 (iu z) = if z < 0 then 1 else 0
   l4_reg : ∀ r : Nat, mapped r = true → e42 r.toUInt64 = (armReg r).toUInt64
   l4_mapped : ∀ r : Nat, r < 32 → e38 r.toUInt64 = if mapped r = true then 1 else 0
   /-- the alignment test of `ld` / `sd` -/
   l4_al : ∀ off : Int, -2048 ≤ off → off < 2048 → e41 (iu off) = if 0 ≤ off → off % 8 = 0 then 1 else 0
-  /-! L4: the word encoders (register fields < 32) -/
+  -- L4: the word encoders (register fields < 32)
   /-- `c ||| v << 10 ||| n << 5 ||| d` as a sum (add / sub imm, ldr / str, strb, ldp, br) -/
   l4_e50 : ∀ cN d n v : Nat, cN < 2 ^ 32 → cN % 2 ^ 22 = 0 → d < 32 → n < 32 → v < 4096 →
     e50 cN.toUInt64 d.toUInt64 n.toUInt64 v.toUInt64 = (cN + v * 2 ^ 10 + n * 2 ^ 5 + d).toUInt64
