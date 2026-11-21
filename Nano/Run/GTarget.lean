@@ -111,8 +111,9 @@ structure Laws : Prop where
   vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   /-- every `jalr x0, 0(x1)` (return to the host, function return) is an anchor -/
   vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → I.vis pc
-  /-- at a `jalr x0, 0(x1)` every J register is related -/
-  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → ∀ j, ¬ I.dead pc j
+  /-- at a `jalr x0, 0(x1)` every J register the return to the host reads (the kept ones, s0, a0, a1) is related -/
+  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) →
+    ∀ j, I.dead pc j → Templates.keepR j = false ∧ j ≠ 8 ∧ j ≠ 10 ∧ j ≠ 11
   /-- the error-status pair `addi a0, x0, imm; addi a1, x0, 0` and its successor are anchors (stubs, start check) -/
   vis_err : ∀ (C : List J) (I : Img) (pc : Nat) (imm : Int), T.valid C I → C[pc]? = some (.addi 10 0 imm) →
     C[pc + 1]? = some (.addi 11 0 0) → I.vis pc ∧ I.vis (pc + 1) ∧ I.vis (pc + 2)

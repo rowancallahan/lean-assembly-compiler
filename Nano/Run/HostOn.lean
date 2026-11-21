@@ -77,7 +77,7 @@ theorem lbm_cbyte (m : Nat → UInt64) (a : Nat) : CallProbe.lbm m a = (cbyte (m
 /-- **the exit**: at the final `jalr x0, 0(x1)` (J registers kept as Gen keeps them, the result `y` at the output),
 the machine returns to `x1` with x10/x11 as J's, the output bytes, the kept registers and the memory frame -/
 theorem fin_on (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s0 st : T.M.State} {pr : Nat} {s3 : CallProbe.St}
-    (hl : T.lay K C I) (hR : T.Rel K C I s0 (pr, s3) st) (hvis : I.vis pr) (hlive : ∀ j, ¬ I.dead pr j)
+    (hl : T.lay K C I) (hR : T.Rel K C I s0 (pr, s3) st) (hvis : I.vis pr) (hlive : ∀ j, I.dead pr j → Templates.keepR j = false ∧ j ≠ 8 ∧ j ≠ 10 ∧ j ≠ 11)
     (hC : C[pr]? = some (.jalr 0 1))
     (hra : (s3.x 1).toNat % 4 = 0)
     (hkeep : ∀ j, Templates.keepR j = true → s3.x j = (jOfG T s0 K.base I.ly).x j)
@@ -93,13 +93,16 @@ theorem fin_on (L : T.Laws) {K : LayW} {C : List J} {I : Img} {s0 st : T.M.State
         (T.M.observe s4).memory (UInt64.ofNat a) = (T.M.observe s0).memory (UInt64.ofNat a)) ∧
       T.M.configured s4 := by
   obtain ⟨s4, hr, hpc, hreg, hmem, hcfg⟩ := L.ret_ok hl hR hvis hC hra
-  refine ⟨s4, hr, hpc, by rw [hreg, hR.x 10 (by omega) (by omega) (hlive 10)],
-    by rw [hreg, hR.x 11 (by omega) (by omega) (hlive 11)],
+  refine ⟨s4, hr, hpc, by rw [hreg, hR.x 10 (by omega) (by omega) (fun h => (hlive 10 h).2.2.1 rfl)],
+    by rw [hreg, hR.x 11 (by omega) (by omega) (fun h => (hlive 11 h).2.2.2 rfl)],
     ?_, ?_, ?_, hcfg⟩
   · intro r hr'
     rw [hreg]
     rcases L.kept_map r hr' with ⟨j, h0, h32, rfl, hj⟩ | ⟨hn, hs⟩
-    · rw [hR.x j h0 h32 (hlive j)]
+    · rw [hR.x j h0 h32 (fun h => by
+        rcases hj with hj | rfl
+        · rw [(hlive j h).1] at hj; exact Bool.noConfusion hj
+        · exact (hlive 8 h).2.1 rfl)]
       have e : s3.x j = (jOfG T s0 K.base I.ly).x j := by
         rcases hj with hj | rfl
         · exact hkeep j hj

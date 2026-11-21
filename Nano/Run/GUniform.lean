@@ -170,7 +170,7 @@ theorem laws_toG (L : T.Laws) : T.toG.Laws where
     obtain ⟨rfl, -⟩ := hv
     rw [uoff L]; show _ ≤ (tbytes T C).length
     rw [tbytes_len L]; exact Nat.mul_le_mul_left _ hn
-  live_ret C I pc hv _ j := by obtain ⟨rfl, -⟩ := hv; exact fun h => h
+  live_ret C I pc hv _ j := by obtain ⟨rfl, -⟩ := hv; exact fun h => False.elim h
   vis_ret C I pc hv _ := by obtain ⟨rfl, -⟩ := hv; exact trivial
   vis_err C I pc imm hv _ _ := by obtain ⟨rfl, -⟩ := hv; exact ⟨trivial, trivial, trivial⟩
 
