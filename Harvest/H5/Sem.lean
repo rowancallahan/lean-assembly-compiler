@@ -8,11 +8,10 @@ theorem div_left : (100 / 10 / 5 : Nat) = 2 := by decide
 theorem mul_mod_left : (2 * 3 % 4 : Nat) = 2 := by decide
 -- right assoc `^`: (2^3)^2 = 64
 theorem pow_right : (2 ^ 3 ^ 2 : Nat) = 512 := by decide
--- `*` over `+`; `<<<` over `+`; `+` over `&&&`
+-- `*` over `+`; `<<<` over `+`; `+` over `&&&` (`::` 67 binds tighter than `+` 65: `1 + 1 :: []` is a type error)
 theorem mul_over_add : (1 + 2 * 3 : Nat) = 7 := by decide
 theorem shl_over_add : (1 <<< 2 + 1 : Nat) = 5 := by decide
 theorem add_over_and : (6 &&& 3 + 1 : Nat) = 4 := by decide
-theorem add_over_cons : (1 + 1 :: [] : List Nat) = [2] := by decide
 -- prefix `-` (75) is below `^` (80): -(2^2)
 theorem neg_pow : (-2 ^ 2 : Int) = -4 := by decide
 -- Bool: `!` binds its operand at 40, above `&&` (35); `&&` over `||`, `||` over nothing; `^^` (33) below `&&`
