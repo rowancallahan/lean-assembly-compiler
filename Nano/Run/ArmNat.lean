@@ -130,6 +130,14 @@ theorem n_movz {d i : Nat} (hA : A[q]? = some (ArmEnc.movz (armReg d) i)) (hd : 
   nmid_set hM hd h0 (S.movz s _ i hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
     (armReg_lt hd h0) hi (nmid_word hM hA hB))
 
+/-- `movz xd, #i, lsl 16h` -/
+theorem n_movzH {d i h : Nat} (hA : A[q]? = some (ArmEnc.movzH (armReg d) i h)) (hd : mapped d = true) (h0 : d ≠ 0)
+    (hi : i < 2 ^ 16) (hh : h < 4) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d ((UInt64.ofNat i) <<< (16 * h).toUInt64)) (q + 1) s' :=
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  nmid_set hM hd h0 (S.movzH s _ i h hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
+    (armReg_lt hd h0) hi hh (nmid_word hM hA hB))
+
 /-- `movn xd, #i, lsl 16h` -/
 theorem n_movn {d i h : Nat} (hA : A[q]? = some (ArmEnc.movn (armReg d) i h)) (hd : mapped d = true) (h0 : d ≠ 0)
     (hi : i < 2 ^ 16) (hh : h < 4) : ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (movnV i h)) (q + 1) s' :=

@@ -220,3 +220,10 @@ Total: **about 5-6 sessions** (4.75-5.25 for the lemmas + setup/assembly), domin
 * Build time of `Fields.lean` alone (only whole-build figures are recorded).
 * That `ConstrainUnpredictable` is never reached was read off the guards (`wback = false`, `t ≠ t2`), not executed.
 * GenArm site counts are static greps of emitter calls; the per-program dynamic cost of the fallbacks was not measured.
+
+## Addendum: an eighth form, `movz xd, #i, lsl 16h` (`movzH`)
+Found while proving `li` (GenArm's `a7` starts a constant whose low 16-bit chunks are 0 with a shifted `movz`):
+`A64SemN.movzH`, word `0xD2800000 + h·2^21 + i·2^5 + d`. On DeepMind it is the existing `dm_movz` (already stated for
+any `hw`). On Sail it is the move-wide class again: the existing movz lemma generalised from `hw = 0` to any `hw`
+(GUESS, not read: same decode clause, shift `16·hw`); expected easy, counted with `movn`.
+

@@ -1,12 +1,14 @@
-/- `A64SemN M X W`: `A64Sem` (the rv2arm blocks' instruction forms) PLUS the seven forms only the native generator
-`C/GenArm.lean` emits (Testing/notes/NATIVE_ARM_PROOF_PLAN.md, step A): `movn`, `cbnz`, `ldur`, `stur`, `ldp`,
-`ldrb` (register offset), `add` (register, lsl #3).  A separate structure, not new `A64Sem` fields, so the existing
+/- `A64SemN M X W`: `A64Sem` (the rv2arm blocks' instruction forms) PLUS the eight forms only the native generator
+`C/GenArm.lean` emits (Testing/notes/NATIVE_ARM_PROOF_PLAN.md, step A): `movn`, `movz` with a shift, `cbnz`, `ldur`, `stur`,
+`ldp`, `ldrb` (register offset), `add` (register, lsl #3).  A separate structure, not new `A64Sem` fields, so the existing
 instances and the rv2arm top theorems need nothing new; a model that proves `A64SemN` gives `A64Sem` by `toA64Sem`.
 Same conventions as `A64Sem`: register fields < 31, statements through `observe`, `X`/`W` permissions.
 The words are GenArm's (`a4 a_14`, `a3 a_23`, `a36 a_17/a_18`, `a32`, `a3 945842176`, `a34`), as `Nat`. -/
 import Nano.Run.A64Sem
 namespace ArmEnc
 
+/-- `movz xd, #i, lsl 16h` (GenArm's first word of a constant whose low chunks are 0) -/
+def movzH (d i h : Nat) : Nat := 0xD2800000 + h * 2^21 + i * 2^5 + d
 /-- `movn xd, #i, lsl 16h` -/
 def movn (d i h : Nat) : Nat := 0x92800000 + h * 2^21 + i * 2^5 + d
 /-- `cbnz xt, f` -/
@@ -39,6 +41,10 @@ structure A64SemN (M : Machine) (X W : M.State → Nat → Prop) : Prop extends 
   movn : ∀ (s : M.State) (d i h : Nat), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → d < 31 → i < 2 ^ 16 → h < 4 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.movn d i h) →
     GoesK M X W s (setReg (M.observe s) d (movnV i h))
+  /-- `movz xd, #i, lsl 16h` -/
+  movzH : ∀ (s : M.State) (d i h : Nat), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → d < 31 → i < 2 ^ 16 → h < 4 →
+    WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.movzH d i h) →
+    GoesK M X W s (setReg (M.observe s) d ((UInt64.ofNat i) <<< (16 * h).toUInt64))
   /-- `cbnz xt, f` -/
   cbnz : ∀ (s : M.State) (t : Nat) (f : Int), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → t < 31 → -2 ^ 18 ≤ f → f < 2 ^ 18 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.cbnz t f) →
