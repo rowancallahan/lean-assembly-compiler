@@ -404,6 +404,12 @@ theorem live_of {K s L F} (hI : Inv K s L F) (hL : L ≠ []) : live s := by
 theorem rget (r : Buf) (hr : r.length = 10) (j i : UInt64) (v : UInt64) (hj : j.toNat < 10) :
     bget (bset r j v) i = if j = i then v else bget r i := bget_set r j v i (by omega)
 
+/-- the register file after an item sets r[6] (the visit's first write): length, r[0] (the cursor), r[6] -/
+theorem r6_get {K s L F} (hI : Inv K s L F) {i : Nat} (hr0 : bget s.r 0 = i.toUInt64) (n : UInt64) :
+    (bset s.r 6 n).length = 10 ∧ bget (bset s.r 6 n) 0 = i.toUInt64 ∧ bget (bset s.r 6 n) 6 = n :=
+  ⟨by rw [BufL.length_bset]; exact hI.rl, by rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0],
+    by rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]⟩
+
 
 /-- rebuild Inv after an item that writes only r[0], r[6], k and o -/
 theorem inv_mk {K s L0 F} (hI : Inv K s L0 F) (r' k' o' : Buf) (L' : List Item)
@@ -503,9 +509,7 @@ theorem v_const {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
     (ht : tg K.X i = 1) : Reach s (VPost K s L F d i) := by
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  obtain ⟨hl6, h0, -⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 1 := by rw [hI.x, tg_u _ _ (by omega), ht]
   rw [g36_const _ _ _ _ (by rw [h0]; exact hx), h0]
   dsimp only
@@ -568,9 +572,7 @@ theorem v_local {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
     (ht : tg K.X i = 2) : Reach s (VPost K s L F d i) := by
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  obtain ⟨hl6, h0, -⟩ := r6_get hI hr0 L.length.toUInt64
   have h1 : bget (bset s.r 6 L.length.toUInt64) 1 = K.p := by
     rw [rget _ hI.rl 6 1 _ (by decide), if_neg (by decide), hI.r1]
   have h7 : bget (bset s.r 6 L.length.toUInt64) 7 = K.ns := by
@@ -671,11 +673,7 @@ theorem v_bin {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 3 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   by_cases hb' : ¬ tg K.X (i + 1) - 1 < 8
@@ -763,11 +761,7 @@ theorem v_let {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have h7 : bget (bset s.r 6 L.length.toUInt64) 7 = K.ns := by
     rw [rget _ hI.rl 6 7 _ (by decide), if_neg (by decide), hI.r7]
   have hx : bget s.x i.toUInt64 = 5 := by rw [hI.x, tg_u _ _ (by omega), ht]
@@ -969,11 +963,7 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 4 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   by_cases hb' : ¬ tg K.X (i + 1) - 1 < 2
@@ -1310,11 +1300,7 @@ theorem v_pair {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 6 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   rw [g36_pair _ _ _ _ (by rw [h0]; exact hx), h0, h6, hv1]
@@ -1374,11 +1360,7 @@ theorem v_call {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 8 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   have hv2 : bget s.x (i.toUInt64 + 2) = tg K.X (i + 2) := by rw [hI.x]; exact tg_u1 _ i 2 (by omega)
@@ -1448,11 +1430,7 @@ theorem v_prim {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 9 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   by_cases hb' : ¬ tg K.X (i + 1) - 1 < 9
@@ -1669,11 +1647,7 @@ theorem t_val {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i ≤ K.X.length + 3) (h
   intro hiX s L F hL1 hI hr0 hr3 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = tg K.X i := by rw [hI.x, tg_u _ _ (by omega)]
   rw [g36_tval _ _ _ _ (by rw [h0, hx]; exact nt_tail _ h4 h5 h11), h0, h6]
   by_cases ha : (rngA (nt (bget s.x i.toUInt64)) (bget s.x (i.toUInt64 + 1)) == 0) = true
@@ -1744,11 +1718,7 @@ theorem t_cont {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : �
   intro hiX s L F hL1 hI hr0 hr3 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 11 := by rw [hI.x, tg_u _ _ (by omega), ht]
   rw [g36_tcont _ _ _ _ (by rw [h0]; exact hx), h0, h6]
   have hLl := hI.Ll; simp at hLl
@@ -1822,11 +1792,7 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
   intro hiX s L F hL1 hI hr0 hhd hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = 4 := by rw [hI.x, tg_u _ _ (by omega), ht]
   have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
   by_cases hb' : ¬ tg K.X (i + 1) - 1 < 2
@@ -2044,11 +2010,7 @@ theorem t_let {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : �
   intro hiX s L F hL1 hI hr0 hhd hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have h7 : bget (bset s.r 6 L.length.toUInt64) 7 = K.ns := by
     rw [rget _ hI.rl 6 7 _ (by decide), if_neg (by decide), hI.r7]
   have hx : bget s.x i.toUInt64 = 5 := by rw [hI.x, tg_u _ _ (by omega), ht]
@@ -2192,11 +2154,7 @@ theorem v_loop {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (ht : tg K
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
-  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
-    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  obtain ⟨hl6, h0, h6⟩ := r6_get hI hr0 L.length.toUInt64
   have h1 : bget (bset s.r 6 L.length.toUInt64) 1 = K.p := by
     rw [rget _ hI.rl 6 1 _ (by decide), if_neg (by decide), hI.r1]
   have hx : bget s.x i.toUInt64 = 10 := by rw [hI.x, tg_u _ _ (by omega), ht]
@@ -2317,9 +2275,7 @@ theorem v_bad {K i} (hX : K.X.length < 2 ^ 31) (hc : ∀ v : Nat, 1 ≤ v → v 
   intro hiX s L F hI hr0 hB
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  obtain ⟨hl6, h0, -⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = tg K.X i := by rw [hI.x, tg_u _ _ (by omega)]
   have hn : ∀ v : Nat, 1 ≤ v → v ≤ 9 → nt (tg K.X i) ≠ v.toUInt64 := fun v h1 h2 h => hc v h1 h2 (nt_val _ v ⟨h1, h2⟩ h)
   rw [g36_bad _ _ _ _ (by rw [h0, hx]; exact ⟨hn 1 (by omega) (by omega), hn 2 (by omega) (by omega), hn 3 (by omega) (by omega),
@@ -2676,9 +2632,7 @@ theorem root_visit (K : Cx) (hX : K.X.length < 2 ^ 31) (i : Nat) (hi : i < 2 ^ 4
   have ht : tg K.X i = 0 := by simp [tg, List.getD_eq_getElem?_getD, List.getElem?_eq_none (by omega : K.X.length ≤ i)]
   refine Reach.step (live_of hI (by simp)) ?_
   rw [st_visit hI]
-  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
-  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
-    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  obtain ⟨hl6, h0, -⟩ := r6_get hI hr0 L.length.toUInt64
   have hx : bget s.x i.toUInt64 = tg K.X i := by rw [hI.x, tg_u _ _ (by omega)]
   have hn0 : nt 0 = 0 := rfl
   rw [g36_bad _ _ _ _ (by rw [h0, hx, ht, hn0]; decide)]

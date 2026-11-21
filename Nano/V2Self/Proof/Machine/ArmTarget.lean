@@ -21,18 +21,17 @@ def DataK (K : LayW) (a : Nat) : Prop :=
 def PermOK {M : Machine} (X W : M.State → Nat → Prop) (K : LayW) (n : Nat) (s : M.State) : Prop :=
   (∀ a, K.base ≤ a → a < K.base + n → X s a) ∧ (∀ a, DataK K a → W s a)
 
-/-- **the ARM target** over a machine `M` with permissions `X` (executable), `W` (readable/writable); `K.W` holds one
-entry per J instruction (its length is the code size) -/
+/-- **the ARM target** over a machine `M` with permissions `X` (executable), `W` (readable/writable); the code size
+(`16 * C.length` bytes) comes from the program `C` that `lay` and `inv` take -/
 def armTarget (M : Machine) (X W : M.State → Nat → Prop) : JTarget where
   M := M
   blockLen := 4
   enc := blk
   reg := armReg
   scratch := armScratch
-  lay K C := JTarget.LayOK M (16 * C.length) K ∧ progOK C = true ∧ K.W.length = C.length
+  lay K C := JTarget.LayOK M (16 * C.length) K ∧ progOK C = true
   m0 s a := ((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec
-  inv K s := PermOK X W K (16 * K.W.length) s
-  words C := C.map fun _ => 0
+  inv K C s := PermOK X W K (16 * C.length) s
   valid C := progOK C = true
   loader := ArmLoader X W
 
@@ -87,12 +86,12 @@ structure Mid (X W : M.State → Nat → Prop) (K : LayW) (C : List J) (s0 : M.S
 theorem mid_of_rel {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
     (hl : (armTarget M X W).lay K C) (h : (armTarget M X W).Rel K C s0 p s) : Mid X W K C s0 p 0 s :=
   ⟨h.cfg, by have := h.pc; simp only [JTarget.addr, armTarget] at this; rw [this]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr, hl.1,
-    by have := h.inv; simp only [armTarget] at this; rw [hl.2.2] at this; exact this⟩
+    h.inv⟩
 
 theorem rel_of_mid {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
     (hl : (armTarget M X W).lay K C) (h : Mid X W K C s0 p 0 s) : (armTarget M X W).Rel K C s0 p s :=
   ⟨h.cfg, by show (M.observe s).programCounter = _; rw [h.pc]; simp only [JTarget.addr, armTarget]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr,
-    by show PermOK X W K (16 * K.W.length) s; rw [hl.2.2]; exact h.pm⟩
+    h.pm⟩
 
 theorem perm_keep {K : LayW} {n : Nat} {s s' : M.State} (h : PermOK X W K n s) (hk : Keep X W s s') :
     PermOK X W K n s' :=
@@ -984,98 +983,114 @@ theorem ea_wrap (x : UInt64) (imm : Int) (h0 : 0 ≤ (x.toNat : Int) + imm) (h1 
   apply UInt64.toNat_inj.1
   rw [UInt64.toNat_add, ofInt_toNat']; simp [CallProbe.ea]; omega
 
-/-- **one safe J step is an AArch64 run** (from `A64Sem`), block by block -/
-theorem arm_step (S : A64Sem M X W) {K : LayW} {C : List J} {s0 s : M.State} {a b : Nat × CallProbe.St}
-    (hl : (armTarget M X W).lay K C) (hR : (armTarget M X W).Rel K C s0 a s) (hS : SafeX K C a)
-    (hs : CallProbe.step C a = some b) : ∃ s', Runs M s s' ∧ (armTarget M X W).Rel K C s0 b s' := by
-  obtain ⟨pc, st⟩ := a
-  have hL := hl.1; have hP := hl.2.1
-  have hM := mid_of_rel hl hR
-  have hR2 := S.ram.2
-  have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hL.bhi; omega
-  suffices h : ∃ s', Runs M s s' ∧ Mid X W K C s0 b 0 s' by
-    obtain ⟨s', r, m⟩ := h; exact ⟨s', r, rel_of_mid hl m⟩
-  cases hc : C[pc]? with
-  | none => simp [SafeX, hc] at hS
-  | some j =>
-    have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hc).1
-    have hok := progOK_at hP hc
-    cases j <;> simp only [SafeX, hc] at hS <;> simp only [CallProbe.step, hc, Option.some.injEq] at hs <;>
-      subst hs <;> simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq, Bool.or_eq_true, beq_iff_eq,
-        bne_iff_ne, ne_eq] at hok
-    case addi rd rs imm =>
-      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
-      rw [ea_wrap _ _ h5 h6]
-      exact blk_addi S hM hc hB hpcl hok.1.2 hok.1.1 h3 h4
-    case ld rd rs off =>
-      obtain ⟨_, _, _, _, h5, h6⟩ := hS
-      obtain ⟨⟨⟨rs0, hrs⟩, hrd⟩, hf1, hf2⟩ := hok
-      exact blk_ld S hM hc hB hpcl hL hR2 hrd hrs rs0 hf1 hf2 h5 h6
-    case sd r2 r1 off =>
-      obtain ⟨_, _, _, _, h5, h6⟩ := hS
-      obtain ⟨⟨⟨r10, hr1⟩, hr2⟩, hf1, hf2⟩ := hok
-      exact blk_sd S hM hc hB hpcl hL hR2 hr1 r10 hr2 hf1 hf2 h5 h6
-    case lbu rd rs off =>
-      obtain ⟨_, _, _, _, h5, h6⟩ := hS
-      obtain ⟨⟨⟨rs0, hrs⟩, hrd⟩, hf1, hf2⟩ := hok
-      exact blk_lbu S hM hc hB hpcl hL hR2 hrd hrs rs0 hf1 hf2 h5 h6
-    case sb r2 r1 off =>
-      obtain ⟨_, _, _, _, h5, h6⟩ := hS
-      obtain ⟨⟨⟨r10, hr1⟩, hr2⟩, hf1, hf2⟩ := hok
-      exact blk_sb S hM hc hB hpcl hL hR2 hr1 r10 hr2 hf1 hf2 h5 h6
-    case alu op rd a b =>
-      obtain ⟨_, _, _, ⟨h1, h8⟩, hd⟩ := hS
-      obtain ⟨⟨⟨⟨_, _⟩, ha⟩, hb⟩, hrd⟩ := hok
-      exact blk_alu S hM hc hB hpcl h1 h8 hrd hd ha hb
-    case slli rd rs sh =>
-      obtain ⟨⟨hsh, hrs⟩, hrd⟩ := hok
-      obtain ⟨s', r, m⟩ := blk_shift S (op := 6) hM hc hB hpcl (Or.inl rfl) rfl hrd hrs hsh
-      exact ⟨s', r, by simpa [aluV] using m⟩
-    case srli rd rs sh =>
-      obtain ⟨⟨hsh, hrs⟩, hrd⟩ := hok
-      obtain ⟨s', r, m⟩ := blk_shift S (op := 7) hM hc hB hpcl (Or.inr rfl) rfl hrd hrs hsh
-      exact ⟨s', r, by simpa [aluV] using m⟩
-    case jal rd off =>
-      obtain ⟨_, h1, h2, h3, h4⟩ := hS
-      obtain ⟨⟨hrd, _⟩, _⟩ := hok
-      rcases hrd with rfl | rfl
-      · rw [wr_zero]
-        exact blk_b S hM hc (by simp [blockJ, body, pad4]) hB hpcl h1 h2 h3 h4
-      · exact blk_jal1 S hM hc hB hpcl h1 h2 h3 h4
-    case jalr rd rs =>
-      obtain ⟨rfl, h2, jt, hj⟩ := hS
-      obtain ⟨⟨_, rs0⟩, hm⟩ := hok
-      rw [wr_zero]
-      exact blk_jalr S hM hc hB hpcl rs0 h2 (armReg_lt hm rs0) hj
-    case bgeu a b o =>
-      obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
-      obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 2) (by decide) ha hb rfl h1 h2 h3 h4
+/-- the frame shared by the block proofs: from `Rel` at `C[pc]? = some j` to `Mid` at word 0 of the block, with the
+layout facts and `armOK`; a block run in `Mid` is the generic obligation for `j` -/
+theorem arm_at (S : A64Sem M X W) {j : J}
+    (h : ∀ {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St} {b : Nat × CallProbe.St},
+      Mid X W K C s0 (pc, st) 0 s → C[pc]? = some j → K.base + 16 * C.length ≤ 2 ^ 32 → pc < C.length →
+      JTarget.LayOK M (16 * C.length) K → armOK C.length pc j = true → SafeX K C (pc, st) →
+      CallProbe.step C (pc, st) = some b → ∃ s', Runs M s s' ∧ Mid X W K C s0 b 0 s') :
+    (armTarget M X W).StepAt j := by
+  intro K C s0 pc st s b hl hR hc hS hs
+  have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
+  obtain ⟨s', r, m⟩ := h (mid_of_rel hl hR) hc hB (List.getElem?_eq_some_iff.1 hc).1 hl.1 (progOK_at hl.2 hc) hS hs
+  exact ⟨s', r, rel_of_mid hl m⟩
+
+set_option hygiene false in
+/-- `jcase`, and `hok : armOK … j = true` reduced to `j`'s clause -/
+local macro "acase" : tactic =>
+  `(tactic| (jcase; simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq, Bool.or_eq_true, beq_iff_eq,
+      bne_iff_ne, ne_eq] at hok))
+
+/-- **AArch64, one J instruction kind at a time** (from `A64Sem`): each field is that kind's block run (`blk_*`) -/
+theorem armSteps (S : A64Sem M X W) : (armTarget M X W).StepLaws where
+  addi rd rs imm := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
+    rw [ea_wrap _ _ h5 h6]
+    exact blk_addi S hM hc hB hpcl hok.1.2 hok.1.1 h3 h4
+  ld rd rs off := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, _, _, _, h5, h6⟩ := hS
+    obtain ⟨⟨⟨rs0, hrs⟩, hrd⟩, hf1, hf2⟩ := hok
+    exact blk_ld S hM hc hB hpcl hL S.ram.2 hrd hrs rs0 hf1 hf2 h5 h6
+  sd r2 r1 off := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, _, _, _, h5, h6⟩ := hS
+    obtain ⟨⟨⟨r10, hr1⟩, hr2⟩, hf1, hf2⟩ := hok
+    exact blk_sd S hM hc hB hpcl hL S.ram.2 hr1 r10 hr2 hf1 hf2 h5 h6
+  lbu rd rs off := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, _, _, _, h5, h6⟩ := hS
+    obtain ⟨⟨⟨rs0, hrs⟩, hrd⟩, hf1, hf2⟩ := hok
+    exact blk_lbu S hM hc hB hpcl hL S.ram.2 hrd hrs rs0 hf1 hf2 h5 h6
+  sb r2 r1 off := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, _, _, _, h5, h6⟩ := hS
+    obtain ⟨⟨⟨r10, hr1⟩, hr2⟩, hf1, hf2⟩ := hok
+    exact blk_sb S hM hc hB hpcl hL S.ram.2 hr1 r10 hr2 hf1 hf2 h5 h6
+  alu op rd a b := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, _, _, ⟨h1, h8⟩, hd⟩ := hS
+    obtain ⟨⟨⟨⟨_, _⟩, ha⟩, hb⟩, hrd⟩ := hok
+    exact blk_alu S hM hc hB hpcl h1 h8 hrd hd ha hb
+  slli rd rs sh := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨hsh, hrs⟩, hrd⟩ := hok
+    obtain ⟨s', r, m⟩ := blk_shift S (op := 6) hM hc hB hpcl (Or.inl rfl) rfl hrd hrs hsh
+    exact ⟨s', r, by simpa [aluV] using m⟩
+  srli rd rs sh := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨hsh, hrs⟩, hrd⟩ := hok
+    obtain ⟨s', r, m⟩ := blk_shift S (op := 7) hM hc hB hpcl (Or.inr rfl) rfl hrd hrs hsh
+    exact ⟨s', r, by simpa [aluV] using m⟩
+  jal rd off := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨_, h1, h2, h3, h4⟩ := hS
+    obtain ⟨⟨hrd, _⟩, _⟩ := hok
+    rcases hrd with rfl | rfl
+    · rw [wr_zero]
+      exact blk_b S hM hc (by simp [blockJ, body, pad4]) hB hpcl h1 h2 h3 h4
+    · exact blk_jal1 S hM hc hB hpcl h1 h2 h3 h4
+  jalr rd rs := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨rfl, h2, jt, hj⟩ := hS
+    obtain ⟨⟨_, rs0⟩, hm⟩ := hok
+    rw [wr_zero]
+    exact blk_jalr S hM hc hB hpcl rs0 h2 (armReg_lt hm rs0) hj
+  bgeu a b o := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
+    obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 2) (by decide) ha hb rfl h1 h2 h3 h4
+    exact ⟨s', r, by simpa [condV] using m⟩
+  bltu a b o := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
+    obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 3) (by decide) ha hb rfl h1 h2 h3 h4
+    exact ⟨s', r, by simpa [condV] using m⟩
+  bne a b o := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
+    obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 1) (by decide) ha hb rfl h1 h2 h3 h4
+    exact ⟨s', r, by simpa [condV] using m⟩
+  beq a b o := arm_at S fun hM hc hB hpcl hL hok hS hs => by
+    acase
+    obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
+    by_cases ea : a = 0 <;> by_cases eb : b = 0
+    · subst ea; subst eb
+      rw [if_pos rfl]
+      exact blk_b S hM hc (by simp [blockJ, body, pad4]) hB hpcl (by omega) (by omega) h3 h4
+    · subst ea
+      obtain ⟨s', r, m⟩ := blk_cbz S hM hc hB hpcl (a := b) (o := o) hb eb (by simp [blockJ, body, pad4, eb]) h1 h2 h3 h4
+      refine ⟨s', r, ?_⟩
+      rw [hM.x0]; simpa [eq_comm] using m
+    · subst eb
+      obtain ⟨s', r, m⟩ := blk_cbz S hM hc hB hpcl (a := a) (o := o) ha ea (by simp [blockJ, body, pad4, ea]) h1 h2 h3 h4
+      refine ⟨s', r, ?_⟩
+      rw [hM.x0]; exact m
+    · obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 0) (by decide) ha hb
+        (by simp [blockJ, body, ea, eb]) h1 h2 h3 h4
       exact ⟨s', r, by simpa [condV] using m⟩
-    case bltu a b o =>
-      obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
-      obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 3) (by decide) ha hb rfl h1 h2 h3 h4
-      exact ⟨s', r, by simpa [condV] using m⟩
-    case bne a b o =>
-      obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
-      obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 1) (by decide) ha hb rfl h1 h2 h3 h4
-      exact ⟨s', r, by simpa [condV] using m⟩
-    case beq a b o =>
-      obtain ⟨⟨⟨⟨⟨ha, hb⟩, h3⟩, h4⟩, h1⟩, h2⟩ := hok
-      by_cases ea : a = 0 <;> by_cases eb : b = 0
-      · subst ea; subst eb
-        rw [if_pos rfl]
-        exact blk_b S hM hc (by simp [blockJ, body, pad4]) hB hpcl (by omega) (by omega) h3 h4
-      · subst ea
-        obtain ⟨s', r, m⟩ := blk_cbz S hM hc hB hpcl (a := b) (o := o) hb eb (by simp [blockJ, body, pad4, eb]) h1 h2 h3 h4
-        refine ⟨s', r, ?_⟩
-        rw [hM.x0]; simpa [eq_comm] using m
-      · subst eb
-        obtain ⟨s', r, m⟩ := blk_cbz S hM hc hB hpcl (a := a) (o := o) ha ea (by simp [blockJ, body, pad4, ea]) h1 h2 h3 h4
-        refine ⟨s', r, ?_⟩
-        rw [hM.x0]; exact m
-      · obtain ⟨s', r, m⟩ := blk_cmp S hM hc hB hpcl (c := 0) (by decide) ha hb
-          (by simp [blockJ, body, ea, eb]) h1 h2 h3 h4
-        exact ⟨s', r, by simpa [condV] using m⟩
 
 /-! ## the laws -/
 
@@ -1099,28 +1114,26 @@ theorem armLaws (S : A64Sem M X W) : (armTarget M X W).Laws where
     have hr' : r ∈ armMapping.kept := by have := hr; show r ∈ armMapping.kept; rw [← S.map]; exact this
     exact Or.inr (kept_out r hr')
   ram := S.ram
-  lay_init K C h hW hv := by
+  lay_init K C h hv := by
     have e : 4 * (armTarget M X W).blockLen * C.length = 16 * C.length := by show 4 * 4 * C.length = _; omega
-    rw [e] at h; exact ⟨h, hv, by rw [hW]; simp [armTarget]⟩
+    rw [e] at h; exact ⟨h, hv⟩
   m0_obs s a _ := by
     show (M.observe s).memory (UInt64.ofNat a) = (((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec).map _
     cases (M.observe s).memory (UInt64.ofNat a) <;> rfl
-  inv_init K C s call code x sc hld hlen hb hW _ hlo hhi hib hil hob hol := by
+  inv_init K C s call code x sc hld hlen hb _ hlo hhi hib hil hob hol := by
     obtain ⟨hx, hw⟩ := hld
-    have hn : K.W.length = C.length := by rw [hW]; simp [armTarget]
     have hl4 : code.length = 16 * C.length := by rw [hlen]; show 4 * 4 * C.length = _; omega
     have hxl := sc.inputLength
     have hb' : K.base = (M.observe s).programCounter.toNat := hb
-    show PermOK X W K (16 * K.W.length) s
-    rw [hn]
+    show PermOK X W K (16 * C.length) s
     refine ⟨fun a h1 h2 => hx a (by omega) (by omega), fun a ha => hw a ?_⟩
     unfold DataK at ha; unfold InBlocks; omega
-  step_ok := arm_step S
+  steps := armSteps S
   addi_ok := by
     intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
     have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
     have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
-    have hok := progOK_at hl.2.1 hC
+    have hok := progOK_at hl.2 hC
     simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq] at hok
     obtain ⟨s', r, m⟩ := blk_addi S (mid_of_rel hl hR) hC hB hpcl hok.1.2 hok.1.1 h3 h4
     exact ⟨s', r, rel_of_mid hl m⟩
