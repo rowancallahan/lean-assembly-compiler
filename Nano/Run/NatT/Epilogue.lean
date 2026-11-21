@@ -10,8 +10,8 @@ variable {M : Machine} {X W : M.State → Nat → Prop} {K : LayW} {A : List Nat
 
 /-! ## for ArmNat: `sub x16, xn, #i` -/
 
-theorem n_subi16 (S : A64SemN M X W) (hM : NMid X W K A s0 st q s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
-    {q n i : Nat} (hA : A[q]? = some (ArmEnc.subi 16 (armReg n) i)) (hn : mapped n = true)
+theorem n_subi16 (S : A64SemN M X W) {q n i : Nat} (hM : NMid X W K A s0 st q s)
+    (hB : K.base + 4 * A.length ≤ 2 ^ 32) (hA : A[q]? = some (ArmEnc.subi 16 (armReg n) i)) (hn : mapped n = true)
     (hn0 : n ≠ 0) (hi : i < 4096) :
     ∃ s', Runs M s s' ∧ NMid X W K A s0 st (q + 1) s' ∧ (M.observe s').register 16 = st.x n - UInt64.ofNat i := by
   have hq := (List.getElem?_eq_some_iff.1 hA).1
