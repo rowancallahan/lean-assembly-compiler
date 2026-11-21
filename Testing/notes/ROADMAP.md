@@ -701,3 +701,8 @@ if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outs
   per-program proof that the machine code computes that definition (trusts Lean's kernel only, not its compiler/IR/C;
   not self-hosting; like Legacy/'s compile%). Rejected for now: compiling Lean's IR/LCNF (would trust Lean's unverified
   optimizer). Lean source tour in Testing/notes/lean_tour/ informs this.
+- Lean as blueprint (owner, 2026-11-21): use Lean's compiler as a design source and test oracle only; nano stays a
+  subset of Lean's parser. Track Lean's IR design (LCNF passes, λRC IR, RC/borrow inference, reset/reuse in-place
+  updates, unboxing; Testing/notes/lean_tour/{lcnf,ir}.md) as the reference when J becomes an explicit IR and when
+  optimizing; compare our IR choices against it. Note: Lean emits C (then clang), its whole compile path (LCNF → IR →
+  C → clang → runtime, plus implemented_by/extern) is unverified; nano proves source → machine code.
