@@ -655,3 +655,15 @@ parts from Nano/Run, so the move is complete in one go. Same checks as reorg-nan
 - Open: namespace flattening; out-of-range index semantics (silent default / trap / proven-in-bounds).
 - Order: syntax growth now, in parallel with the native ARM proof (front end vs codegen/run files); core optimizations
   after the native ARM proof lands, applied to both RISC-V and native ARM generators.
+
+## Self-hosting is a hard gate on every merge (owner, 2026-11-21)
+Every PR that touches the compiler (any stage, either generator) must, before merge:
+1. regenerate the self-hosting proofs (Nano/SelfHost: Cert, CertArm, SrcLink, Bridge) for the new compiler source, and
+   build them with REVIEW + review_axioms unchanged ("OK: 8 theorems");
+2. reach the fixpoint on RISC-V: B1 → B2 = checked-in B2.bin, B3 = B2 (sha256 in the PR);
+3. reach the fixpoint for native ARM: GA_arm compiles its own source to itself, and the 3-host cross matrix
+   (RISC-V / rv2arm / native) is identical (Testing/nano/v2self/native_arm/cross_native.sh);
+4. release_check.sh gates fix1/fix23 pass.
+New syntax is bootstrapped in two steps: (a) the compiler learns the feature while its own source stays in the old
+subset (fixpoint holds); (b) only after (a) is merged may the compiler's own source start using the feature, with a
+fresh fixpoint. Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
