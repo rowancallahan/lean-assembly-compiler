@@ -28,7 +28,7 @@ Proofs: `Nano/LeanEquiv/` (README there). Mismatch numbers M1–M14 are those of
 | 18 | `let`, `match`, tuples, parens, `def`, binders | `pExpr`, `pAtom`, `pTup`, `pDef`, `DsSpec` | `Term.let` Parser/Term.lean:551, `Term.match` :331, `matchAlts` :280, `tuple` :187, `paren` :201, Command.lean | P (`leading_parser` = closures over `ParserFn`) | fuzz (LEAN-DIFF) | — |
 | 19 | layout (columns) | none | `checkColGe` Basic.lean:1496 + `withPosition` | P | M9/M10 open; fuzz + rejection | — |
 | 20 | doc comment / `@[…]` / `private` position, namespaces | `declNext`, `attrEnd`, `lineOk` | `declModifiers` Parser/Command.lean:114; Elab/BuiltinCommand.lean | P / M | fuzz; M4, M5, M13 open | — |
-| 21 | operator meaning on UInt64 | `Sem` (Nano/Main) | `UInt64.add` … `instHAdd` etc. | T | **proved** `binop_eq_lean`, `binFns_eq_lean` (`BinSem.lean`): tag → `opInfo` op id → `NanoMain.binop` = Lean's `HAdd.hAdd` … on `UInt64`. Checked here against a copy of `binop` only (Sem's import chain not built in this container); runner build requested | done, build pending |
+| 21 | operator meaning on UInt64 | `Sem` (Nano/Main) | `UInt64.add` … `instHAdd` etc. | T | **proved** `binop_eq_lean`, `binFns_eq_lean` (`BinSem.lean`): tag → `opInfo` op id → `NanoMain.binop` = Lean's `HAdd.hAdd` … on `UInt64`. Built on the runner (slot 7) | done |
 
 ## Result
 T and done: rows 1, 2, 4, 5, 11 (adjacent function), 12, 14, 15, 17 (17 theorems; axioms `propext`, `Quot.sound`, and `Classical.choice` in `numeral_sub_toNat?` via Std's lemmas; `Nano/LeanEquiv/REVIEW.lean`).
@@ -61,6 +61,7 @@ Reading the table: the left column is closed for good (it changes only with the 
 * Row 2: reject a word starting with byte 39 in `step` (changes the trusted spec and the lexer `s10`; selfhost_gate needed).
 
 ## Build note
-This session's container has no `../deps/sail-riscv-lean`, so `lake` cannot resolve the workspace. The four spec files
-(`Main/Prelude`, `Lexer/Lex2Spec`, `Lexer/DsSpec`, `Parser/ParSpec`) and `Nano/LeanEquiv/*` were compiled with `lean -o` directly (Lean 4.34.1); all pass.
-`lake build Nano.LeanEquiv.REVIEW` is untested here. No existing file was changed; selfhost_gate not run (nothing it covers changed).
+Runner build (slot 7, sha 2f0f7b8 = lean-equiv 6ea9581 + `.build-request`): `lake build Nano.LeanEquiv.REVIEW Nano.LeanEquiv.BinSem` PASS, 36 s;
+`review_axioms.sh` OK (its 8 pinned main theorems, unchanged). The runner does not compare the `#print axioms` lines of the LeanEquiv theorems;
+those were read in this session with `lean` directly (`propext`, `Quot.sound`, `Classical.choice` in `numeral_sub_toNat?`), for all files but `BinSem`,
+whose two were read against a copy of `binop`. No existing file was changed; selfhost_gate not run (nothing it covers changed).
