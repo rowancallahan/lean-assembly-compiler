@@ -4,18 +4,24 @@ Base: `origin/release-434` @ 56e2584. Toolchain: Lean 4.34.1. RISC-V model: `dep
 `6ac35da9… 161`, checked). Locally the root `lake-manifest.json` was switched to lean-sail v10 to build the regenerated
 model (as on `rv-regen-434`); that change is **not committed** (release-434 still pins v5).
 
-## PAUSED (2026-11-21, owner): where SYNTAX-EXP stopped (branch keep_round1_syntax-1 @ this commit)
-Done and verified (lake build 781 OK, review_axioms 8 OK, selfhost_gate PASS at 90c30921): A, C, F1/F2, E (frame rule,
-`open` rejected, `/-!` follow check, F3), M2 (numerals ≥ 2^64), M13 (attribute whitelist), the s9 compiler-source rewrite,
-the merge of main 92a36d78 (native-release statements use the t10 driver). Regress: fuzz/syntax_regress.py (46 counted
-cases, 4 pending-B).
-B (literal typing): rules fixed in the prototype fuzz/litcheck.lean (test glue), see "B: literal typing" below; C's source
-273/273 and examples+edge 12/12 pass it; nothing of B is in the compiler yet.
-Next steps, in order: (1) B: the trusted predicate (litcheck's `chk`, as a spec) in `pOf`; the checker in C after `y16`
-(bootstrap subset); soundness proof; regenerate + gate; move the pending-B regress cases into CASES; restrict
-fuzz_syntax.py's generator to the B rules; fuzz to 20k (RISC-V, native ARM, Lean strict). (2) D (layout / offside).
-(3) The syntax PR to main (report the real-code reject rates; list the s9 rewrite and the trusted-spec diffs).
-Not started, noted: rule-(5) refinement (mark desugared matches); M3 `<--`; M6/M7/M8 names.
+## Nat step 1 (B, in progress, 2026-11-21): numeral typing check `NumSpec.numOkP` as a conjunct of `pOf`
+* Spec: `Nano/Parser/NumSpec.lean` (trusted; EXPR.md §7 "Step 1 spec"): numeral classes merged across operators,
+  comparisons, ifs and lets; a class is UInt64 if any member meets a UInt64 position, else Nat; rejected: UInt64/Nat
+  conflicts, Nat arithmetic, a literal-only shift operand; plus the M12/M15/M16 shape rules.
+* C: stage `u10` (`Nano/Parser/NumC.lean`, bootstrap subset) between `y16` and `o41`, buffer-preserving:
+  driver `g41 x (o41 (u10 (y16 (t10 (s10 x)))))`.  At most 8 `bnew`s per run (scratch buffers threaded).
+* Proof: `NumP.u10_sound` (NumP0..NumP26, NumSound): `u10 (serialize p) ≠ [] → numOkP p ∧ u10 (serialize p) = serialize p`
+  (std axioms).  `compiler_correctG` takes Gen's field bounds `DB` (from `parsed_DB`) for it.
+* Status: RISC-V fixpoint B3 == B2 holds; the native ARM self-compile exceeds the AST budget (below), NumC being shrunk.
+
+### AST-size budget (the parser's AST of a whole source is ONE buffer of κ = 2^19 = 524,288 words)
+| source | AST words | % of κ |
+|---|---|---|
+| C (self_S), before NumC | 373,536 | 71% |
+| C (self_S), with NumC | 473,280 | 90% |
+| self_A (C + GenArm), with NumC | 532,304 | 102% (B2 stops: status −2) |
+selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  Raising κ to 2^20 is a separate structural item
+(lead / owner); 524288 is fixed in the Run proofs (`pcOf`, `κC`).
 
 ## syntax-1 (2026-11-21): exp-syntax + exp-syntax-match combined, on combined-2 (stage rename), fuzzed
 
