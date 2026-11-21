@@ -12,18 +12,20 @@ STAGES = ["Lexer", "Parser", "Ownership", "Codegen", "Run", "SelfHost", "Main", 
 def conv(rel):  # rel = path under Nano/V2Self without .lean, '/'-separated; None if unmapped
     if rel in FILES: return FILES[rel]
     seg = rel.split('/')
-    for n in range(len(seg) - 1, 0, -1):
+    for n in range(len(seg), 0, -1):
         d = '/'.join(seg[:n])
         if d in DIRS: return DIRS[d] + ('/' + '/'.join(seg[n:]) if seg[n:] else '')
     return None
 TOK = re.compile(r"Nano([./])V2Self(?:[./][A-Za-z0-9_]+(?:[./][A-Za-z0-9_]+)*)")
 def sub_tok(m):
     s = m.group(0); sep = m.group(1)
-    rel = s[len("Nano.V2Self."):].replace('.', '/')
+    rel = s[len("Nano.V2Self."):]
+    suf = ".lean" if rel.endswith(".lean") else ""
+    rel = rel[:len(rel) - len(suf)].replace('.', '/')
     if rel.split('/')[0] in ("Legacy",): return s
     new = conv(rel)
     if new is None: return s
-    return "Nano" + sep + new.replace('/', sep)
+    return "Nano" + sep + new.replace('/', sep) + suf
 def tracked(): return subprocess.check_output(["git", "ls-files", "-z"]).decode().split('\0')[:-1]
 def moves():
     out = []
@@ -49,6 +51,14 @@ EXPL = [
  ("Testing/scripts/deadcode.lean", "(`Nano.V2Self).isPrefixOf mn",
   "([`Nano.Lexer, `Nano.Parser, `Nano.Ownership, `Nano.Codegen, `Nano.Run, `Nano.SelfHost, `Nano.Main, `Nano.Tests].any (·.isPrefixOf mn))"),
 ]
+BARE = re.compile(r"Nano/V2Self(?:/C|/Proof)?(?![A-Za-z0-9_/.])")
+EXPL += [
+ ("Testing/nano/v2self/ast_dump.lean", "ast.txt Nano/V2Self/Proof 20", "ast.txt Nano/SelfHost 20"),
+ ("Nano/Tests/MainCert.lean", "Nano/V2Self/Proof/MainCert", "Nano/Tests/MainCert"),
+ ("README.md", "(`Nano/V2Self`, start at `Nano/V2Self/REVIEW.lean`)", "(`Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}`, start at `Nano/Main/REVIEW.lean`)"),
+ ("README.md", "Nano (Base + V2Self)", "Nano (Base + stage folders)"),
+ ("Testing/scripts/review_axioms.sh", "Nano/V2Self/REVIEW.lean", "Nano/Main/REVIEW.lean"),
+]
 def main():
     cmd = sys.argv[1]
     if cmd == "map":
@@ -61,15 +71,21 @@ def main():
         assert os.path.exists(a), "missing " + a
         os.makedirs(os.path.dirname(b), exist_ok=True)
         subprocess.check_call(["git", "mv", a, b])
+    newof = {b for _, b in mv}
     # 2. text rewrite of every tracked file
     for f in tracked():
         if f.startswith(SKIP) or not os.path.exists(f) or os.path.islink(f): continue
         try: s = open(f, encoding="utf-8").read()
         except UnicodeDecodeError: continue
         s2 = TOK.sub(sub_tok, s)
+        if f in newof: s2 = BARE.sub(os.path.dirname(f), s2)
         for ef, old, new in EXPL:
             if ef == f and old in s2: s2 = s2.replace(old, new)
         if s2 != s: open(f, "w", encoding="utf-8").write(s2)
+    d = "Testing/scripts/stages/readmes"
+    if os.path.isdir(d):
+        for st in STAGES:
+            if os.path.exists(f"{d}/{st}.md"): subprocess.check_call(["cp", f"{d}/{st}.md", f"Nano/{st}/README.md"])
     # 3. asserts: explicit edits all applied; no mapped old path left; no file left in Nano/V2Self except Legacy-free READMEs
     for ef, old, _ in EXPL:
         assert old not in open(ef).read(), "explicit edit not applied: %s: %s" % (ef, old)
