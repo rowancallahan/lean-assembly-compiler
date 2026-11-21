@@ -151,4 +151,21 @@ def MLETG (x d : Buf) (np : Nat) (ks ws : List Nat) (F : Nat) : Prop :=
     MCp x d Q bs ts g S gb (c + v.ser.length) (NumSpec.letG F ks ws (envOf bs) sl w v) →
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb
 
+theorem GM.cast {x d Q b bt bt' t tt tt' c c' g s st st' gb gb'} (h : GM x d Q b bt t tt c g s st gb) (h0 : bt' = bt)
+    (h1 : tt' = tt) (h2 : c' = c) (h3 : st' = st) (h4 : gb' = gb) : GM x d Q b bt' t tt' c' g s st' gb' := by
+  subst h0 h1 h2 h3 h4; exact h
+
+theorem MI.pushw {b bs t ts g s S} (h : MI b bs t ts g s S) {n : UInt64} (hn : n = u ts.length) (ht : t.length < 2 ^ 41)
+    (k a c : UInt64) : MI b bs (u27 t n k a c) (ts ++ [(k, a, c)]) g s S ∧ (u27 t n k a c).length ≤ t.length + 3 := by
+  subst hn
+  have h3 := h.pt.length_le; rw [encT_len] at h3
+  have := u27_ok h.pt (by omega) (by omega) k a c
+  exact ⟨⟨h.pb, h.lb, h.sb, this.1, by omega, h.lg, h.ps, h.ls⟩, by omega⟩
+
+theorem MI.spush {b bs t ts g s S} (h : MI b bs t ts g s S) (hs : s.length < 2 ^ 41) (w : UInt64) :
+    MI b bs t ts g (u20 s (u S.length) w) (S ++ [w]) ∧ (u20 s (u S.length) w).length ≤ s.length + 1 := by
+  have h1 := u20_push h.ps (by omega) w
+  have h2 := h.ps.length_le
+  exact ⟨⟨h.pb, h.lb, h.sb, h.pt, h.lt, h.lg, h1.1, by have := h1.2; omega⟩, by have := h1.2; omega⟩
+
 end NumP
