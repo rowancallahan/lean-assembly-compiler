@@ -2,7 +2,7 @@
 DeepMind's model: `movn`, `cbnz`, `ldur`, `stur`, `ldp`, `ldrb` (register offset), `add` (register, lsl #3).
 Per form: `dec_*` (the decoder), `dm_*` (one `Arm64.Step`, in the shape of the other `dm_*` lemmas), `F_*` (the
 `A64SemN` field).  `a64DMN` extends `a64DM`. -/
-import Nano.V2Self.Proof.Machine.A64SemN
+import Nano.Run.A64SemN
 import Blocks.A64Inst
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false

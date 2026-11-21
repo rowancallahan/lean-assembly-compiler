@@ -1,20 +1,20 @@
-/- Dead-code finder for Nano/V2Self.  usage:
-     lake build Nano.V2Self.REVIEW && lake env lean Testing/scripts/deadcode.lean > report.txt
+/- Dead-code finder for Nano/<stages>.  usage:
+     lake build Nano.Main.REVIEW && lake env lean Testing/scripts/deadcode.lean > report.txt
    Roots: the theorems of REVIEW.lean (C_correctLO, sem_C, the SelfC theorems, C_runs / C_runsO / self_runs_C,
    shiftInv, Msp_le / spaceC_le), SrcGen.link_pc, and every declaration of a Proof/Tests module.  Computes every constant
-   reachable from the roots (types and values, transitively), then, per `Nano.V2Self.*` module in REVIEW's import
+   reachable from the roots (types and values, transitively), then, per `Nano.<stages>.*` module in REVIEW's import
    closure: declarations total / reachable.  Lines starting with:
      MOD-LIVE  module name, reachable / total user declarations
      MOD-DEAD  module in the closure with NO reachable declaration (imported, but nothing it defines is used)
      DECL-DEAD an unreachable theorem/def in a live module (`name line`; auxiliary `_`-names and instances skipped)
-   Modules of Nano/V2Self outside REVIEW's closure are listed by deadcode.sh (filesystem minus closure). -/
-import Nano.V2Self.REVIEW
-import Nano.V2Self.Proof.Tests.AuditWitness
-import Nano.V2Self.Proof.Tests.OwnNV
+   Modules of Nano/<stages> outside REVIEW's closure are listed by deadcode.sh (filesystem minus closure). -/
+import Nano.Main.REVIEW
+import Nano.Tests.AuditWitness
+import Nano.Tests.OwnNV
 open Lean Meta
 
 /-- files whose identifiers are roots (tactic dispatch tables, certificate / source-link generators) -/
-def nameFiles : List String := ["Nano/V2Self/Proof/Cert/Tac.lean", "Testing/nano/v2self/cert/gen_cert.py",
+def nameFiles : List String := ["Nano/SelfHost/Cert/Tac.lean", "Testing/nano/v2self/cert/gen_cert.py",
   "Testing/nano/v2self/cert/dump_pc.lean", "Testing/nano/v2self/srclink/gen.lean"]
 
 def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_meaning_C, ``NanoMain.self_computes_C,
@@ -30,7 +30,7 @@ def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_
   let mods0 := env.allImportedModuleNames
   let tests := env.constants.map₁.toList.filterMap fun (n, _) => do
     let i ← env.getModuleIdxFor? n
-    if (`Nano.V2Self.Proof.Tests).isPrefixOf mods0[i.toNat]! then some n else none
+    if (`Nano.Tests).isPrefixOf mods0[i.toNat]! then some n else none
   -- names that tactics, generators and scripts refer to BY NAME (they never appear in a proof term of the roots, but
   -- certificates of other programs need them): every identifier token of these files that resolves to a constant,
   -- as written or under the namespaces the files open
@@ -64,7 +64,7 @@ def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_
   for (n, ci) in env.constants.map₁.toList do
     let some i := env.getModuleIdxFor? n | continue
     let mn := mods[i.toNat]!
-    unless (`Nano.V2Self).isPrefixOf mn do continue
+    unless ([`Nano.Lexer, `Nano.Parser, `Nano.Ownership, `Nano.Codegen, `Nano.Run, `Nano.SelfHost, `Nano.Main, `Nano.Tests].any (·.isPrefixOf mn)) do continue
     if n.isInternal || n.hasMacroScopes then continue
     let s := n.toString
     if (s.splitOn ".match_").length > 1 || (s.splitOn ".proof_").length > 1 || (s.splitOn ".eq_").length > 1 ||

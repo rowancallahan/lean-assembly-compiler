@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 V2 = os.path.abspath(os.path.join(HERE, '..'))
 ROOT = os.path.abspath(os.path.join(V2, '../../..'))
 B2 = os.path.join(V2, 'B2.bin')
-PRELUDE = os.path.join(ROOT, 'Nano/V2Self/Prelude.lean')
+PRELUDE = os.path.join(ROOT, 'Nano/Main/Prelude.lean')
 SEMBATCH = os.path.join(HERE, 'semrun_batch.lean')
 LEAN_ENV = dict(os.environ)
 

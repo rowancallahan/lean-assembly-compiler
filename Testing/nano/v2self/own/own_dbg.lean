@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Own
+import Nano.Ownership.Own
 /-! debug: run `C.o38` def by def, print the first failing def and the walk state. -/
 def readWords (path : String) : IO (List UInt64) := do
   let b ← IO.FS.readBinFile path

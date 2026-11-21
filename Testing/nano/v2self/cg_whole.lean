@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Gen
+import Nano.Codegen.Gen
 /- g41 on the parser's AST of C's whole source (default Testing/nano/v2self/self_S_ast.bin, 8-byte LE words).
 Reports accept / code words, or the def id + cursor where Gen stopped.  On accept the code words go to Testing/asm/ir-words/cgw.words.
 run: lean --run Testing/nano/v2self/cg_whole.lean [BIN] -/

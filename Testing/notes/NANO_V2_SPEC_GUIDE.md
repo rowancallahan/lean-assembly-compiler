@@ -4,7 +4,7 @@ For a reader who knows Lean 4 but has not seen this code. It covers only what th
 depends on, in the order: theorems, meaning of a text, lexer spec, parser spec, semantics. Written by reading the
 sources at commit 16f4c52 (branch `nano-v2-src`); nothing was rebuilt for this note. Line numbers are for that commit.
 Paths are from the repository root. `[UNSURE]` marks what I did not verify. The companion file with the `#check`
-list is `Nano/V2Self/REVIEW.lean`; its notes are `Testing/notes/NANO_V2_REVIEW.md`.
+list is `Nano/Main/REVIEW.lean`; its notes are `Testing/notes/NANO_V2_REVIEW.md`.
 
 Reading order for a review: `Spec/Top.lean` (94 lines), `Spec/Alloc.lean` (150), `Proof/Lex/Lex2Spec.lean` (69),
 `Proof/Parser/ParSpec.lean` (lines 1–455), `Proof/Main/Sem.lean` (lines 1–136), `Proof/Main/MainTop.lean`
@@ -14,7 +14,7 @@ Reading order for a review: `Spec/Top.lean` (94 lines), `Spec/Alloc.lean` (150),
 
 ## 1. The final theorems
 
-### 1.1 `NanoMain.C_correctLO` — `Nano/V2Self/Proof/Main/ParCapBnd.lean:118`
+### 1.1 `NanoMain.C_correctLO` — `Nano/Main/ParCapBnd.lean:118`
 
 ```lean
 theorem C_correctLO : CompileCorrect riscv compileC
@@ -139,7 +139,7 @@ The Sail RV64 model wrapped as a `Machine`: `step` = one retired instruction of 
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 2. The meaning of a source text — `Nano/V2Self/Proof/Main/MainTop.lean`
+## 2. The meaning of a source text — `Nano/Main/MainTop.lean`
 
 Pipeline: bytes —`LexSpec.Lexes`→ token words —`ParSpec.refParse`→ `List DefA` —`Sem κC`→ output bytes.
 
@@ -218,7 +218,7 @@ Surprising:
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 3. The lexer spec — `Nano/V2Self/Proof/Lex/Lex2Spec.lean`
+## 3. The lexer spec — `Nano/Lexer/Lex2Spec.lean`
 
 ### 3.1 Definitions
 
@@ -308,7 +308,7 @@ that point, so no `ts` satisfies `Lexes`.
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 4. The parser spec — `Nano/V2Self/Proof/Parser/ParSpec.lean`
+## 4. The parser spec — `Nano/Parser/ParSpec.lean`
 
 `ParsesProgram ts p` (:455) is just `refParse ts = some p`. `refParse` (:447) is an executable recursive-descent
 parser written to be read as the grammar. It also does name resolution, type checking and slot assignment, so its
@@ -471,7 +471,7 @@ lexer), a last def not shaped like `m` (:562–563).
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 5. The semantics — `Nano/V2Self/Proof/Main/Sem.lean`
+## 5. The semantics — `Nano/Main/Sem.lean`
 
 An interpreter over the resolved AST. Environment = a list of slots.
 
@@ -487,7 +487,7 @@ An interpreter over the resolved AST. Environment = a list of slots.
 
 Surprising:
 - `Buf` and non-input `List UInt8` are the SAME thing here: a list of 64-bit words. `put` pushes the whole word.
-  Only at the very end does `Sem` keep each word's low byte. Real Lean's `put` (`Nano/V2Self/Prelude.lean`) pushes
+  Only at the very end does `Sem` keep each word's low byte. Real Lean's `put` (`Nano/Main/Prelude.lean`) pushes
   `b.toUInt8` at once. The two agree because nano has no way to read a `List UInt8` buffer back (`bget`/`bsize`
   need a `Buf`, `rd`/`len` need the input).
 - Buffers are VALUES (immutable lists). `bset` returns a new list. In-place update in the generated code is the
@@ -580,7 +580,7 @@ input `rd x 0 = 0`, output `[6]`: reading past the end is not an error.
 
 ## 6. Where nano differs from real Lean
 
-The nano sources are also valid Lean (with `Nano/V2Self/Prelude.lean`), but the theorem's meaning is `Sem`, and
+The nano sources are also valid Lean (with `Nano/Main/Prelude.lean`), but the theorem's meaning is `Sem`, and
 the two are not proved equal in general. Differences I can state from the definitions:
 
 1. **Numerals are 64-bit words.** `let a := 5; …` makes `a` a UInt64 slot (`tyShape .lit = some .uw`). In Lean an

@@ -1,5 +1,5 @@
-import Nano.V2Self.C.Lex2
-import Nano.V2Self.C.Par1
+import Nano.Lexer.Lex2
+import Nano.Parser.Par1
 /- parser increments A-C: random trees (literals, params/let-bound names with shadowing, binary ops with Lean precedences, if, let), printed, lexed (`C.s10`),
 parsed (`C.y13`), the pre-order AST decoded (slots) and evaluated against the tree's value (names, wraps mod 2^64).  run: lean --run Testing/nano/v2self/par0_test.lean -/
 inductive T | cst (v : Nat) | var (n : String) | bin (op : Nat) (a b : T) | ite (k : Nat) (a b t e : T) | lt (n : String) (v b : T)

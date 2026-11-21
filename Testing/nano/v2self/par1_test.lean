@@ -1,5 +1,5 @@
-import Nano.V2Self.C.Lex2
-import Nano.V2Self.C.Par1
+import Nano.Lexer.Lex2
+import Nano.Parser.Par1
 /- Astra-12 regression programs through the real lexer and the folded parser (Par1).  VALID programs must be accepted (non-empty), NEGATIVE ones rejected.
 run (small layout recommended): LEAN_PATH=/tmp/o_small:/tmp/o lean --run Testing/nano/v2self/par1_test.lean -/
 def prog (l : List String) : String := "\n".intercalate l ++ "\n"

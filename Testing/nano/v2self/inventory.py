@@ -4,7 +4,7 @@ import re,collections,glob
 txt=""
 for f in ["Base","Asm","Expand","Lex","Inl","Parse","Main"]:
     inC=False
-    for l in open(f"Nano/V2Self/C/{f}.lean").read().split("\n"):
+    for l in open(f"Legacy/Nano/V2Self/Legacy/C/{f}.lean").read().split("\n"):
         if inC:
             if "-/" in l: inC=False
         elif l.startswith("/-"):

@@ -3,7 +3,7 @@
      MANIFEST=list.txt RESULTS=res.txt lake env lean Testing/nano/v2self/fuzz/semrun_batch.lean
    manifest line: SRC INP OUT (paths without spaces).  Result line i: OK | REJ lex | REJ parse | REJ own | STOP cap | STOP stuck.
    OUT is written only on OK.  Any other exception aborts the whole batch (fail fast). -/
-import Nano.V2Self.Proof.Main.Sem
+import Nano.Main.Sem
 open ParSpec NanoMain
 
 def one (s i o : String) : IO String := do

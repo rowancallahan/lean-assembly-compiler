@@ -71,7 +71,7 @@ Not checked in the kernel: no `rfl`/bisimulation proof that old and new compute 
 FakeReal classes are not equal in general. They are behaviour fixes in Sail's Lean output.
 
 ## 4. Repo modules against the regenerated model (Lean 4.34.1)
-**`lake build Nano.V2Self.REVIEW` succeeds** (665 jobs; 65 s incremental; peak RSS 11.8 GB for a cold parallel build)
+**`lake build Nano.Main.REVIEW` succeeds** (665 jobs; 65 s incremental; peak RSS 11.8 GB for a cold parallel build)
 at `98efd458`, against the regenerated model, with the root `lean-toolchain` at 4.34.1.
 **`Testing/scripts/review_axioms.sh`: "OK: 8 theorems, axioms as pinned"**: `C_correctLO`, `C_runsO`, `C_runs`,
 `self_correct_C`, `self_runs_C`, `Cert.sem_C`, `shiftInv` and `spaceC_ex1_eq` have exactly the axioms pinned for the 4.29
@@ -95,7 +95,7 @@ Proof-side changes vs `lean-4.34` (56 `.lean` files, +303/-174). Two causes:
    explicitly, and guards are nested (on 4.34.1 a hoisted `(← …)`/`appArg!` inside `&&` ran unguarded: PANICs).
 
 **Final gate (merge criterion), commit `2c635337`, Lean 4.34.1, regenerated model (`deps-rv-regen434` @`4cf120c8`):**
-`lake build Spec Compiler Riscv Arm Frontx Nano.V2Self.REVIEW Chain434` finished with "Build completed successfully (899 jobs)",
+`lake build Spec Compiler Riscv Arm Frontx Nano.Main.REVIEW Chain434` finished with "Build completed successfully (899 jobs)",
 exit 0, 0 `error:` lines, 0 `sorry` warnings and 0 PANICs, in 1472 s with 5.45 GB peak RSS. `Testing/scripts/review_axioms.sh` gives "OK: 8 theorems, axioms as pinned".
 `defaultTargets` is main's set (`Spec Compiler Riscv Arm Frontx`); `Chain434` stays as a non-default lib (it has the ARM modules).
 Further Lean 4.34.1 port changes from the helpers (FABLE-RV, FABLE-RV2, FABLE-PERF; merged here) touch proofs only. In the
@@ -114,4 +114,4 @@ pass QEMU = Sail-C = Lean on 50 cases each. They are on the side branch `s3-word
 The repo's Sail tests (`Testing/asm/*_test.py`, `cosim.py`, FUZZ6–10) run the Sail **C emulator** binary
 (`deps/sailsim/.../sail_riscv_sim`). They do not execute the Lean model, so they cannot detect a difference between
 Lean models. Running them would not test this change. The checks that do exercise the Lean model are the
-kernel-checked step lemmas in `Riscv/Steps` and `Nano/V2Self/Proof/Machine` (§4).
+kernel-checked step lemmas in `Riscv/Steps` and `Nano/Run` (§4).

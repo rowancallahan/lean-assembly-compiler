@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""nano v2 SELF code generator (Nano/V2Self/C/Gen.lean) on QEMU + the Sail C emulator (words/cases from Testing/asm/emit_nano_v2b.lean).
+"""nano v2 SELF code generator (Nano/Codegen/Gen.lean) on QEMU + the Sail C emulator (words/cases from Testing/asm/emit_nano_v2b.lean).
 Convention: a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output, sp = work end.
 Per case (input, status, expected bytes), twice:
 * work WK = 4096 bytes: status 0 ⇒ output bytes = Lean's, a1 = length, a0 = 0; status s ≠ 0 ⇒ a0 = s, a1 = 0;

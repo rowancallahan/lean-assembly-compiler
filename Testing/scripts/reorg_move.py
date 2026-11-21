@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Nano/V2Self reorganization (NANO_V2_REORG.md): move every proof module into Proof/{Lex,Parser,Own,Gen,Machine,Bridge,
+"""Nano/<stages> reorganization (NANO_V2_REORG.md): move every proof module into Proof/{Lex,Parser,Own,Gen,Machine,Bridge,
 Cert,SrcLink,Main,Tests}/ and rewrite every reference to the old module names / paths.  No proof text changes.
 usage: reorg_move.py --dry   (print the mapping and the files that would change)
        reorg_move.py --go    (git mv + rewrite; run from the repo root on a clean tree)
@@ -8,7 +8,7 @@ import os, re, subprocess, sys
 
 DRY = "--dry" in sys.argv
 assert DRY or "--go" in sys.argv, __doc__
-P = "Nano/V2Self/Proof"
+P = "Nano/<stages>/Proof"
 
 # modules left in place: outside REVIEW's closure / dead, pending the owner's deletion decision (NANO_V2_DEADCODE.md)
 STAY = {"MainCert", "MainCertRules", "MainPure", "ParInvGlue", "ParLet"} | {f"MainCertC{i}" for i in range(10)}
@@ -43,7 +43,7 @@ for f in sorted(os.listdir(f"{P}/Src")):
     assert f.endswith(".lean"), f
     moves[f"{P}/Src/{f}"] = f"{P}/SrcLink/{f}"
 for f in ("Lex2Spec", "Lex2Sound"):
-    moves[f"Nano/V2Self/C/{f}.lean"] = f"{P}/Lex/{f}.lean"
+    moves[f"Nano/<stages>/C/{f}.lean"] = f"{P}/Lex/{f}.lean"
 # Cert stays where it is (Proof/Cert)
 modmap = {mod(o): mod(n) for o, n in moves.items()}
 pathmap = dict(moves)
@@ -59,13 +59,13 @@ def rewrite(s):
             for o, n in pathmap.items():
                 if t == o or t == o[:-5]: return n if t == o else n[:-5]
             return t
-        # a module name, possibly with a suffix after it (e.g. `Nano.V2Self.Proof.Src.Data{g}` in generators)
+        # a module name, possibly with a suffix after it (e.g. `Nano.<stages>.Proof.Src.Data{g}` in generators)
         if t in modmap: return modmap[t]
         return t
     s2 = TOK.sub(sub, s)
-    # generator prefixes: srclink/gen.lean prints `Nano.V2Self.Proof.Src.<X>{g}` and writes into Proof/Src/
-    s2 = s2.replace("Nano.V2Self.Proof.Src.", "Nano.V2Self.Proof.SrcLink.").replace("Nano/V2Self/Proof/Src/", "Nano/V2Self/Proof/SrcLink/")
-    s2 = s2.replace('"Nano/V2Self/Proof/Src"', '"Nano/V2Self/Proof/SrcLink"')
+    # generator prefixes: srclink/gen.lean prints `Nano.<stages>.Proof.Src.<X>{g}` and writes into Proof/Src/
+    s2 = s2.replace("Nano.<stages>.Proof.Src.", "Nano.SelfHost.SrcLink.").replace("Nano/<stages>/Proof/Src/", "Nano/SelfHost/SrcLink/")
+    s2 = s2.replace('"Nano/<stages>/Proof/Src"', '"Nano/SelfHost/SrcLink"')
     return s2
 
 files = subprocess.run(["git", "ls-files", "*.lean", "*.py", "*.sh", "*.md", "*.toml", "*.txt"], capture_output=True,

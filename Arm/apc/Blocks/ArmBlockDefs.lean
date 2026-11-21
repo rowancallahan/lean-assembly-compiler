@@ -1,7 +1,7 @@
 /- VERBATIM copy of the definitions of `Testing/nano/v2self/arm/ArmBlock.lean` (π, the A64 word encoders, `body`,
 `blockJ`, `validJ`, `AccOK`), without `stepW`/`RelA`/`BlockOK` (those need `Spec.Top`'s `Machine`; `Block.lean`
 states the DeepMind version). `Blocks/check_copy.sh` checks the copy. -/
-import Nano.V2Self.Proof.Machine.Call
+import Nano.Run.Call
 namespace ArmBlock
 open CallProbe
 
