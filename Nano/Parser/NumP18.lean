@@ -177,4 +177,117 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
       refine ⟨X ++ [⟨(sl + i) :: L.1.1, 0, L.1.2⟩], ?_, by simp [encG]⟩
       exact (List.perm_append_singleton _ _).trans (List.Perm.cons _ hX)
 
+/-- LETG at a value that is not a tuple -/
+theorem m_letg_np {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hCOL : MCOL x d np ks ws f)
+    (hLIT : MLIT x d np ks ws f) {v : Nd} {sl : Nat} {Q : MO → Prop} {bs : List (Nat × List Bool)} {ts : List T3} {c : Nat}
+    {rest b t g s : Buf} {S : List UInt64} {gb : UInt64}
+    (hv : v.ser.length + 2 ≤ f + 1) (nv : NB np v) (hQ : QM Q) (hx : x.drop c = v.ser ++ rest) (hc : 0 < c)
+    (hg : ((hdr v).getD 0 0 == 6) = false)
+    (hI : MI b bs t (ts ++ [(3, u sl, 0)]) g s S)
+    (hP : MCp x d Q bs ts g S gb (c + v.ser.length)
+      (if NumSpec.isL f ws (envOf bs) v then
+          (⟨sl :: (NumSpec.litG f ks ws (envOf bs) v).1.1, 0, (NumSpec.litG f ks ws (envOf bs) v).1.2⟩ ::
+            (NumSpec.litG f ks ws (envOf bs) v).2.1, (NumSpec.litG f ks ws (envOf bs) v).2.2)
+        else NumSpec.col f ks ws (envOf bs) 0 v)) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) (u c) g s (u S.length) gb := by
+  apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI _ (fun _ => rfl)
+  intro hsz
+  rw [u49_3]
+  generalize hR : u46 x d b (u (encB bs).length) t (u ts.length) (u c) s (u S.length) gb (u sl) = R
+  intro hok
+  have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
+  have hR' := u46_n (by rw [tag_rd hx hxl]; exact hg) R hR
+  have hU := u32_ok hK.lc (f := f) (by omega) nv hx hc hI.pb (by have := hsz.1; omega) hI.sb
+  generalize hUe : u32 x d b (u (encB bs).length) (u c) = U at hU hR'
+  obtain ⟨b1, r⟩ := U
+  iota_only at hR'
+  simp only at hU
+  by_cases hr2 : r = 2
+  · subst hr2; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'
+    subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+  obtain ⟨er, hb1, hbl1⟩ := hU hr2
+  subst er
+  rw [if_neg (kne (w2_eq2 _))] at hR'
+  have hts := hI.lts; simp at hts
+  have hI0 := hI.pop.withb hb1 hbl1
+  cases hle : NumSpec.isL f ws (envOf bs) v
+  · rw [hle, if_neg (kne (show (w2 false == 1) = false from rfl))] at hR'
+    subst hR'
+    dsimp only
+    rw [hle] at hP
+    obtain ⟨k1, -⟩ := hI0.pushw rfl (by have := hsz.2.1; omega) 0 0 0
+    exact (hCOL v 0 Q bs ts c rest b1 _ g s S gb (by omega) nv (by omega) hQ hx hc (by rw [← u0]; simpa using k1)
+      hP).cast rfl (by simp [u1, uadd]) rfl rfl rfl
+  · rw [hle, if_pos (keq (show (w2 true == 1) = true from rfl))] at hR'
+    subst hR'
+    dsimp only
+    rw [hle] at hP
+    obtain ⟨k1, l1⟩ := hI0.pushw rfl (by have := hsz.2.1; omega) 4 0 gb
+    obtain ⟨k2, -⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 1 0 0
+    obtain ⟨k3, l3⟩ := k2.spush (by have := hsz.2.2.2; omega) (w2 false)
+    obtain ⟨k4, -⟩ := k3.spush (by have := hsz.2.2.2; omega) (u sl)
+    have e1 : u S.length + 1 = u (S ++ [w2 false]).length := by simp [u1, uadd]
+    rw [e1]
+    refine (hLIT v Q bs (ts ++ [(4, 0, gb)]) c rest b1 _ g _ S false [u sl] (by omega) nv hQ hx hc
+      (by simpa [w2] using k4) ?_).cast rfl (by simp [u2, uadd]) rfl (by simp [u2, uadd]) (by simp)
+    intro hA b2 t2 g2 s2 hI2 hga
+    generalize hL : NumSpec.litG f ks ws (envOf bs) v = L at *
+    have hS : S ++ w2 (false || L.1.2) :: ([u sl] ++ L.1.1.map u) = S ++ w2 L.1.2 :: (sl :: L.1.1).map u := by simp
+    rw [hS] at hI2 ⊢
+    have hI2' : MI b2 bs t2 (ts ++ [(4, u 0, gb)]) g2 s2 (S ++ w2 L.1.2 :: (sl :: L.1.1).map u) := by
+      rw [← u0]; simpa using hI2
+    refine (m_close hQ (by omega) hI2' ?_).cast rfl (by simp) rfl rfl rfl
+    intro hI3
+    refine hP hA _ _ _ _ hI3 ?_
+    obtain ⟨X, hX, rfl⟩ := hga
+    refine ⟨X ++ [⟨sl :: L.1.1, 0, L.1.2⟩], ?_, by simp [encG]⟩
+    exact (List.perm_append_singleton _ _).trans (List.Perm.cons _ hX)
+
+theorem m_letg_succ {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hCOL : MCOL x d np ks ws f)
+    (hLIT : MLIT x d np ks ws f) : MLETG x d np ks ws (f + 1) := by
+  intro v sl w Q bs ts c rest b t g s S gb hv nv hsl hQ hx hc hI hP
+  rw [letG_succ] at hP
+  cases v with
+  | pair cs =>
+    apply m_read hQ (Or.inr (Or.inr (Or.inr (Or.inl rfl)))) hI _ (fun _ => rfl)
+    intro hsz
+    have hxl : x.length < 2 ^ 62 := by have := hK.lc.xl; omega
+    rw [u49_3, u46_6 (tag_rd hx hxl), tag1 hx hxl (by simp [hdr])]
+    simp only [hdr, List.getD_cons_succ, List.getD_cons_zero]
+    intro _
+    simp only [NB] at nv
+    have hf := hv; simp [Nd.ser] at hf
+    have hx1 : x.drop (c + 2) = serL cs ++ rest :=
+      drop_hdr (hd := [6, u cs.length]) rfl (by rw [hx]; simp [Nd.ser, toU])
+    have hts := hI.lts; simp at hts
+    obtain ⟨k1, -⟩ := hI.pop.pushw rfl (by have := hsz.2.1; omega) 9 (u sl) (u cs.length)
+    refine (m_lpseq hK hCOL hLIT hQ bs sl S gb cs 0 ts (c + 2) rest b _ g s
+      (fun e he => by have := serL_mem_len he; omega) ((nbl_iff cs).1 nv.2) hx1 (by omega) nv.1 (by simpa using k1)
+      ?_).cast rfl (by simp [u1, uadd]) (by simp [u2, uadd]) rfl rfl
+    have e : c + 2 + (serL cs).length = c + (Nd.pair cs).ser.length := by simp [Nd.ser]; omega
+    rw [e]; exact hP
+  | const v => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | loc a b' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | bin op a b' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | ite cm a b' t' e' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | letE a b' c' d' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | call a b' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | prim a b' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | loop a b' => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+  | cont a => exact m_letg_np hK hCOL hLIT hv nv hQ hx hc rfl hI hP
+
+theorem m_letg_zero {x d : Buf} {np : Nat} {ks ws : List Nat} : MLETG x d np ks ws 0 := by
+  intro v _ _ _ _ _ _ _ _ _ _ _ _ _ hv; omega
+
+theorem m_col_zero {x d : Buf} {np : Nat} {ks ws : List Nat} : MCOL x d np ks ws 0 := by
+  intro e _ _ _ _ _ _ _ _ _ _ _ hf; omega
+
+/-- **the main walk**: COL, LIT, CMP, LETG at every fuel -/
+theorem m_all {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ f,
+    MCOL x d np ks ws f ∧ MLIT x d np ks ws f ∧ MCMP x d np ks ws f ∧ MLETG x d np ks ws f
+  | 0 => ⟨m_col_zero, m_lit_zero, m_cmp_zero, m_letg_zero⟩
+  | f + 1 => by
+    obtain ⟨h1, h2, h3, h4⟩ := m_all hK f
+    exact ⟨m_col_succ hK h1 h2 h3 h4, m_lit_succ hK h2 h3 h4, m_cmp_succ hK h1 h2, m_letg_succ hK h1 h2⟩
+
 end NumP
