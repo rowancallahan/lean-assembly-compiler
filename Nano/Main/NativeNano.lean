@@ -1,28 +1,27 @@
 /- **The native AArch64 compiler in nano**: `genNano x = C.e71 x (AST of x)` (Nano/Codegen/JArmTop.lean: Gen's word
 buffer `e70`, the word-size check `e72`, the J → AArch64 translator `e64` of Nano/Codegen/JArm.lean, bytes `e49`),
 `compileNano = compileGen genNano`, and its correctness on any machine with the A64 steps:
-`C_correct_nano` / `C_runs_nano`, from
-* `StepOK` (Run/JArmStep.lean: the 21 per-atom facts of the translator; NATIVE-ARM-PROOF),
-* `GenBuf` (two facts about Gen's word buffer: its bytes are Gen's output, and the list is shorter than 2^64),
-and the proved parts: the translator's core theorem `e64_natEncJ` (Run/JArmCore.lean), `jArmBits`, `cjUnique`,
-`natLawsOK`, the host lift (`C_correct_g`). -/
+`C_correct_nano` / `C_runs_nano`, from `StepOK` (Run/JArmStep.lean: the 21 per-atom facts of the translator) and the
+proved parts: the translator's core theorem `e64_natEncJ` (Run/JArmCore.lean), `jArmBits`, Gen's buffer
+(`g42_e70`, `e70_len`, Run/JArmGen.lean), `cjUnique`, `natLawsOK`, the host lift (`C_correct_g`).
+KNOWN WART: `genNano` guards `C.e71` by "the AST list is shorter than 2^31".  The nano code's own test
+(`2147483647 < bsize x` in `e70`) reads the length modulo 2^64, and `GenOKG` quantifies over all source texts, so the
+list bound (needed for `e70_len`) is put in the Lean wrapper, as `compileGen` does for the text length (≤ 2^20).  For a
+source the front end accepts the guard holds (`ParSerLen.ser_lt`); removing it needs `GenOKG` to pass that fact. -/
 import Nano.Main.NativeEnc
 import Nano.Run.JArmCore
 import Nano.Run.JArmInst
+import Nano.Run.JArmGen
 import Nano.Codegen.JArmTop
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc JT CallProbe
 
-/-- the native code generator in nano, from source text -/
-def genNano (x : List UInt8) : List UInt8 := C.e71 x (C.o41 (C.y16 (C.s10 x)))
+/-- the native code generator in nano, from source text (see KNOWN WART above for the guard) -/
+def genNano (x : List UInt8) : List UInt8 :=
+  if (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31 then C.e71 x (C.o41 (C.y16 (C.s10 x))) else []
 
 /-- **the native AArch64 compiler** -/
 noncomputable def compileNano : SrcC → Option CompiledA := compileGen genNano
-
-/-- what the glue needs about Gen's word buffer `e70` (Gen's `g42` without the byte output) -/
-structure GenBuf : Prop where
-  bytes : ∀ (c : List UInt8) (x : Buf) (u : UInt64), C.g42 c x u = C.g40 16777216 c (C.e70 x u) 0 []
-  len : ∀ (x : Buf) (u : UInt64), (C.e70 x u).length < 2 ^ 64
 
 /-- the word-size check: every word from `i` on is below 2^32 -/
 theorem e72_all : ∀ (k : Nat) (w : Buf) (i : Nat), w.length < 2 ^ 64 → C.e72 k w i.toUInt64 ≠ 0 →
@@ -56,11 +55,16 @@ theorem wordBytes_tU (A : List Nat) : wordBytes ((A.map Nat.toUInt64).map UInt64
 variable {M : Machine} {X W : M.State → Nat → Prop}
 
 /-- **the nano native generator meets the general generator interface** -/
-theorem genOKG_nano (S : StepOK) (G : GenBuf) : GenOKG (natTarget M X W NatV) genNano := fun x hx => by
-  have hx' : C.e71 x (C.o41 (C.y16 (C.s10 x))) ≠ [] := hx
+theorem genOKG_nano (S : StepOK) : GenOKG (natTarget M X W NatV) genNano := fun x hx => by
+  by_cases ha : (C.o41 (C.y16 (C.s10 x))).length < 2 ^ 31
+  case neg => exact absurd (by unfold genNano; rw [if_neg ha]) hx
+  have hgn : genNano x = C.e71 x (C.o41 (C.y16 (C.s10 x))) := by unfold genNano; rw [if_pos ha]
+  have hx' : C.e71 x (C.o41 (C.y16 (C.s10 x))) ≠ [] := by rw [← hgn]; exact hx
   obtain ⟨g, hg⟩ : ∃ g, g = C.e70 (C.o41 (C.y16 (C.s10 x))) C.g_999 := ⟨_, rfl⟩
-  have gl : g.length < 2 ^ 64 := by rw [hg]; exact G.len _ _
-  have gb : mC x = C.g40 16777216 x g 0 [] := by rw [hg]; exact G.bytes x _ C.g_999
+  have gl : g.length < 2 ^ 64 := by
+    have := e70_len (C.o41 (C.y16 (C.s10 x))) C.g_999 ha
+    rw [hg]; omega
+  have gb : mC x = C.g40 16777216 x g 0 [] := by rw [hg]; exact g42_e70 x _ C.g_999
   have he71 : C.e71 x (C.o41 (C.y16 (C.s10 x))) =
       if (C.e72 16777216 g 0 == 0) = true then [] else
       if (bsize (C.e64 g) == 0) = true then [] else C.e49 16777216 x (C.e64 g) 0 [] := by
@@ -120,7 +124,7 @@ theorem genOKG_nano (S : StepOK) (G : GenBuf) : GenOKG (natTarget M X W NatV) ge
     obtain ⟨A, hA, hwA, hAl⟩ := e64_natEncJ jArmBits S hj hl h64
     obtain ⟨I, hI, hV⟩ := natEncJ_img hA
     have hcode : genNano x = wordBytes A := by
-      show C.e71 x (C.o41 (C.y16 (C.s10 x))) = _
+      rw [hgn]
       have hwA' : C.e64 (Cj.map encG) = A.map Nat.toUInt64 := hwA
       rw [he71, hwA', e49_wordBytes x _ 16777216 (by rw [List.length_map]; omega) (by rw [List.length_map]; omega),
         wordBytes_tU]
@@ -131,13 +135,13 @@ theorem genOKG_nano (S : StepOK) (G : GenBuf) : GenOKG (natTarget M X W NatV) ge
       fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩
 
 /-- **the nano native compiler is correct on AArch64** (any machine with the A64 steps) -/
-theorem C_correct_nano (A : A64SemN M X W) (S : StepOK) (G : GenBuf) (hwin : 2 ^ 31 ≤ M.ramStart) :
+theorem C_correct_nano (A : A64SemN M X W) (S : StepOK) (hwin : 2 ^ 31 ≤ M.ramStart) :
     CompileCorrectP M (ArmLoader X W) compileNano :=
-  C_correct_g (natLaws A (natLawsOK A)) genNano (genOKG_nano S G) hwin
+  C_correct_g (natLaws A (natLawsOK A)) genNano (genOKG_nano S) hwin
 
 /-- **the nano native compiler runs correctly on AArch64, with any work block** -/
-theorem C_runs_nano (A : A64SemN M X W) (S : StepOK) (G : GenBuf) (hwin : 2 ^ 31 ≤ M.ramStart) :
+theorem C_runs_nano (A : A64SemN M X W) (S : StepOK) (hwin : 2 ^ 31 ≤ M.ramStart) :
     CompileRunsP M (ArmLoader X W) compileNano :=
-  C_runs_g (natLaws A (natLawsOK A)) genNano (genOKG_nano S G) hwin
+  C_runs_g (natLaws A (natLawsOK A)) genNano (genOKG_nano S) hwin
 
 end NanoMain
