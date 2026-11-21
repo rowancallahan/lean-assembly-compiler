@@ -13,10 +13,6 @@ namespace G
 @[simp] theorem getX_zero (s : St) : getX s 0 = 0 := rfl
 @[simp] theorem xval_zero (m : Regs) : xval m 0 = 0 := rfl
 
-/-- with `rd = x0` the written value is irrelevant -/
-theorem Next.rd0 {s s' : St} {pc : BitVec 64} {v v' : BitVec 64} {m} (hn : Next s s' pc 0 v m) :
-    Next s s' pc 0 v' m :=
-  ⟨hn.ret, hn.cfg, hn.pc, fun j => by rw [hn.x j]; simp, hn.mem⟩
 
 variable {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc)
 include h hpc hok
