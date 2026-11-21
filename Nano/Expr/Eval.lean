@@ -64,7 +64,7 @@ def evalX (P : Prog) : Nat → List V → X → Option V
         | _ => none
       | (.c "List.nil" _, [_]) => some (.l [])
       | (.c n _, as) =>
-        match n.startsWith "H", as with
+        match (binV n 0 0).isSome, as with
         | true, [_, _, _, _, a, b] => do
           let .w x ← evalX P f env a | none
           let .w y ← evalX P f env b | none
