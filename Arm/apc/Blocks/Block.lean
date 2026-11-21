@@ -40,7 +40,7 @@ structure RelD (C : List J) (D : Nat → Prop) (K : Nat → BitVec 64) (ps : Nat
   regs : RegsOK (abs t) ps.2 K
   zero : ps.2.x 0 = 0
   sp : t.sp = K 31
-  wk : ps.2.wk = 3
+  ly : ps.2.ly = LinkLay.lin 3
   mem : MemOK D ps.2.m t.mem
 
 theorem RelD.mid {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {j : J} (h : RelD C D K (pc, s) t)
@@ -49,8 +49,8 @@ theorem RelD.mid {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {j : J
 /-- end of a block: `Mid … 4` and the J effect give `RelD` at `pc + 1` -/
 theorem relD_next {C : List J} {D K} {pc : Nat} {s s' : St} {j : J} {t t' : Arm64.State} (h : RelD C D K (pc, s) t)
     (hm : Mid C s.b pc j 4 t') (hr : RegsOK (abs t') s' K) (hsp : t'.sp = t.sp) (hmem : MemOK D s'.m t'.mem)
-    (hb : s'.b = s.b) (hz : s'.x 0 = 0) (hw : s'.wk = s.wk) : RelD C D K (pc + 1, s') t' :=
-  ⟨hm.run, by rw [hm.pc, hb]; show ad _ = ad _; congr 1, hb ▸ hm.code, hr, hz, hsp.trans h.sp, hw.trans h.wk, hmem⟩
+    (hb : s'.b = s.b) (hz : s'.x 0 = 0) (hw : s'.ly = s.ly) : RelD C D K (pc + 1, s') t' :=
+  ⟨hm.run, by rw [hm.pc, hb]; show ad _ = ad _; congr 1, hb ▸ hm.code, hr, hz, hsp.trans h.sp, hw.trans h.ly, hmem⟩
 
 theorem regs_wr {a : AState} {s : St} {K} (h : RegsOK a s K) {rd : Nat} (hl : live rd) (V : UInt64) :
     RegsOK (a.setX (pi rd) V.toBitVec) (wr s rd V) K := by

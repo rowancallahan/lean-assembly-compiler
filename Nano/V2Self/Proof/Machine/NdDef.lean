@@ -1,6 +1,6 @@
 /- Machine bridge (Opus box E): one def.  `defT`: the def template (Gen's prologue `proA`, the body template, the
 epilogue `epi`).  `defWords`: Gen's DefC output is exactly that template `.map encG` (exits patched to the epilogue
-start).  Its run theorem is `defRunS` (EVSProg.lean). -/
+start).  Its run theorem is `defRunO` (CapProg.lean). -/
 import Nano.V2Self.Proof.Machine.NdCGm
 namespace Templates
 open CallProbe C GenRef ParSpec

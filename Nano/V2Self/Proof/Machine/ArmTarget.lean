@@ -70,7 +70,7 @@ structure Mid (X W : M.State → Nat → Prop) (K : LayW) (C : List J) (s0 : M.S
     (M.observe s).memory (UInt64.ofNat (K.base + 4 * 4 * i + 4 * k' + b)) = some (wbyte (blk C[i])[k'] b)
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
-  ww : p.2.wk = 3
+  ww : p.2.ly = CallProbe.LinkLay.lin 3
   x : ∀ j, 0 < j → j < 32 → (M.observe s).register (armReg j) = p.2.x j
   keep : ∀ r, (∀ j, 0 < j → j < 32 → armReg j ≠ r) → r ∉ armScratch →
     (M.observe s).register r = (M.observe s0).register r
@@ -105,7 +105,7 @@ theorem mid_regs {K : LayW} {C : List J} {s0 s s' : M.State} {p : Nat × CallPro
     (hx : ∀ j, 0 < j → j < 32 → (M.observe s').register (armReg j) = st'.x j)
     (hkeep : ∀ r, (∀ j, 0 < j → j < 32 → armReg j ≠ r) → r ∉ armScratch →
       (M.observe s').register r = (M.observe s).register r)
-    (h0 : st'.x 0 = 0) (hb : st'.b = p.2.b) (hw : st'.wk = p.2.wk) (hm : st'.m = p.2.m) :
+    (h0 : st'.x 0 = 0) (hb : st'.b = p.2.b) (hw : st'.ly = p.2.ly) (hm : st'.m = p.2.m) :
     Mid X W K C s0 (pc', st') k' s' where
   cfg := hcfg
   pc := hpc
@@ -286,13 +286,13 @@ theorem blk_jal1 (S : A64Sem M X W) {K : LayW} {C : List J} {s0 s : M.State} {pc
     (hM : Mid X W K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.jal 1 o)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
     (hpcl : pc < C.length) (h1 : -2 ^ 18 ≤ o) (h2 : o < 2 ^ 18) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
     ∃ s', Runs M s s' ∧ Mid X W K C s0 (((pc : Int) + o).toNat,
-      CallProbe.wr st 1 (UInt64.ofNat (st.b + st.w * (pc + 1)))) 0 s' := by
+      CallProbe.wr st 1 (UInt64.ofNat (st.b + st.lo (pc + 1)))) 0 s' := by
   have hb : blockJ (.jal 1 o) = [PAD, PAD, PAD, blB (4 * o - 3)] := by simp [blockJ, body, pad4]
   obtain ⟨s1, r1, M1⟩ := pads_mid S (p := (pc, st)) hC hB hpcl 3 0 s (by decide) hM
     (fun i _ hi => by rw [hb]; rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2) with rfl | rfl | rfl <;> rfl)
   have hw := word_pc M1 hC hB hpcl (by decide) (w := blB (4 * o - 3)) (by rw [hb]; rfl)
   obtain ⟨s2, r2, c2, o2, kp2⟩ := S.bl s1 (4 * o - 3) M1.cfg (mid_pcok M1 hB hpcl (by omega)) (mid_fx M1 hB hpcl (by omega)) (by omega) (by omega) hw
-  have hw16 : st.w = 16 := by unfold CallProbe.St.w; rw [M1.ww]
+  have hw16 : ∀ n, st.lo n = 16 * n := fun n => by rw [CallProbe.St.lo_lin M1.ww]
   have hpc1 := M1.pc
   refine ⟨s2, Runs.trans r1 r2, mid_regs M1 c2 kp2 ?_ (by rw [o2]) (fun j h0 h32 => ?_) (fun r hr _ => ?_) ?_ ?_ ?_ ?_⟩
   · rw [o2]; dsimp only; rw [hpc1, ofNat_addInt _ _ (by omega) (by omega)]; congr 1; omega
@@ -313,12 +313,12 @@ theorem blk_jal1 (S : A64Sem M X W) {K : LayW} {C : List J} {s0 s : M.State} {pc
 theorem blk_jalr (S : A64Sem M X W) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St} {rd rs : Nat}
     (hM : Mid X W K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.jalr rd rs)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
     (hpcl : pc < C.length) (hrs0 : rs ≠ 0) (hrs : rs < 32) (hlt : armReg rs < 31) {jt : Nat}
-    (hj : (st.x rs).toNat = K.base + st.w * jt) :
-    ∃ s', Runs M s s' ∧ Mid X W K C s0 (((st.x rs).toNat - st.b) / st.w, st) 0 s' := by
+    (hj : (st.x rs).toNat = K.base + st.lo jt) :
+    ∃ s', Runs M s s' ∧ Mid X W K C s0 (st.ly.un ((st.x rs).toNat - st.b), st) 0 s' := by
   have hw := word_pc hM hC hB hpcl (by decide) (w := brR (armReg rs)) (by simp [blockJ, body, pad4])
   have g := S.br s (armReg rs) hM.cfg (mid_pcok hM hB hpcl (by omega)) (mid_fx hM hB hpcl (by omega)) hlt hw
-  have hw16 : st.w = 16 := by unfold CallProbe.St.w; rw [hM.ww]
-  have e : ((st.x rs).toNat - st.b) / st.w = jt := by rw [hj, hM.bb, hw16]; omega
+  have hw16 : ∀ n, st.lo n = 16 * n := fun n => by rw [CallProbe.St.lo_lin hM.ww]
+  have e : st.ly.un ((st.x rs).toNat - st.b) = jt := by rw [hj, hM.bb, Nat.add_sub_cancel_left]; exact st.ly.inv jt
   rw [hM.x rs (by omega) hrs, ← @UInt64.ofNat_toNat (st.x rs), hj, hw16] at g
   rw [e]; exact mid_jump hM g
 

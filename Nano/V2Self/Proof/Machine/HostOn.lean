@@ -34,10 +34,10 @@ theorem cbyte_wordT (s : T.M.State) (a k : Nat) (hk : k < 8) : cbyte (wordT T s 
 
 /-- J's view of a machine state: the J registers through `reg`, the little-endian cells, the code base `b` -/
 def jOfT (T : JTarget) (s : T.M.State) (b : Nat) : CallProbe.St :=
-  ⟨fun j => if 0 < j ∧ j < 32 then (T.M.observe s).register (T.reg j) else 0, wordT T s, b, T.blockLen - 1⟩
+  ⟨fun j => if 0 < j ∧ j < 32 then (T.M.observe s).register (T.reg j) else 0, wordT T s, b, CallProbe.LinkLay.lin (T.blockLen - 1)⟩
 
-theorem jOfT_w (L : T.Laws) (s : T.M.State) (b : Nat) : (jOfT T s b).w = 4 * T.blockLen := by
-  have := L.blk_pos; simp only [jOfT, CallProbe.St.w]; omega
+theorem jOfT_w (L : T.Laws) (s : T.M.State) (b : Nat) (n : Nat) : (jOfT T s b).lo n = 4 * T.blockLen * n := by
+  have := L.blk_pos; rw [CallProbe.St.lo_lin (k := T.blockLen - 1) rfl, show T.blockLen - 1 + 1 = T.blockLen by omega]
 
 theorem gbT_some {s : T.M.State} {a : Nat} (h : ((T.M.observe s).memory (UInt64.ofNat a)).isSome) :
     (T.M.observe s).memory (UInt64.ofNat a) = some (gbT T s a) := by

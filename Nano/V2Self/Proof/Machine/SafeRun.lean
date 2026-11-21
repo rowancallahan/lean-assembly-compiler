@@ -75,12 +75,12 @@ theorem push_sr {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr32 : r 
 theorem push_srun {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0) (hr32 : r < 32)
     (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
     SStarX K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
-                                 upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.wk⟩) :=
+                                 upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.ly⟩) :=
   sstar_of_run (push_run hC hr hr0 hh) (push_sr hC hr32 hh hw)
 
 theorem len_srun {K : LayW} {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat)
     (hw : wok K ((s.x 31).toNat - 8)) :
-    SStarX K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29), s.b, s.wk⟩) :=
+    SStarX K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29), s.b, s.ly⟩) :=
   push_srun (by simpa [lenT, pushA] using hC) (by decide) (by decide) (by decide) hh hw
 
 /-! ## BIN -/
@@ -90,7 +90,7 @@ theorem bin_srun {K : LayW} {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (
     SStarX K C (pc, s) (pc + 5,
       ⟨upd (upd (upd (upd s.x 6 (s.m (s.x 31).toNat)) 5 (s.m ((s.x 31).toNat + 8))) 31 (UInt64.ofNat ((s.x 31).toNat + 8))) 5
           (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)),
-       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b, s.wk⟩) := by
+       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b, s.ly⟩) := by
   refine sstar_of_run (bin_run s hC hlt) fun j hj c hc => ?_
   have h0 := hC.at 0 (by simp [binT]); have h1 := hC.at 1 (by simp [binT]); have h2 := hC.at 2 (by simp [binT])
   have h3 := hC.at 3 (by simp [binT]); have h4 := hC.at 4 (by simp [binT])
@@ -120,7 +120,7 @@ theorem bin_srun {K : LayW} {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (
 
 theorem bsize_srun {K : LayW} {C pc} (s : St) (hC : At C pc bsizeT) (w0 : wok K (s.x 31).toNat)
     (w1 : wok K (s.m (s.x 31).toNat).toNat) :
-    SStarX K C (pc, s) (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.wk⟩) := by
+    SStarX K C (pc, s) (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.ly⟩) := by
   refine sstar_of_run (bsize_run s hC) fun j hj c hc => ?_
   have h0 := hC.at 0 (by simp [bsizeT]); have h1 := hC.at 1 (by simp [bsizeT]); have h2 := hC.at 2 (by simp [bsizeT])
   simp [bsizeT] at h0 h1 h2
@@ -221,7 +221,7 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
     have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
       ea_slot p k _ hs0 hp hk0 _ rfl
     let v := st.m (slotAddr p k (st.x 8).toNat)
-    let st1 : St := ⟨upd st.x 5 v, st.m, st.b, st.wk⟩
+    let st1 : St := ⟨upd st.x 5 v, st.m, st.b, st.ly⟩
     have s1 : step C (pc, st) = some (pc + 1, st1) := by simp [step, l0, wr, ea0, v, st1]
     have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, s1]
     have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
@@ -236,7 +236,7 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
       refine ⟨by decide, by decide, o1, o2, ?_, ?_⟩
       · unfold offOf; split <;> omega
       · rw [ea0]; exact w0
-    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5), st1.b, st1.wk⟩
+    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5), st1.b, st1.ly⟩
     have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
       simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
     have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
@@ -266,7 +266,7 @@ theorem popSlot_srun {K : LayW} {C : List J} {pc p k : Nat} (s : St) (hS : At C 
     (o1 : -2048 ≤ Templates.slotOff p k) (o2 : Templates.slotOff p k < 2048)
     (hn : 0 ≤ ((s.x 8).toNat : Int) + Templates.slotOff p k) (ws : wok K (Templates.slotAddr p (s.x 8).toNat k)) :
     SStarX K C (pc, s) (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (Templates.slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.wk⟩) := by
+      upd s.m (Templates.slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.ly⟩) := by
   refine sstar_of_run (Templates.popSlot_run s hS hlt) fun j hj c hc => ?_
   have c0 := hS.at 0 (by simp [Templates.popSlot]); have c1 := hS.at 1 (by simp [Templates.popSlot])
   have c2 := hS.at 2 (by simp [Templates.popSlot])
@@ -296,7 +296,7 @@ theorem popN_srun {K : LayW} {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : S
     have r1 := Templates.popSlot_run (k := k0 + w) s A1 (by omega)
     have q1 := popSlot_srun (K := K) (k := k0 + w) s A1 (by omega) (by simpa using a0) a2 a3 a4 a1
     generalize hs1 : (⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (Templates.slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.wk⟩ : St) = s1 at r1 q1
+      upd s.m (Templates.slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.ly⟩ : St) = s1 at r1 q1
     have t1 : (s1.x 31).toNat = (s.x 31).toNat + 8 := by subst hs1; simp [upd]; omega
     have x81 : s1.x 8 = s.x 8 := by subst hs1; simp [upd]
     rw [show 3 * (w + 1) = 3 + 3 * w by omega, run_add r1] at hb
@@ -329,7 +329,7 @@ theorem pro_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
   have t16' : (UInt64.ofNat ((s.x 31).toNat - 16)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  let sA : St := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.wk⟩
+  let sA : St := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.ly⟩
   have xA31 : (sA.x 31).toNat = (s.x 31).toNat - 8 := by simp [sA, upd_same, t8]
   have xA30 : sA.x 30 = s.x 30 := by simp [sA, upd_other _ _ (show (30:Nat) ≠ 31 by decide)]
   have r2 := push_run (s := sA) A2 (by decide) (by decide) (by rw [xA30, xA31]; omega)
@@ -337,7 +337,7 @@ theorem pro_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (
     (by rw [xA31, show (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 by omega]; exact w2)
   have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp)
   simp at b0 b1 b2
-  let sB : St := ⟨upd sA.x 31 (UInt64.ofNat ((sA.x 31).toNat - 8)), upd sA.m ((sA.x 31).toNat - 8) (sA.x 8), sA.b, sA.wk⟩
+  let sB : St := ⟨upd sA.x 31 (UInt64.ofNat ((sA.x 31).toNat - 8)), upd sA.m ((sA.x 31).toNat - 8) (sA.x 8), sA.b, sA.ly⟩
   have xB31 : (sB.x 31).toNat = (s.x 31).toNat - 16 := by simp [sB, upd_same, xA31]; omega
   have q3 : SR K C 3 (f + 8, sB) := by
     intro j hj c hc
@@ -392,8 +392,8 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
     (hD : (s.x 31).toNat + 8 * q ≤ (s.x 8).toNat + 8 * p + 16) (hlt : (s.x 8).toNat + 8 * p + 16 < 2 ^ 63)
     (hp : 8 * p + 16 < 2048) (hqb : 8 * q < 2048) (wa : wok K ((s.x 8).toNat + 8)) (wb : wok K (s.x 8).toNat)
     (hw : ∀ k, k < q → wok K ((s.x 31).toNat + 8 * (q - 1 - k)) ∧ wok K ((s.x 8).toNat + 8 * p + 16 - 8 * (k + 1)))
-    (hra : ∃ j, (s.m ((s.x 8).toNat + 8)).toNat = K.base + s.w * j) :
-    ∃ s3, SStarX K C (e, s) (((s.m ((s.x 8).toNat + 8)).toNat - s.b) / s.w, s3) ∧ s3.b = s.b ∧
+    (hra : ∃ j, (s.m ((s.x 8).toNat + 8)).toNat = K.base + s.lo j) :
+    ∃ s3, SStarX K C (e, s) (s.ly.un ((s.m ((s.x 8).toNat + 8)).toNat - s.b), s3) ∧ s3.b = s.b ∧
       (s3.x 31).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q ∧ s3.x 8 = s.m (s.x 8).toNat ∧
       (∀ i, i ≠ 31 → i ≠ 8 → i ≠ 5 → i ≠ 14 → i ≠ 15 → s3.x i = s.x i) ∧
       s3.m = Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q q := by
@@ -409,7 +409,7 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
   simp at c0 c1 c2
   have e8 : ea (s.x 8) 8 = (s.x 8).toNat + 8 := by simp [ea]; omega
   have e0 : ea (s.x 8) 0 = (s.x 8).toNat := by simp [ea]
-  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b, s.wk⟩
+  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b, s.ly⟩
   have r2 : run C 2 (e, s) = some (e + 2, s') := by
     simp [run, step, a0, a1, wr, e8, e0, upd_other _ _ (show (8:Nat) ≠ 14 by decide), s']
   have q1 : SR K C 2 (e, s) := by
@@ -439,8 +439,8 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
       simp only [SafeX, c2, wr, show (31 : Nat) ≠ 0 by decide, show (8 : Nat) ≠ 0 by decide, if_false,
         upd_other _ _ (show (14:Nat) ≠ 8 by decide), upd_other _ _ (show (14:Nat) ≠ 31 by decide), y14]
       obtain ⟨j0, hj0⟩ := hra
-      have wk2 : s''.wk = s.wk := (run_star hr').w
-      exact ⟨trivial, by decide, j0, by rw [hj0]; simp [St.w, wk2]⟩
+      have wk2 : s''.ly = s.ly := (run_star hr').w
+      exact ⟨trivial, by decide, j0, by rw [hj0]; simp [St.lo, wk2]⟩
   rw [show 2 + 2 * q + 3 = 2 + (2 * q + 3) by omega]
   exact q1.add r2 (q2.add hr' q3)
 
@@ -682,7 +682,7 @@ theorem rd_srun {K : LayW} {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) 
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
        upd s.m (s.x 31).toNat
-          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b, s.wk⟩) := by
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b, s.ly⟩) := by
   refine sstar_of_run (rd_runK s hC hx0 hb) ?_
   intro j hj c hc
   have h0 := hC.at 0 (by simp [rdT]); have h1 := hC.at 1 (by simp [rdT]); have h2 := hC.at 2 (by simp [rdT])
@@ -763,7 +763,7 @@ theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C 
   have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
   -- 1: t0 := t5
   have h1 := p1.at 0 (by simp); simp at h1
-  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.wk⟩
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.ly⟩
   have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by
     simp [run, step, h1, wr, ea, e30, s1]
   have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
@@ -777,7 +777,7 @@ theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C 
   have mm2 : s2.m = s.m := hm2
   -- 3: t1 := t1 + t5
   have h3 := p3.at 0 (by simp); simp at h3
-  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.wk⟩
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.ly⟩
   have r3 : run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
     simp [run, step, h3, wr, aluf, a6, a30, s3]
   -- 4: bgeu taken
@@ -804,7 +804,7 @@ theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C 
   simp at h6 h7 h8
   have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
   have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
-  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.wk⟩
+  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.ly⟩
   have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
   have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
   have r678 : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
