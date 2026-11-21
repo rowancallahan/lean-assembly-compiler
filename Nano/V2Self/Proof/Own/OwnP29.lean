@@ -55,8 +55,6 @@ theorem rt_of' {x t : Buf} {ps rs : List (List Nat)} {K : List Nat} {npw : Nat} 
 
 theorem u_toNat_self (y : UInt64) : u y.toNat = y := UInt64.ofNat_toNat
 
-@[simp] theorem bset_len (y : Buf) (k w : UInt64) : (bset y k w).length = y.length := by simp [bset]
-
 theorem bget_bset (y : Buf) (k k' w : UInt64) :
     bget (bset y k w) k' = if k.toNat = k'.toNat ∧ k.toNat < y.length then w else bget y k' := by
   simp only [bget, bset]; rw [getD_set]
