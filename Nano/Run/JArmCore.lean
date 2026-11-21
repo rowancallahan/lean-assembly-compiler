@@ -290,9 +290,9 @@ theorem e64_core (hne : e64 (gw Cj) ≠ []) :
 
 /-- the translator's words are the specification encoder's -/
 theorem e64_natEncJ (hne : e64 (gw Cj) ≠ []) :
-    ∃ A : List Nat, natEncJ Cj = some (wordBytes A) ∧ e64 (gw Cj) = A.map Nat.toUInt64 := by
+    ∃ A : List Nat, natEncJ Cj = some (wordBytes A) ∧ e64 (gw Cj) = A.map Nat.toUInt64 ∧ A.length < 2 ^ 18 := by
   obtain ⟨ts, hat, hch, hw⟩ := e64_core B S hJ hl hne
-  refine ⟨wordsOf (ats ts), ?_, hw⟩
+  refine ⟨wordsOf (ats ts), ?_, hw, hch.1⟩
   unfold natEncJ
   rw [hat]
   show (if NChk (ats ts) then some (wordBytes (wordsOf (ats ts))) else none) = _
