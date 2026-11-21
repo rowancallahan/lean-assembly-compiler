@@ -3,7 +3,8 @@ specification `natEncJ` (Nano/Run/NatEnc.lean): THE SHARED STATEMENTS.
 * The J VIEW the translator's accessor layer computes is in NatEnc.lean (`jk`, `jA` / `jB` / `jC`, `jop`); here `acode`
   (the atom code of `e35` / `candC`).
 * `JArmBits`: the bit-level facts (NATIVE-ARM-PROOF proves the instance `jArmBits` in Nano/Run/JArmBits.lean):
-  L1 bytes → words (`e68`), L6 words → bytes (`e49`), L2 the accessor layer on `encG j` for `JOK j`, L4 the A64 word
+  (L1 bytes → words `e68` / L6 words → bytes `e49` are `NanoMain.e68_g40` / `NanoMain.e49_wordBytes` of JArmBits.lean;)
+  L2 the accessor layer on `encG j` for `JOK j`, L4 the A64 word
   encoders `e50` … `e63`, `e42`, `e56` (li), `e57` (memW), `e58` (aluC) against `ArmEnc`'s `Nat` encoders.
   Every field is a small lemma with explicit ranges; if one is false as stated, change the statement and tell FABLE-M4.
 The structural layers (L3 `e35`/`e36`/`e37` = `cand` / length / `ok`; L5 the two passes; L7 the glue to the top
@@ -41,14 +42,6 @@ def acode : NTm → UInt64
 
 /-- **the bit-level facts about the translator** -/
 structure JArmBits : Prop where
-  -- L1 / L6: bytes ↔ words
-  /-- the words of Gen's bytes -/
-  l1_words : ∀ ws : Buf, ws.length < 2 ^ 32 → (∀ w ∈ ws, w.toNat < 2 ^ 32) →
-    e68 (len' (ws.flatMap ArmRA.le4)) (ws.flatMap ArmRA.le4) 0 bnew = ws
-  l1_len : ∀ ws : Buf, ws.length < 2 ^ 32 → (len (ws.flatMap ArmRA.le4) &&& e_5) = 0
-  /-- the bytes of the A64 words -/
-  l6_bytes : ∀ (k : Nat) (c : List UInt8) (w : Buf), w.length ≤ k → w.length < 2 ^ 32 →
-    e49 k c w 0 [] = w.flatMap ArmRA.le4
   -- L2: the accessor layer
   /-- a J word is below 2^32 -/
   l2_lt : ∀ j : J, JOK j → (encG j).toNat < 2 ^ 32
