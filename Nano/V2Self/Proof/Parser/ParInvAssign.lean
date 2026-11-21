@@ -31,17 +31,6 @@ def asgHeap (g : Buf) (a wv n1 z : UInt64) : Buf :=
     11 (bget g 11 + z - z * n1)) ((d7 + 4096) + bget g 27) wv) 27 (bget g 27 + 1))
     (d7 + 8 * bget g 12 + 2) (bget g (d7 + 8 * bget g 12 + 2) + 1 - n1)) (d7 + 8 * bget g 12 + 2 + 4) (bget g (d7 + 8 * bget g 12 + 2 + 4) + 1)
 
-theorem stat0A (g : Buf) : bget (bset g 0 0) 0 = 0 := by
-  cases g with
-  | nil => rfl
-  | cons x r => rfl
-
-theorem ite0A (c : Prop) [Decidable c] (A B : Buf) (ha : bget A 0 = 0) (hb : bget B 0 = 0) :
-    bget (if c then A else B) 0 = 0 := by
-  split
-  · exact ha
-  · exact hb
-
 theorem v133_eq (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
     (hD : D < 512) (h27 : bget g 27 = J.toUInt64) (hJ : J < 4096) (hl : 184384 ≤ g.length) (hne : a ≠ bget g 4)
     (hw4 : bget g 25 ≠ 4) (hwb : (bget g 25).toNat < 5 + 8192)
@@ -175,7 +164,7 @@ theorem v133_cap (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) 
   by_cases h5 : bget g 25 < 5
   · simp only [h5, if_true]
     simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
-    have hc := hcap; simp only [h5, if_true] at hc; rw [if_pos hc]; exact stat0A _
+    have hc := hcap; simp only [h5, if_true] at hc; rw [if_pos hc]; exact status_bset0 _
   · have h5' : 5 ≤ (bget g 25).toNat := by
       rcases Nat.lt_or_ge (bget g 25).toNat 5 with h | h
       · exact absurd (UInt64.lt_iff_toNat_lt.mpr h) h5
@@ -184,7 +173,7 @@ theorem v133_cap (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) 
     simp only [h5, if_false]
     rw [A _ _ _ _ (Or.inl (by rw [sr]; simp; omega))]
     simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
-    have hc := hcap; simp only [h5, if_false] at hc; rw [if_pos hc]; exact stat0A _
+    have hc := hcap; simp only [h5, if_false] at hc; rw [if_pos hc]; exact status_bset0 _
 
 /-- the cells of `asgHeap` -/
 theorem asg_eff (g : Buf) (a wv n1 z : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
@@ -224,9 +213,9 @@ theorem asg_eff (g : Buf) (a wv n1 z : UInt64) (i0 D J : Nat) (ha : a = i0.toUIn
   · rw [bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [cr6]; omega)]
   · intro j j11 j27 j31 jpc jc2 jc6 jrow
     rw [bget_bset' _ _ _ _ (by rw [cr6]; omega), bget_bset' _ _ _ _ (by rw [cr2]; omega), bget_bset' _ _ _ _ (by rw [u27]; omega), bget_bset' _ _ _ _ (by rw [pc]; omega), bget_bset' _ _ _ _ (by rw [u11]; omega), bget_bset' _ _ _ _ (by rw [u31]; omega), bget_bset' _ _ _ _ (by rw [r3]; omega), bget_bset' _ _ _ _ (by rw [r2]; omega), bget_bset' _ _ _ _ (by rw [r1]; omega)]
-  · rw [drop_bset _ _ _ (by rw [cr6]; omega), drop_bset _ _ _ (by rw [cr2]; omega), drop_bset _ _ _ (by decide),
-      drop_bset _ _ _ (by rw [pc]; omega), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide),
-      drop_bset _ _ _ (by rw [r3]; omega), drop_bset _ _ _ (by rw [r2]; omega), drop_bset _ _ _ (by rw [r1]; omega)]
+  · rw [drop_bset0 _ _ _ (by rw [cr6]; omega), drop_bset0 _ _ _ (by rw [cr2]; omega), drop_bset0 _ _ _ (by decide),
+      drop_bset0 _ _ _ (by rw [pc]; omega), drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide),
+      drop_bset0 _ _ _ (by rw [r3]; omega), drop_bset0 _ _ _ (by rw [r2]; omega), drop_bset0 _ _ _ (by rw [r1]; omega)]
 
 /-- a def row survives when its 8 cells and its parameter-code cells are unchanged -/
 theorem row_frame' {h h' : Buf} {j : Nat} {d : DefR} (r : RowRep h j d)
@@ -241,10 +230,6 @@ theorem row_frame' {h h' : Buf} {j : Nat} {d : DefR} (r : RowRep h j d)
     by rw [c 5 (by decide)]; exact a5, fun i hi => ?_⟩
   rw [c 5 (by decide), cp i hi]
   exact (ap i hi).frame es
-
-theorem pairCell0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = 155712 + 3 * k := by
-  have e3 : (3 * k.toUInt64).toNat = 3 * k := by rw [UInt64.toNat_mul]; simp; omega
-  rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
 
 /-- **Rep after v133's writes**: binding `i0` typed (slot = nx, code, input flag), nx advanced by the width unless it is the
 input, the current row extended by the parameter code -/
@@ -345,7 +330,7 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
       ⟨by rw [cS 26 (by decide) (by decide) (by decide) (by decide)]; exact ds26,
       fun k h1 h2 => by
         rw [cS 26 (by decide) (by decide) (by decide) (by decide)] at h1
-        have c := pairCell0 k h2
+        have c := shRow0 k h2
         rw [cSh _ (by rw [c]; omega) (by rw [c]; omega)]; exact dsz k h1 h2,
       fun k hk => by
         rw [cS 26 (by decide) (by decide) (by decide) (by decide)] at hk
@@ -424,7 +409,7 @@ theorem v133_full (g : Buf) (a b : UInt64) (i0 : Nat) (ha : a = i0.toUInt64) (hi
   by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
   · simp only [cg, if_true]; exact stat0 _ (by omega)
   simp only [cg, if_false]
-  apply ite0A _ _ _ (stat0A _)
+  apply ite0 _ _ _ (status_bset0 _)
   simp only [B27, hJ, if_false]
   exact v1_zero _ _ _ _ (stat0 _ (by simp only [length_bset]; omega))
 

@@ -159,12 +159,6 @@ theorem codeF_append : ∀ (a b : List XOp), M.codeF (a ++ b) = M.codeF a ++ M.c
 
 theorem codeF_one (o : XOp) : M.codeF [o] = M.encF o := List.append_nil _
 
-/-- old abstract code embeds with the same words -/
-theorem codeF_map (os : List AOp) : M.codeF (os.map .a) = M.code os := by
-  induction os with
-  | nil => rfl
-  | cons o os ih => show M.enc o ++ M.codeF (os.map .a) = M.enc o ++ M.code os; rw [ih]
-
 /-- the frame-aware `Done`: `keepF` instead of `keep` -/
 structure DoneF (s s' : M.S) (pc' : BitVec 64) : Prop where
   ok : M.ok s'

@@ -47,10 +47,7 @@ theorem storeBytes_wr : ∀ (m : Proven.Mem) (a : Nat) (l : List (BitVec 8)) (x 
 theorem bytes_le8 {s : St} {a : Nat} {v : BitVec 64} (h : bytes (core.mem s) a 8 = (le8 v).map some) :
     bytesAt s a 8 = (Proven.le8 v).map some := (Proven.Mach.Riscv.bytes_eq s a 8).symm.trans h
 
-def frX : St → BitVec 64 := fun s => getX s 3
 
-theorem first' {s : St} {pc : BitVec 64} {ws} (hA : core.At s pc ws) : codeAt s pc ws ∧ codeOK pc ws.length :=
-  ⟨hA.code, hA.codeOK⟩
 
 theorem law_enter {n : Nat} {s : St} {pc : BitVec 64} (hf : FrOK n (frameBase n (getX s 2)))
     (hA : core.At s pc (encX (.enter n)))

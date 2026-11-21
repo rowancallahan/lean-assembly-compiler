@@ -131,7 +131,6 @@ theorem law_mov {d a : Reg} {s : St} {pc : BitVec 64} (hm : MovOK d a) (hA : cor
       exact step_mv8 h hpc hok v hi
   exact run1 hn ⟨ofNext hn (.inr ⟨d, rfl⟩), set1Of hn, memOf hn⟩
 
-theorem shl_ofNat' (m : Nat) : BitVec.ofNat 64 m <<< 1 = BitVec.ofNat 64 (2 * m) := shl_ofNat m
 
 theorem li_ok {d : Reg} (hd : d.val < 11) : ∀ (n : Nat) {s : St} {pc : BitVec 64},
     core.At s pc (genConst d.val n) →

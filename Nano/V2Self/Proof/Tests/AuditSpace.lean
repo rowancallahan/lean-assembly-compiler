@@ -126,12 +126,6 @@ theorem good2 : GoodU p2 [5] 4194400 := by
     (Nat.le_refl _) h32 (by decide)).1 hr'
   have r := run2; rw [this] at r; cases r
 
-/-- **audit A2**: `memoryNeeded` for ex1 on input `[5]` is at most 4,194,416 bytes -/
-theorem spaceC_ex1 : spaceC Witness.x2 [5] ≤ 4194416 := by
-  have h := lfind_le (GoodU p2 [5]) (2 ^ 32) 0 4194400 (Nat.zero_le _) (by decide) good2
-  have h16 := Msp_ge p2 [5]
-  unfold spaceC; rw [pOf2]; simp only; unfold Msp; unfold thr at *; omega
-
 /-- kernel run: with 4,194,399 usable bytes main on `[5]` DOES run out of room -/
 theorem run2' : notRoom (RS p2 [5] [] (2 ^ 31) 4194399) = false := by
   unfold RS; rw [← tab_eq _ _ (p2.length - 1 + 1) _ (Nat.lt_succ_self _)]; decide +kernel

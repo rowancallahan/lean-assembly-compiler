@@ -17,8 +17,6 @@ theorem ExecL.env_keep : ∀ {l : List AStmt} {σ σ' : AState}, ExecL l σ σ' 
     rw [ExecL.env_keep h1 (fun s hs => hv s (List.mem_cons_of_mem _ hs)),
       h.env_keep (hv a (List.mem_cons_self ..))]
 
-theorem ExecL.heap_len_keep : ∀ {l : List AStmt} {σ σ' : AState}, ExecL l σ σ' → True := fun _ => trivial
-
 theorem zx_ofNat (u : UInt8) : zx u = BitVec.ofNat 64 u.toNat := by
   apply BitVec.eq_of_toNat_eq; rw [zx_toNat, ofNat_toNat_lt (by have := u.toNat_lt; omega)]
 
@@ -59,13 +57,7 @@ theorem BPred.bit_tr {p : BPred} (hp : p.noAcc = true) (env : AEnv) (x : UInt8) 
   rw [ByteExp.tr_ok 0 x env h6 _ (.inl (p.bit_noAcc hp)), p.bit_denote]
   unfold b01; split <;> rfl
 
-theorem eqB_noAcc (b : UInt8) : (eqB b).noAcc = true := rfl
-theorem eqB_denote (b x : UInt8) : (eqB b).denote x = (x == b) := rfl
-
 /-! ## Reductions: the generic code -/
-
-theorem Inv.ofSet {L cs xs cur out fs} {env : AEnv} {heap : Heap} (h : Inv L cs xs cur ⟨env, heap⟩ out fs) (v : Fin 8)
-    (a : BitVec 64) (h1 : v ≠ 1) (h4 : v ≠ 4) : Inv L cs xs cur (AState.mk (env.set v a) heap) out fs := h.set v a h1 h4
 
 theorem optA_exec_5 {e : Option AExp} {σ : AState} :
     ExecL (optA 5 e) σ ⟨σ.env.set 5 ((e.getD (.var 5)).denote σ.env), σ.heap⟩ := by
@@ -144,7 +136,6 @@ theorem red_exec {α : Type} (enc : α → BitVec 64) (F : α → UInt8 → α) 
 
 /-! ## Word encodings of the reduction states -/
 
-theorem b01_eq0 (b : Bool) : b01 b = 0 ↔ b = false := by cases b <;> decide
 theorem b01_or (a b : Bool) : b01 a ||| b01 b = b01 (a || b) := by cases a <;> cases b <;> decide
 theorem b01_and (a b : Bool) : b01 a &&& b01 b = b01 (a && b) := by cases a <;> cases b <;> decide
 theorem b01_ofNat (b : Bool) : b01 b = BitVec.ofNat 64 (if b then 1 else 0) := by cases b <;> rfl

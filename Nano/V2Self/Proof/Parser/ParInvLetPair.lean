@@ -17,7 +17,7 @@ theorem v6_stat (g : Buf) (x s w : UInt64) (hg : bget g 0 = 0) : bget (v6 g x s 
       bget_bset' _ _ _ _ (by have := rc 2 (by decide); simp at this ⊢; omega),
       bget_bset' _ _ _ _ (by have := rc 1 (by decide); simp at this ⊢; omega),
       bget_bset' _ _ _ _ (by have := rc 0 (by decide); simp at this ⊢; omega)]; exact hg
-  · exact stat0' g
+  · exact status_bset0 g
 
 /-- `v6` writes the binding table, h[4] and (on overflow) the status: the shape table is untouched -/
 theorem v6_shtab (g : Buf) (x s w : UInt64) : ShTabAgree g (v6 g x s w) := by
@@ -85,10 +85,10 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
       intro z; apply hs
       have zb : ∀ (g : Buf) (k v : UInt64), k.toNat ≠ 0 → bget g 0 = 0 → bget (bset g k v) 0 = 0 :=
         fun g k v hk hg => by rw [bget_bset' _ _ _ _ (by simpa using hk)]; exact hg
-      refine ite0 _ _ _ (stat0' _) ?_
+      refine ite0 _ _ _ (status_bset0 _) ?_
       split
       · apply v6_stat; apply v6_stat; apply zb _ 31 _ (by decide); apply zb _ 11 _ (by decide); apply zb _ 31 _ (by decide); exact z
-      · exact stat0' _
+      · exact status_bset0 _
     have R3 := rep_push (.letEnd st.nx st.binds.length) st.nx.toUInt64 (bget H2 4) R2 (by simp [inDefF, Frame.isDefs])
       ⟨rfl, j4⟩ (pushOK st4)
     have R4 := rep_push (.expr 0 (bm tl)) 0 (b01 tl) R3 (by simp [inDefF, Frame.isDefs]) ⟨rfl, b01_toNat tl⟩ st4
@@ -114,7 +114,7 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
       apply UInt64.toNat_inj.mp; rw [UInt64.toNat_add]; simp
     rw [en] at hs ⊢
     by_cases ccap : (1048575 : UInt64) < (st.nx + cw top.sh).toUInt64
-    · rw [if_pos ccap] at hs; exact absurd (stat0' _) hs
+    · rw [if_pos ccap] at hs; exact absurd (status_bset0 _) hs
     rw [if_neg ccap] at hs ⊢
     have hcapN : ¬ 2 ^ 20 ≤ st.nx + cw top.sh := by
       have ht := hc20 top (by rw [evs]; simp)
@@ -163,8 +163,8 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
       refine ⟨[.expr 0 (bm tl), .letEnd st.nx st.binds.length], _, ?_, R9⟩
       rw [hts] at hcapN
       simp [stepF, et, evs, hx, hts, hcapN]
-    · simp only [w4, if_false] at hs; exact absurd (stat0' _) hs
+    · simp only [w4, if_false] at hs; exact absurd (status_bset0 _) hs
   · have n : (bget h1 (d11 + bget h1 3) == 13) = false := by simpa using c13
-    simp only [n, if_false] at hs; exact absurd (stat0' _) hs
+    simp only [n, if_false] at hs; exact absurd (status_bset0 _) hs
 
 end ParInv

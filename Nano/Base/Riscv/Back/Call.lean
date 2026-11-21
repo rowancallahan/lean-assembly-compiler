@@ -21,9 +21,6 @@ def encC : COp → List (BitVec 32)
   | .leaveC n => [G.encL 3 0 1 3, encI 0 (BitVec.ofNat 12 (8 * (n + 1))).toNat 3 3]
   | .stA m _ => [G.encS 3 (immN (8 * m)) 5 3]
 
-theorem sx_negF : ∀ k : Fin 18, (immN (8 * k.val)).signExtend 64 = -(BitVec.ofNat 64 (8 * k.val)) := by decide
-theorem sx_posF : ∀ k : Fin 18, (BitVec.ofNat 12 (8 * k.val)).signExtend 64 = BitVec.ofNat 64 (8 * k.val) := by
-  decide
 theorem sx_neg {k : Nat} (h : k < 256) (h0 : 0 < k) : (immN (8 * k)).signExtend 64 = -(BitVec.ofNat 64 (8 * k)) :=
   sx12_neg _ (by omega) (by omega)
 theorem sx_pos {k : Nat} (h : k < 256) : (BitVec.ofNat 12 (8 * k)).signExtend 64 = BitVec.ofNat 64 (8 * k) :=

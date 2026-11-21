@@ -113,9 +113,6 @@ theorem fin_prim {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
     have he1 : bget (bset (o29 s f v W.t).1 (u 7) (o1 (o29 s f v W.t).1 (u 4))) 1 = 1 := err_bset (by decide) herr
     exact err_pop (o6_err (v := v) (e := _) hl6 he1).1 _ _
 
-theorem o20_err' (t : Buf) (a n0 : UInt64) {s v : Buf} {j : UInt64} (hl : 6 ≤ s.length) (h : bget s 1 = 1) :
-    bget (o20 16777216 s v t a j n0).1 1 = 1 := o20_err t a n0 16777216 s v j hl h
-
 theorem fin_call {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph = 2) {Φ0 : List Fr} {r : Fr}
     (hΦ : A.Φ = Φ0 ++ [r]) (hr : r.ok W) (hg : r.g = 8) (hd : r.d = 3) (hc : r.c = r.n) {pre acc : List Nat}
     (hes : A.es = pre ++ acc) (hpre : pre.length = r.vb) :
