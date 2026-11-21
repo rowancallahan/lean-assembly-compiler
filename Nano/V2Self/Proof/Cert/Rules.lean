@@ -257,27 +257,4 @@ theorem Good.get {specs : List (Fn → Prop)} {ms : List Fn} {n i : Nat} {S : Fn
   rw [hS] at h1; cases h1
   exact ⟨ms[i], List.getElem?_eq_getElem hlt, h2⟩
 
-theorem means_good (inp : List UInt8) (κ : Nat) (specs : List (Fn → Prop)) :
-    ∀ (r : List DefA) (ms : List Fn) (n : Nat), Good specs ms n →
-      (∀ i (hi : i < r.length) ms', Good specs ms' (n + i) → ∃ S : Fn → Prop, specs[n + i]? = some S ∧ S (defMean inp κ ms' (r[i]'hi))) →
-      Good specs (means inp κ ms r) (n + r.length)
-  | [], ms, n, G, _ => by simpa [means] using G
-  | d :: r, ms, n, G, H => by
-    simp only [means, List.length_cons]
-    have G' : Good specs (ms ++ [defMean inp κ ms d]) (n + 1) := by
-      obtain ⟨S, hS, hSF⟩ := H 0 (by simp) ms (by simpa using G)
-      refine ⟨by simp [G.1], fun j F hj => ?_⟩
-      by_cases c : j < ms.length
-      · rw [List.getElem?_append_left c] at hj; exact G.2 j F hj
-      · have : j = ms.length := by
-          have := (List.getElem?_eq_some_iff.mp hj).1; simp at this; omega
-        subst this
-        simp at hj; subst hj
-        exact ⟨S, by rw [G.1]; simpa using hS, hSF⟩
-    have := means_good inp κ specs r (ms ++ [defMean inp κ ms d]) (n + 1) G'
-      (fun i hi ms' Gi => by
-        have := H (i + 1) (by simp; omega) ms' (by rw [show n + (i + 1) = n + 1 + i by omega]; exact Gi)
-        rw [show n + (i + 1) = n + 1 + i by omega] at this; simpa using this)
-    rw [show n + (r.length + 1) = n + 1 + r.length by omega]; exact this
-
 end Cert
