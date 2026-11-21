@@ -66,4 +66,80 @@ theorem rel_of_nmid {K : LayW} {C : List J} {I : Img} {s0 s : M.State} {A : List
   rw [show K.base + 4 * (a / 4) + a % 4 = K.base + a by omega] at this
   exact (this.trans e.symm : (M.observe s).memory (UInt64.ofNat (K.base + a)) = some I.code[a])
 
+/-! ## the simulation of one atom -/
+
+/-- the dead set after atom `t`, from the dead set `D` at its start -/
+def outD (t : NTm) (D : Nat → Prop) (r : Nat) : Prop := (D r ∧ t.writes r = false) ∨ t.kills r = true
+
+/-- **the segment case of atom `t`**: `t`'s J instructions sit at J pc `q` of `C`, its words at word `h` of `A`
+(`π` = word index of a J pc); the machine shows a view `v` that agrees with the J state `st` off `D`, and `t` reads
+nothing in `D`.  Then along any safe J run from `(q, st)` that does not end inside the atom, the J run reaches an
+exit `c` of the atom, and the machine runs to word `π c.1` with a view that agrees with `c.2` off `outD t D`. -/
+def ASim (M : Machine) (X W : M.State → Nat → Prop) (t : NTm) : Prop :=
+  ∀ {K : LayW} {C : List J} {A : List Nat} {s0 s : M.State} {v st : CallProbe.St} {z : Nat × CallProbe.St} {n : Nat}
+    {π : Nat → Nat} {q h : Nat} {D : Nat → Prop},
+    (∀ i, i < t.j.length → C[q + i]? = t.j[i]?) → (∀ i, i < t.alen → A[h + i]? = (t.a π q h)[i]?) →
+    K.base + 4 * A.length ≤ 2 ^ 32 → A.length < 2 ^ 18 →
+    NMid X W K A s0 v h s → Agree D v st → (∀ r, D r → t.reads r = false) → st.b = K.base →
+    -- the layout: the fall-through boundary, the targets, and link values (an offset below 2^64 is an anchor's)
+    π (q + t.j.length) = h + t.alen → st.lo (q + t.j.length) = 4 * (h + t.alen) →
+    (∀ p ∈ t.tg q, π p ≤ A.length) → (∀ p, st.lo p < 2 ^ 64 → st.lo p = 4 * π p ∧ π p ≤ A.length) →
+    SRunN K C (n + 1) (q, st) z → (∀ i, 0 < i → i < t.j.length → z.1 ≠ q + i) →
+    ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
+      Agree (outD t D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
+      (c.1 = q + t.j.length ∨ c.1 ∈ t.tg q ∨ c.2.lo c.1 < 2 ^ 64)
+
+/-- a register write on both sides keeps the agreement (the written register is live afterwards) -/
+theorem agree_wr {D : Nat → Prop} {v st : CallProbe.St} (h : Agree D v st) (d : Nat) (x : UInt64) :
+    Agree (fun r => D r ∧ r ≠ d) (CallProbe.wr v d x) (CallProbe.wr st d x) := by
+  refine ⟨fun j h0 h32 hd => ?_, ?_, ?_⟩
+  · by_cases e : j = d
+    · subst e; simp [CallProbe.wr, CallProbe.upd, show j ≠ 0 by omega]
+    · have : v.x j = st.x j := h.x j h0 h32 (fun hD => hd ⟨hD, e⟩)
+      by_cases hd0 : d = 0 <;> simp [CallProbe.wr, CallProbe.upd, hd0, e, this]
+  · have := h.m; by_cases hd0 : d = 0 <;> simp [CallProbe.wr, hd0, this]
+  · have := h.x0
+    by_cases hd0 : d = 0
+    · simp [CallProbe.wr, hd0, this]
+    · simp [CallProbe.wr, CallProbe.upd, hd0, this, show (0 : Nat) ≠ d from fun e => hd0 e.symm]
+
+theorem Agree.mono {D D' : Nat → Prop} {v st : CallProbe.St} (h : Agree D v st) (hs : ∀ r, D r → D' r) :
+    Agree D' v st := ⟨fun j h0 h32 hd => h.x j h0 h32 (fun hD => hd (hs j hD)), h.m, h.x0⟩
+
+theorem mr_iff {r : Nat} : NTm.mr r = true ↔ mapped r = true ∧ r ≠ 0 := by simp [NTm.mr]
+
+/-- **worked case: the ALU atom** `alu op d x y` ↔ one 3-register word (mul: `movz x17, #0; madd`) -/
+theorem asim_alu (S : A64SemN M X W) {op d x y : Nat} (hok : (NTm.alu op d x y).ok = true) :
+    ASim M X W (NTm.alu op d x y) := by
+  intro K C A s0 s v st z n π q h D hJ hA hB hL hM hag hrd hb hft hlo htg hlk hrun hz
+  simp only [NTm.ok, Bool.and_eq_true, mr_iff] at hok
+  obtain ⟨⟨⟨hd, hd0⟩, hx, hx0⟩, hy, hy0⟩ := hok
+  have c0 : C[q]? = some (.alu op d x y) := by simpa [NTm.j] using hJ 0 (by simp [NTm.j])
+  cases hrun with
+  | head hS hs hrest =>
+  simp only [SafeX, c0] at hS
+  obtain ⟨-, -, -, ⟨h1, h2⟩, -⟩ := hS
+  simp only [CallProbe.step, c0, Option.some.injEq] at hs; subst hs
+  have vx : v.x x = st.x x := hag.x x (by omega) (mapped_lt hx) (fun hD => by simpa [NTm.reads] using hrd x hD)
+  have vy : v.x y = st.x y := hag.x y (by omega) (mapped_lt hy) (fun hD => by simpa [NTm.reads] using hrd y hD)
+  have hfin : ∀ {s' : M.State}, Runs M s s' →
+      NMid X W K A s0 (CallProbe.wr v d (CallProbe.aluf op (v.x x) (v.x y))) (h + (NTm.alu op d x y).alen) s' → _ :=
+    fun {s'} r N => (⟨0, _, _, s', Nat.zero_le _, hrest, r, by rw [show π (q + 1) = _ from hft]; exact N,
+      (by rw [vx, vy]; exact (agree_wr hag d _).mono (fun r hr => Or.inl ⟨hr.1, by simp only [NTm.writes, beq_eq_false_iff_ne]; exact fun e => hr.2 e.symm⟩)),
+      CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl rfl⟩ :
+      ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
+        Agree (outD (NTm.alu op d x y) D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
+        (c.1 = q + (NTm.alu op d x y).j.length ∨ c.1 ∈ (NTm.alu op d x y).tg q ∨ c.2.lo c.1 < 2 ^ 64))
+  by_cases h3 : op = 3
+  · subst h3
+    have a0 : A[h]? = some (ArmEnc.movz 17 0) := by simpa [NTm.a] using hA 0 (by simp [NTm.alen, NTm.a])
+    have a1 : A[h + 1]? = some (ArmEnc.rr (ArmEnc.aluC 3) (armReg d) (armReg x) (armReg y)) := by
+      simpa [NTm.a] using hA 1 (by simp [NTm.alen, NTm.a])
+    obtain ⟨s', r, N⟩ := n_mul S hM hB a0 a1 hd hd0 hx hx0 hy hy0
+    exact hfin r (by simpa [NTm.alen, NTm.a] using N)
+  · have a0 : A[h]? = some (ArmEnc.rr (ArmEnc.aluC op) (armReg d) (armReg x) (armReg y)) := by
+      simpa [NTm.a, h3] using hA 0 (by simp [NTm.alen, NTm.a, h3])
+    obtain ⟨s', r, N⟩ := n_alu S hM hB a0 h1 h2 h3 hd hd0 hx hx0 hy hy0
+    exact hfin r (by simpa [NTm.alen, NTm.a, h3] using N)
+
 end JT
