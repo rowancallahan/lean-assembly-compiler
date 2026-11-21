@@ -15,7 +15,7 @@ res = json.load(open(f"{D}/res_{SEED}.json"))
 def okstat(s): return s.startswith("status 0") or s.startswith("status 1")
 
 def lean(fn):
-    p = subprocess.run(["lake", "env", "lean", fn], cwd=ROOT, capture_output=True, text=True, timeout=3600)
+    p = subprocess.run(["lake", "env", "lean", "-DmaxErrors=1000000", fn], cwd=ROOT, capture_output=True, text=True, timeout=3600)
     return p.stdout + p.stderr
 
 PARSE = ("unexpected", "unterminated", "expected ", "missing end", "invalid 'end'")
