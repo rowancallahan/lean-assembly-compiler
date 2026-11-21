@@ -28,12 +28,15 @@ def StepAt (t : UInt64) : Prop :=
 /-- the obligation for every code -/
 def StepOK : Prop := ∀ t : UInt64, t ≠ 0 → StepAt t
 
+theorem ite_mem {c : Prop} [Decidable c] {a b : UInt64} {S : List UInt64} (ha : a ∈ S) (hb : b ∈ S) :
+    (if c then a else b) ∈ S := by
+  split <;> assumption
+
 /-- the codes `candC` produces -/
 theorem candC_codes (l : List J) : candC l ∈ ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22] : List UInt64) := by
   unfold candC
   simp only []
-  repeat' split
-  all_goals decide
+  repeat' (first | decide | apply ite_mem)
 
 /-- the 21 per-code lemmas give `StepOK` -/
 theorem stepOK_of (h1 : StepAt 1) (h2 : StepAt 2) (h3 : StepAt 3) (h4 : StepAt 4) (h5 : StepAt 5) (h6 : StepAt 6)
