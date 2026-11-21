@@ -646,3 +646,12 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
   it heavily under QEMU, and treat that as enough for now; the Sail ARM proof follows later via the same A64Sem
   interface. Note: the two ARM models are NOT proved equal to each other; the compiler is proved correct on each
   separately through A64Sem.
+
+## Syntax decisions (owner, 2026-11-21)
+- Extend the trusted lexer definition for comments/attributes: approved.
+- `match` via a desugar stage in the trusted parse definition (pOf): approved; broader parser changes allowed if heavily
+  fuzz-tested (differential vs desugared/stripped programs, Lean #eval cross-check, reject fuzz).
+- Extra work memory (+8 MiB for match): accepted.
+- Open: namespace flattening; out-of-range index semantics (silent default / trap / proven-in-bounds).
+- Order: syntax growth now, in parallel with the native ARM proof (front end vs codegen/run files); core optimizations
+  after the native ARM proof lands, applied to both RISC-V and native ARM generators.
