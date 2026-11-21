@@ -11,11 +11,11 @@ def encG (gs : List NumSpec.G) : List UInt64 := gs.flatMap encGr
 theorem encG_app (a b : List NumSpec.G) : encG (a ++ b) = encG a ++ encG b := by simp [encG]
 
 /-- the body of `u40` after the checks -/
-def M40 (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb k a a2 : UInt64) :
+def M40 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb k a a2 : UInt64) :
     Buf × (UInt64 × UInt64) :=
   let u := tt - 1;
   if k == 4 then
-    (let (g1, ok) := u47 16777216 (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
+    (let (g1, ok) := u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
      if ok == 1 then u40 n x d b bt t u c g1 s gb a2 else (g1, (c, 0)))
   else if k == 5 then u40 n x d b a t u c g s st gb
   else if k == 6 then
@@ -46,7 +46,7 @@ def M40 (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : B
 theorem u40_unf (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) :
     u40 (n + 1) x d b bt t tt c g s st gb =
       if tt == 0 then (g, (c, 1)) else if u36 b t g s == 0 then (g, (c, 0)) else
-      M40 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := rfl
+      M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := rfl
 
 theorem u40_zero (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) :
     u40 0 x d b bt t tt c g s st gb = (g, (c, 0)) := rfl
@@ -54,7 +54,7 @@ theorem u40_zero (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Bu
 theorem u40_eq (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64)
     (h0 : (tt == 0) = false) (h1 : (u36 b t g s == 0) = false) :
     u40 (n + 1) x d b bt t tt c g s st gb =
-      M40 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := by
+      M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := by
   rw [u40_unf, h0, h1]; rfl
 
 abbrev MO := Buf × (UInt64 × UInt64)
@@ -101,7 +101,7 @@ def SZ (b t g s : Buf) : Prop := b.length < 2 ^ 40 ∧ t.length < 2 ^ 40 ∧ g.l
 theorem gm_top {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b : Buf} {bs : List (Nat × List Bool)} {t : Buf} {ts : List T3}
     {g s : Buf} {S : List UInt64} {k a a2 c gb : UInt64}
     (hI : MI b bs t (ts ++ [(k, a, a2)]) g s S)
-    (H : SZ b t g s → ∀ n, Q (M40 n x d b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb k a a2)) :
+    (H : SZ b t g s → ∀ n, Q (M40 16777216 n x d b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb k a a2)) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   intro n
   have htl := hI.pt.length_le
