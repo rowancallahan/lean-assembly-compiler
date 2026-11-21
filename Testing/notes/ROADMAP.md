@@ -29,6 +29,23 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## TRUST CHAIN FOR SELF-HOSTING (owner, 2026-11-21) — what is proved, what is trusted, what is next
+Status (keep_round1_expr; EXPR.md is the detailed report):
+- E (Expr emitter) is written in bootstrap nano and compiled by B2. Its output = emitSpec byte for byte.
+- Check: C's emitted Expr = Lean's elaborated Expr, 234/236 defs. o32/o38 are representation only
+  (k ∈ {0,1}, used only in `k == 1`). Nat step 1 (numOkP, Lean's numeral default) targets 236/236.
+  Big-number Nat is deferred.
+- Proved: eval_emit (Ev of emitted Expr = nano's Sem, all programs); C_expr (mC = Ev of C's Expr);
+  self_expr_C (C's RISC-V code writes that value). The fixpoint B2 = B3 is checked.
+- In progress: make "emitted Expr = Lean's Expr" kernel-checked (generated literal + decide/rfl), not a script check.
+Trusted: Lean kernel + propext/Choice/Quot.sound; the ISA models (Sail RV, Sail ARM, DeepMind ARM) and
+hardware = model; Spec/ (loader, encodings); the Expr generator reading the environment; Ev's faithfulness
+to Lean for programs other than C; Lean's toolchain once, for B1.
+Next, to remove trust (owner wants all three on the roadmap):
+1. Kernel proof that B2 = mC(C's source), which removes the B1/toolchain trust (see "remove trust in the bootstrap toolchain").
+2. A general proof of Ev against a formal model of Lean's Expr semantics (e.g. con-leche's set-theoretic model).
+3. Re-check all nano proofs with con-leche (an independent verified kernel).
+
 ## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
 1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
 2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
