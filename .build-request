@@ -1,4 +1,4 @@
 reply: session_01MfKuVYxHRXmZCfK6uNURXy
-targets: Blocks.ArmDMTop Blocks.AxiomsDM Blocks.AxiomsDMN
+targets: Blocks.ArmDMTop Blocks.AxiomsDM
 dir: Arm/apc
 axioms: yes
