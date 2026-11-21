@@ -167,6 +167,11 @@ def fresh (s : Nat) (bs : Bs) : Bool := bs.all fun b => b.1 + b.2.width ≤ s
 /-- an inferred shape agrees with the claimed one (a CONTINUE has none) -/
 def agree (r : Sh) : Option Sh → Bool | none => true | some t => t == r
 
+/-- the expected component shapes of a pair -/
+def expSplit : Option Sh → Option Sh × Option Sh
+  | some (.p x y) => (some x, some y)
+  | _ => (none, none)
+
 structure Cx where
   defs : List DefI
   self : String × List Ps   -- the loop's name and state kinds (CONTINUE)
@@ -211,7 +216,7 @@ def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Na → Option (X × Option Sh)
       let (bx, bsh) ← emit cx ((s, .sh vsh) :: bs) exp b
       some (.lt true (shTy vsh) vx bx, bsh)
   | .pair [a, b] => do
-    let (ea, eb) := match exp with | some (.p x y) => (some x, some y) | _ => (none, none)
+    let (ea, eb) := expSplit exp
     let (ax, sa) ← emit cx bs ea a
     let (bx, sb) ← emit cx bs eb b
     let A ← sa
