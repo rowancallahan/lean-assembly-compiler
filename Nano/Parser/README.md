@@ -67,3 +67,9 @@ Per-handler proofs that each step of the parser's machine code preserves the rep
 machine memory and the L2 state (one file per handler: `ParInvAtom`, `ParInvCall`, `ParInvIte`, …; shared helpers in
 `ParInvOps`, `ParInvStep`, `ParInvTop`). Swept: no dead declarations; same-statement copies merged
 (`status_bset0`, `ite0`, `shRow0`, `drop_bset0`, `nt_code`).
+
+Known superset (syntax-1, lead decision 2026-11-21; Testing/notes/SYNTAX_EXP.md): the front end accepts some texts Lean
+rejects, and gives them a meaning Lean does not define. These are doc comments, `/-!`, `@[…]` and `private` outside a
+declaration-modifier position (they are trivia to the lexer), literals Lean would default to Nat (S has only
+UInt64/UInt8), and match arms that break Lean's offside rule (S has no layout rule). None can be miscompiled: a text Lean
+accepts means the same in both. Rejecting the misplaced modifiers would need a modifier token checked in `DsSpec.ds`.

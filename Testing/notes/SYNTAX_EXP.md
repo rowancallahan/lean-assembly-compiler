@@ -138,7 +138,7 @@ unchanged, and `review_axioms.sh` gives "OK: 8 theorems, axioms as pinned".
 ### Fuzz (`Testing/nano/v2self/fuzz/fuzz_syntax.py` + `lean_check.py`)
 FUZZ_RESULTS
 
-Known superset (owner decision pending; no miscompile possible, since Lean gives these texts no meaning): the compiler
+Known superset (lead decision 2026-11-21: documented, not rejected; no miscompile possible, since Lean gives these texts no meaning): the compiler
 accepts texts that Lean rejects.
 - Doc comments, `/-!` or `@[…]` in a position Lean does not allow (for example mid-expression).
 - Typing differences: Lean defaults unconstrained literals to Nat.
