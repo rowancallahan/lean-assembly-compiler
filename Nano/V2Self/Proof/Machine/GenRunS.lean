@@ -68,18 +68,6 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   have AS : At C (11 + D.length) (startJ (11 + D.length) (P.T (hs.length - 1))) := by
     rw [← hCd] at AC ⊢; exact At.cast (At.right AC) (by simp; rfl)
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
-  have hM := gen_defs_runS P ds C (IGs s0 inp) E0 (s0.x 10) KL
-    hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
-    (fun s hs => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb)
-    (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
-    (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by rw [hDd]; exact AD)
-    (fun j hj => hTp j hj)
-    (fun k hk => by
-      obtain ⟨a3, a4⟩ := hpar k hk
-      obtain ⟨b1, b2⟩ := hpk k hk a3
-      obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
-      exact ⟨by omega, c4, b1, b2, a4, hopv k hk, c2, c3⟩) (hs.length - 1) (by omega)
-  rw [np, nr] at hM
   have hok : C.all dstOk = true := by
     rw [← hCd]; simp only [List.all_append, stubJ_ok, startJ_ok, Bool.and_true, Bool.true_and]
     rw [← hDd]; exact defsJ_ok P ds 0 hs.length
@@ -97,22 +85,24 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega)
         exact (lbm_eq (by rw [upd_other _ _ (by omega), upd_other _ _ (by omega)])).trans (hinp i hi),
       by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b, en.wk⟩
+  have hO := gen_defs_runO P ds C (IGs s0 inp) E0 (s0.x 10) KL
+    hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
+    (fun s hs => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb)
+    (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
+    (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega)
+    (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega) (by rw [hDd]; exact AD)
+    (fun j hj => hTp j hj)
+    (fun k hk => by
+      obtain ⟨a3, a4⟩ := hpar k hk
+      obtain ⟨b1, b2⟩ := hpk k hk a3
+      obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
+      exact ⟨by omega, c4, b1, b2, a4, hopv k hk, c2, c3⟩) (hs.length - 1) (by omega)
+  have hM := hO.ok
+  rw [np, nr] at hM
   refine ⟨fun vs H' hSd N bs hN hPb hPN hbs hQ hout hwO => ?_, fun fk hk hSd => ?_⟩
   rotate_left
   · -- the capacity exit
-    have hMc := gen_defs_cap P ds C (IGs s0 inp) E0 (s0.x 10) KL
-      hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
-      (fun s hs => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb)
-      (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
-      (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := fk) (tg := stubW fk)
-      hk (fun h => by subst h; rfl) (fun h => by subst h; rfl) (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega)
-      (by rw [hDd]; exact AD)
-      (fun j hj => hTp j hj)
-      (fun k hk => by
-        obtain ⟨a3, a4⟩ := hpar k hk
-        obtain ⟨b1, b2⟩ := hpk k hk a3
-        obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
-        exact ⟨by omega, c4, b1, b2, a4, hopv k hk, c2, c3⟩) (hs.length - 1) (by omega)
+    have hMc := hO.fail fk hk
     rw [np] at hMc
     obtain ⟨s2, h2, I2, z2, k2, b2⟩ := start_capX (KL := KL) hok A0 AS hMc s0 z0 hPhb ha8 hE0
       (by rw [hPhb]; exact hroom) hE62 (by have := lC; have := Nat.mul_le_mul_left s0.w (show 11 + D.length + 12 ≤ C.length by omega); omega) hIGe (by rw [hPhb]; exact hSd) hlo hhi hbase hE8

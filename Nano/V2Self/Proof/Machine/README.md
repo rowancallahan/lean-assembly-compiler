@@ -9,7 +9,8 @@
   `Star` runs of the leaf templates); `NdSem` (a node's J template); exactness `ExprExact`, `CallExact`, `MachExact`,
   `NdCG*` (Gen's words = `template.map encG`); `Bridge`, `ExprBridge`, `TmGood` (encoders, `GoodX`).
 * Safe-run layer (the one the top uses): `JLay` (`LayW`, `SafeX`, `SStarX`), `SafeRun` (leaf runs as `SStarX`),
-  `EVSDefs`…`EVSProg` (contracts `EVHwS`/`EVHtS`/`DefXS`, node theorem `runVS/runTS/runLS`, defs/program),
+  `EVSDefs`…`EVSLoop` (contracts `EVHwS`/`EVHtS`/`DefXS` and the success fragment rules), `EVSRun` (`RunCxS`),
+  `CapNode` (outcome contracts `EVO`/`EVOt`/`DefO`, node theorem `runVO/runTO/runLO`), `CapProg` (`progRunO`),
   `StartSafe`, `StartAllS`, `GenRunS` (whole program).
 * Exits: `RoomRun` (out of room → stub word 1), `CapRun`, `CapNode`, `CapProg`, `CapStart` (buffer cap → stub 6),
   `SemCases`, `RunsDef`, `RunsShift` (exact work bound).
@@ -28,6 +29,11 @@
 * The tail, loop, node, def and program run theorems exist once, as safe runs. Plain-run contracts and proofs
   remain for the leaves and compositions (`EVH` in `HeapEV`, `EVHw` in `EVX`/`EVXP`/`EVXF`, `DefX` in `EVXC`,
   `ExprEV`, `StartRun`) next to their `…S` twins; removing them is CLEANUP_PLAN step 5 b/c.
+* One node induction for all outcomes: `EVO` bundles a fragment's success contract and its failure contracts (every
+  kind: cap, room) as two fields, so `runVO`/`progRunO` derive each node's side conditions once. The fragment rules
+  are not merged (success in `EVS*`, failure in `CapRun`/`RoomRun`): their proofs differ after the common prefix.
+  Rejected: one contract with a `match` on the semantics' result (all ~30 fragment proofs restated). See
+  Testing/notes/OUTCOME_CONTRACT.md.
 * Known limits: J is RISC-V-shaped (immediates ±2048, jal ±2^18 J words, fixed short branch skips in `SafeX`); code
   layout is uniform (`addr base pc = base + 4·blockLen·pc`), which blocks non-padded variable-length targets
   (see Testing/notes/CLEANUP_PLAN.md).

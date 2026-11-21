@@ -1,7 +1,7 @@
 /- Machine bridge (Opus box E): the J-level program, code shape.
 `gen_words`: if Gen succeeds on the serialized resolved program `ds`, the code after the def phase is the stub code
 followed by the def templates (`defsJ`), def k at its table start word.  `At_defsJ`: each def's template inside it.
-That every def runs per its contract is `gen_defs_runS` (EVSProg.lean). -/
+That every def runs per its contract is `gen_defs_runO` (CapProg.lean). -/
 import Nano.V2Self.Proof.Machine.NdProgW
 namespace Templates
 open CallProbe C GenRef ParSpec
