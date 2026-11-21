@@ -237,7 +237,7 @@ theorem repZ_cursor {g ts : Buf} {st : St} (R : RepZ g ts st) (p' : UInt64) {res
   obtain ⟨hn, hl, _⟩ := repZ_bounds R
   have cells : ∀ i : UInt64, i.toNat ≠ 3 → bget (bset g 3 p') i = bget g i := fun i a => bget_bset' _ _ _ _ (by simp; omega)
   have et : TokAgree g (bset g 3 p') := ⟨cells 7 (by decide), fun i hi => cells i (by omega)⟩
-  exact repZ_frame R (fun i a _ _ _ => cells i a) (drop_bset _ _ _ (by decide))
+  exact repZ_frame R (fun i a _ _ _ => cells i a) (drop_bset0 _ _ _ (by decide))
     (by rw [bget_bset_eq _ _ _ _ rfl (by simp; omega)]; exact tokAt_frame et hn hK)
 
 /-! ## opening a def (task 60's success branch) -/
@@ -546,30 +546,30 @@ theorem drop_openW (G : Buf) (p z : UInt64) (hj : (bget G 12).toNat < 512) (hz :
     db _ _ _ (by rw [r7]; omega), db _ _ _ (by rw [r0]; omega)]
 
 theorem drop_v85 : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 184384 = h.drop 184384
-  | 0, h, a, b => by simp only [v85]; exact drop_bset _ _ _ (by decide)
+  | 0, h, a, b => by simp only [v85]; exact drop_bset0 _ _ _ (by decide)
   | n + 1, h, a, b => by
     simp only [v85]
     split
     · split
       · split
         · split
-          · exact drop_bset _ _ _ (by decide)
+          · exact drop_bset0 _ _ _ (by decide)
           · split
             · exact drop_v85 n h _ _
-            · exact drop_bset _ _ _ (by decide)
-        · exact drop_bset _ _ _ (by decide)
-      · exact drop_bset _ _ _ (by decide)
-    · exact drop_bset _ _ _ (by decide)
+            · exact drop_bset0 _ _ _ (by decide)
+        · exact drop_bset0 _ _ _ (by decide)
+      · exact drop_bset0 _ _ _ (by decide)
+    · exact drop_bset0 _ _ _ (by decide)
 
 theorem drop_v83 : ∀ (n : Nat) (h : Buf) (j x c : UInt64), (v83 n h j x c).drop 184384 = h.drop 184384
-  | 0, h, j, x, c => by simp only [v83]; exact drop_bset _ _ _ (by decide)
+  | 0, h, j, x, c => by simp only [v83]; exact drop_bset0 _ _ _ (by decide)
   | n + 1, h, j, x, c => by
     simp only [v83]
     repeat' split
     all_goals first
-      | exact drop_bset _ _ _ (by decide)
+      | exact drop_bset0 _ _ _ (by decide)
       | exact drop_v83 n h _ _ _
-      | (rw [drop_bset _ _ _ (by decide), drop_v85])
+      | (rw [drop_bset0 _ _ _ (by decide), drop_v85])
       | (rw [drop_v83 n, drop_v85])
 
 theorem drop_v8 (h : Buf) (j x : UInt64) : (v8 h j x).drop 184384 = h.drop 184384 := drop_v83 _ _ _ _ _
@@ -591,7 +591,7 @@ theorem h_defs {h ts : Buf} {st : St} (r : Rep h ts st [.defs]) (hW : IsInpW) (h
     have e5 : ∀ i : UInt64, i.toNat ≠ 5 → bget (bset h 5 ([] : List Frame).length.toUInt64) i = bget h i :=
       fun i a5 => bget_bset' h 5 i _ (fun e => a5 (by rw [← e]; rfl))
     have et : TokAgree h (bset h 5 ([] : List Frame).length.toUInt64) := ⟨e5 7 (by decide), fun i hi => e5 i (by omega)⟩
-    have := repZ_frame (toks' := st.toks) RZ (fun i _ a5 _ _ => e5 i a5) (drop_bset _ _ _ (by decide))
+    have := repZ_frame (toks' := st.toks) RZ (fun i _ a5 _ _ => e5 i a5) (drop_bset0 _ _ _ (by decide))
       (by rw [e5 3 (by decide)]; exact tokAt_frame et hn0 RZ.2.2.2.1)
     exact this
   have g5 : bget (bset h 5 ([] : List Frame).length.toUInt64) 5 = 0 := bget_bset_eq _ _ _ _ rfl (by simp; omega)
@@ -769,7 +769,7 @@ theorem h_defs {h ts : Buf} {st : St} (r : Rep h ts st [.defs]) (hW : IsInpW) (h
     have ed : (v1 (v1 (bset (openW G p Z) 3 (q + 1)) 73 0 0) 61 0 0).drop 185408 = G.drop 185408 := by
       rw [← drop_openW G p Z hjG hZb]
       exact drop_up (by rw [drop_v1 _ _ _ _ (by rw [L1, length_bset, openW_len]; omega), drop_v1 _ _ _ _ (by rw [length_bset, openW_len]; omega),
-        drop_bset _ _ _ (by decide)])
+        drop_bset0 _ _ _ (by decide)])
     have RF := rep_open R4 hx hjG (by rw [L2, L1, length_bset, openW_len]) Z hZ agH ed hK T2 (by decide)
     refine ⟨fun _ => ⟨_, _, ?_, RF⟩, fun e => absurd e (by rw [RF.2.2.1]; simp [hacc0])⟩
     simp [stepF, hall, et1, et2, et3, hfd]
