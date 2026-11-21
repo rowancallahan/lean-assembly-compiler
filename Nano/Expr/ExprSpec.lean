@@ -290,15 +290,17 @@ def emitDef (defs : List DefI) (di : DefI) (b : Na) : Option (X × X) := do
 def reserved (n : String) : Bool :=
   n.any (· == '.') || n ∈ ["ite", "rd", "len", "len'", "put", "bnew", "bsize", "bget", "bset", "bpush"]
 
-/-- the Exprs of a parsed program (defs `ds`, bodies `as`, side flags `st`): (name, type, value) per def -/
-def emitAll (ds : List DefI) : List DefA → Sd → Option (List (String × X × X))
+/-- the Exprs of a parsed program (defs `ds`, bodies `as` from position `i`, side flags `st`): (name, type, value)
+per def; def `i` must have id `i` -/
+def emitAll (ds : List DefI) (i : Nat) : List DefA → Sd → Option (List (String × X × X))
   | [], ([], []) => some []
   | [], _ => none
   | (da :: as), st => do
+    if da.id ≠ i then none else
     let (b, st) ← annot da.body st
-    let di ← ds[da.id]?
+    let di ← ds[i]?
     let (t, v) ← emitDef ds di b
-    let rest ← emitAll ds as st
+    let rest ← emitAll ds (i + 1) as st
     some ((nameS di.name, t, v) :: rest)
 
 /-- the Exprs of a program text -/
@@ -306,7 +308,7 @@ def emitXs (src : List UInt8) : Except String (List (String × X × X)) := do
   let some ws := lexAll (src.length + 1) src | throw "lex"
   let some toks := tokens ws | throw "tokens"
   let some (ds, as) := pDefs (8 * toks.length + 8) (toks.length + 1) [] toks | throw "parse"
-  let some o := emitAll ds as (sideLets toks, sideNils toks) | throw "emit"
+  let some o := emitAll ds 0 as (sideLets toks, sideNils toks) | throw "emit"
   let ns := o.map (·.1)
   if ns.eraseDups.length ≠ ns.length ∨ ns.any reserved then throw "names" else pure o
 

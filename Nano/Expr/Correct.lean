@@ -796,4 +796,249 @@ theorem nodeL_ok {P cx cxe res k Kont} (H : Hyp P cx cxe res k Kont) : ∀ (as :
   | a :: as => List.forall_mem_cons.2 ⟨node_ok H a, nodeL_ok H as⟩
 end
 
+/-! ## annotation keeps the IR -/
+mutual
+theorem annot_erase : ∀ (e : Nd) st b st', annot e st = some (b, st') → b.erase = e
+  | .const v, st, b, st', h => by simp [annot] at h; obtain ⟨rfl, -⟩ := h; rfl
+  | .loc s w, st, b, st', h => by simp [annot] at h; obtain ⟨rfl, -⟩ := h; rfl
+  | .bin op a c, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annot a st with _ | ⟨a', s1⟩ <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : annot c s1 with _ | ⟨c', s2⟩ <;> rw [h2] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annot_erase a _ _ _ h1, annot_erase c _ _ _ h2]
+  | .ite cm a c t e, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annot a st with _ | ⟨a', s1⟩ <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : annot c s1 with _ | ⟨c', s2⟩ <;> rw [h2] at h <;> simp only at h
+    · cases h
+    rcases h3 : annot t s2 with _ | ⟨t', s3⟩ <;> rw [h3] at h <;> simp only at h
+    · cases h
+    rcases h4 : annot e s3 with _ | ⟨e', s4⟩ <;> rw [h4] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h
+    simp [Na.erase, annot_erase a _ _ _ h1, annot_erase c _ _ _ h2, annot_erase t _ _ _ h3, annot_erase e _ _ _ h4]
+  | .letE s w v c, ([], ns), b, st', h => by simp [annot] at h
+  | .letE s w v c, (pr :: ls, ns), b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annot v (ls, ns) with _ | ⟨v', s1⟩ <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : annot c s1 with _ | ⟨c', s2⟩ <;> rw [h2] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annot_erase v _ _ _ h1, annot_erase c _ _ _ h2]
+  | .pair cs, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annotL cs st with _ | ⟨cs', s1⟩ <;> rw [h1] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annotL_erase cs _ _ _ h1]
+  | .call i as, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annotL as st with _ | ⟨as', s1⟩ <;> rw [h1] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annotL_erase as _ _ _ h1]
+  | .prim p as, st, b, st', h => by
+    by_cases hp : p = 5 ∧ as = []
+    · obtain ⟨rfl, rfl⟩ := hp
+      rcases st with ⟨ls, _ | ⟨n, ns⟩⟩ <;> simp [annot] at h
+      obtain ⟨rfl, -⟩ := h; rfl
+    · have : annot (.prim p as) st = (do let (as', st) ← annotL as st; pure (.prim p as', st)) := by
+        rcases as with _ | ⟨a, as⟩
+        · have hp5 : p ≠ 5 := fun e => hp ⟨e, rfl⟩
+          rcases st with ⟨ls, _ | ⟨n, ns⟩⟩ <;> simp [annot, hp5]
+        · simp only [annot]
+      rw [this] at h
+      simp only [bind, Option.bind] at h
+      rcases h1 : annotL as st with _ | ⟨as', s1⟩ <;> rw [h1] at h <;> simp at h
+      obtain ⟨rfl, -⟩ := h; simp [Na.erase, annotL_erase as _ _ _ h1]
+  | .loop z s, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annot z st with _ | ⟨z', s1⟩ <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : annot s s1 with _ | ⟨s', s2⟩ <;> rw [h2] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annot_erase z _ _ _ h1, annot_erase s _ _ _ h2]
+  | .cont e, st, b, st', h => by
+    simp only [annot, bind, Option.bind] at h
+    rcases h1 : annot e st with _ | ⟨e', s1⟩ <;> rw [h1] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.erase, annot_erase e _ _ _ h1]
+theorem annotL_erase : ∀ (as : List Nd) st bs st', annotL as st = some (bs, st') → Na.eraseL bs = as
+  | [], st, bs, st', h => by simp [annotL] at h; obtain ⟨rfl, -⟩ := h; rfl
+  | a :: as, st, bs, st', h => by
+    simp only [annotL, bind, Option.bind] at h
+    rcases h1 : annot a st with _ | ⟨a', s1⟩ <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : annotL as s1 with _ | ⟨as', s2⟩ <;> rw [h2] at h <;> simp at h
+    obtain ⟨rfl, -⟩ := h; simp [Na.eraseL, annot_erase a _ _ _ h1, annotL_erase as _ _ _ h2]
+end
+
+/-! ## parameters -/
+theorem ArgsR.len {inp} : ∀ {ps vs ws}, ArgsR inp ps vs ws → vs.length = ps.length
+  | _, _, _, .nil => rfl
+  | _, _, _, .inp h => by simp [h.len]
+  | _, _, _, .sh _ _ h => by simp [h.len]
+
+theorem strip_lamX : ∀ (ps : List Ps) (b : X), strip ps.length (lamX ps b) = some b
+  | [], b => rfl
+  | p :: ps, b => by simp [lamX, strip] at *; exact strip_lamX ps b
+
+theorem binders_len : ∀ (s : Nat) (ps : List Ps) (bs : Bs), (binders s ps bs).length = ps.length + bs.length
+  | _, [], _ => by simp [binders]
+  | s, p :: ps, bs => by simp [binders, binders_len _ ps]; omega
+
+theorem binders_slot : ∀ (s0 : Nat) (ps : List Ps) (bs0 : Bs), ∀ b ∈ binders s0 ps bs0, b ∈ bs0 ∨ s0 ≤ b.1
+  | _, [], _, b, h => .inl (by simpa [binders] using h)
+  | s0, p :: ps, bs0, b, h => by
+    simp only [binders] at h
+    rcases binders_slot _ ps _ b h with h | h
+    · rcases List.mem_cons.1 h with rfl | h
+      · exact .inr (Nat.le_refl _)
+      · exact .inl h
+    · exact .inr (by omega)
+
+theorem psSh_width : ∀ {p : Ps}, p ≠ .inp → (psSh p).width = p.width
+  | .inp, h => absurd rfl h
+  | .fuel, _ => rfl
+  | .sh _, _ => rfl
+
+theorem params_env {inp} : ∀ {ps vs ws}, ArgsR inp ps vs ws → ∀ (s0 : Nat) (bs0 : Bs) (venv0 : List V) (env : List W),
+    (env.drop s0).take ws.length = ws → EnvR inp env bs0 venv0 → EnvR inp env (binders s0 ps bs0) (vs.reverse ++ venv0)
+  | _, _, _, .nil, s0, bs0, venv0, env, _, h => by simpa [binders] using h
+  | _, _, ws, .inp (ps := ps) (vs := vs) hA, s0, bs0, venv0, env, hw, h => by
+    simp only [binders, List.reverse_cons, List.append_assoc, List.singleton_append]
+    have := params_env hA (s0 + Ps.width .inp) ((s0, .inp) :: bs0) (.l inp :: venv0) env (by simpa [Ps.width] using hw) (.inp h)
+    exact this
+  | _, _, _, .sh (p := p) (ps := ps) (v := v) (vs := vs) (xs := xs) (ws := ws) hp hR hA, s0, bs0, venv0, env, hw, h => by
+    simp only [binders, List.reverse_cons, List.append_assoc, List.singleton_append]
+    obtain ⟨h1, h2⟩ := take_split hw
+    have hlen : xs.length = p.width := by rw [hR.len, psSh_width hp]
+    have hhead : EnvR inp env ((s0, p) :: bs0) (v :: venv0) := by
+      cases p with
+      | inp => exact absurd rfl hp
+      | fuel => cases hR; exact .fuel h
+      | sh sh => simp only [psSh] at hR; exact .sh (by rw [← hR.len, h1]; exact hR) h
+    refine params_env hA (s0 + p.width) _ _ env ?_ hhead
+    rw [← List.drop_drop, ← hlen]; exact h2
+
+theorem fuel_exists {inp env} : ∀ {bs venv}, EnvR inp env bs venv → ∃ k, FuelAt bs venv k
+  | _, _, .nil => ⟨0, fun fi h => by simp [findB] at h⟩
+  | _, _, .inp h => by
+    obtain ⟨k, hk⟩ := fuel_exists h
+    refine ⟨k, fun fi hf => ?_⟩
+    simp [findB] at hf; obtain ⟨j, hj, rfl⟩ := hf; simpa using hk j hj
+  | _, _, .fuel (k := k) h => ⟨k, fun fi hf => by simp [findB] at hf; subst hf; rfl⟩
+  | _, _, .sh _ h => by
+    obtain ⟨k, hk⟩ := fuel_exists h
+    exact ⟨k, hk.push⟩
+
+theorem setSlots_frame_above {env env' : List W} {s : Nat} {x : List W} (h : setSlots env s x = .ok env')
+    {s' w : Nat} (hle : s + x.length ≤ s') : (env'.drop s').take w = (env.drop s').take w := by
+  unfold setSlots at h
+  split at h
+  · rename_i hk; simp at h; subst h
+    have hl : (env.take s ++ x).length = s + x.length := by simp; omega
+    rw [← List.append_assoc, List.drop_append, List.drop_eq_nil_of_le (by rw [hl]; omega),
+      List.nil_append, hl, List.drop_drop, show s + x.length + (s' - (s + x.length)) = s' by omega]
+  · cases h
+
+/-- writes at slots below every value binder keep the binders' values (input / fuel binders have none) -/
+theorem EnvR.frame_above {inp env env' s x} (hs : setSlots env s x = .ok env') :
+    ∀ {bs venv}, (∀ b ∈ bs, (∃ sh, b.2 = .sh sh) → s + x.length ≤ b.1) → EnvR inp env bs venv → EnvR inp env' bs venv
+  | _, _, _, .nil => .nil
+  | _, _, hf, .inp h => .inp (h.frame_above hs (fun b hb => hf b (by simp [hb])))
+  | _, _, hf, .fuel h => .fuel (h.frame_above hs (fun b hb => hf b (by simp [hb])))
+  | (s', .sh sh0) :: bs', v' :: venv', hf, .sh h0 h => by
+    refine .sh ?_ (h.frame_above hs (fun b hb => hf b (by simp [hb])))
+    have hle : s + x.length ≤ s' := hf (s', .sh sh0) (by simp) ⟨sh0, rfl⟩
+    rw [setSlots_frame_above hs hle]; exact h0
+
+/-! ## defs -/
+theorem loopRun_zero {fz fs : List W → Out} {env r} (h : loopRun fz fs 0 env = .ok r) : fz env = .ok (.inl r) := by
+  simp only [loopRun] at h; exact val_ok.1 h
+
+theorem loopRun_succ {fz fs : List W → Out} {m env r} (h : loopRun fz fs (m + 1) env = .ok r) :
+    ∃ env1, setSlots env 0 [.w (UInt64.ofNat m)] = .ok env1 ∧
+      (fs env1 = .ok (.inl r) ∨ ∃ st env2, fs env1 = .ok (.inr st) ∧ setSlots env1 1 st = .ok env2 ∧ loopRun fz fs m env2 = .ok r) := by
+  simp only [loopRun] at h
+  rcases h1 : setSlots env 0 [.w (UInt64.ofNat m)] with _ | env1 <;> rw [h1] at h <;> (try evsimp at h) <;> try cases h
+  refine ⟨env1, rfl, ?_⟩
+  rcases h2 : fs env1 with _ | (v | st) <;> rw [h2] at h <;> (try evsimp at h) <;> try cases h
+  · exact .inl rfl
+  · rcases h3 : setSlots env1 1 st with _ | env2 <;> rw [h3] at h <;> (try evsimp at h) <;> try cases h
+    exact .inr ⟨st, env2, rfl, h3, h⟩
+
+theorem ev_loop {cx z s env r} (h : ev cx (.loop z s) env = .ok r) :
+    ∃ n rest r', env = .w n :: rest ∧ loopRun (fun e => ev cx z e) (fun e => ev cx s e) n.toNat env = .ok r' ∧ r = .inl r' := by
+  simp only [ev] at h
+  split at h
+  · rename_i n rest
+    rcases h1 : loopRun (fun e => ev cx z e) (fun e => ev cx s e) n.toNat (.w n :: rest) with _ | r' <;>
+      rw [h1] at h <;> (try evsimp at h) <;> try cases h
+    exact ⟨n, rest, r', rfl, h1, rfl⟩
+  · cases h
+
+/-- callee meanings for a def list -/
+def DefsHyp (P : Prog) (cx : Ctx) (ds : List DefI) : Prop :=
+  ∀ (i : Nat) (f : List W → Except Stop (List W)) (d : DefI), cx.defs[i]? = some f → ds[i]? = some d →
+    ∀ ws r vs, f ws = .ok r → ArgsR cx.inp d.params vs ws → ∃ v, EvCall P (nameS d.name) vs v ∧ R d.res v r
+
+/-- a fuel loop: at fuel m, from any slot environment whose parameter slots hold the states -/
+theorem fuelLoop_ok {P : Prog} {cx : Ctx} {ds : List DefI} {di : DefI} {sps : List Ps} {z s : Na} {zx sx : X} {zs ss : Option Sh}
+    (hin : cx.inp.length < 2 ^ 64) (hdefs : DefsHyp P cx ds) (hps : di.params = .fuel :: sps)
+    (hz : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) z = some (zx, zs))
+    (hs : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s = some (sx, ss))
+    (hzs : agree di.res zs = true) (hss : agree di.res ss = true)
+    (hl : P.lookup (nameS di.name) = some (lamX di.params (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res),
+      .bv ((binders 0 di.params []).length - 1), zx, .lam (.c "Nat" []) sx]))) :
+    ∀ (m : Nat) (env : List W) (svs : List V) (r : List W), EnvR cx.inp env (binders 0 di.params []) (svs.reverse ++ [.n m]) → svs.length = sps.length →
+      loopRun (fun e => ev cx z.erase e) (fun e => ev cx s.erase e) m env = .ok r →
+      ∃ v, Ev P (svs.reverse ++ [.n m]) (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res),
+        .bv ((binders 0 di.params []).length - 1), zx, .lam (.c "Nat" []) sx]) v ∧ R di.res v r := by
+  have hidx : ∀ (svs : List V) (m : Nat), svs.length = sps.length →
+      (svs.reverse ++ [V.n m])[(binders 0 di.params []).length - 1]? = some (.n m) := by
+    intro svs m h; rw [binders_len, hps]; simp [List.getElem?_append_right, h]
+  have hdefs' : ∀ k Kont, (∀ st r vs, Kont st = .ok r → ArgsR cx.inp (di.params.drop 1) vs st →
+      ∃ v, EvCall P (nameS di.name) (.n k :: vs) v ∧ R di.res v r) →
+      Hyp P cx ⟨ds, (nameS di.name, di.params.drop 1)⟩ di.res k Kont :=
+    fun k Kont hk => ⟨hin, hdefs, hk⟩
+  intro m
+  induction m with
+  | zero =>
+    intro env svs r hr hsv hrun
+    have h0 := loopRun_zero hrun
+    obtain ⟨k, hk⟩ := fuel_exists hr
+    obtain ⟨v, s', hs', hv, hR⟩ := (node_ok (hdefs' k (fun _ => .error .stuck) (fun _ _ _ h => by cases h)) z
+      _ _ _ _ env _ hz hr hk).1 _ h0
+    exact ⟨v, Ev.natZ (.bv (hidx svs 0 hsv)) hv, (agree_eq hzs hs') ▸ hR⟩
+  | succ m ih =>
+    intro env svs r hr hsv hrun
+    obtain ⟨env1, h1, hcase⟩ := loopRun_succ hrun
+    have hbig : ∀ b ∈ binders 0 di.params [], (∃ sh, b.2 = .sh sh) → 0 + [W.w (UInt64.ofNat m)].length ≤ b.1 := by
+      intro b hb ⟨sh, hsh⟩
+      rw [hps] at hb; simp only [binders] at hb
+      rcases binders_slot 1 sps [(0, .fuel)] b hb with h | h
+      · simp at h; rw [h] at hsh; cases hsh
+      · simpa using h
+    have hr1 : EnvR cx.inp env1 ((0, .fuel) :: binders 0 di.params []) (.n m :: (svs.reverse ++ [.n (m + 1)])) :=
+      .fuel (hr.frame_above h1 hbig)
+    have hfu : FuelAt ((0, .fuel) :: binders 0 di.params []) (.n m :: (svs.reverse ++ [.n (m + 1)])) m :=
+      fun fi hf => by simp [findB] at hf; subst hf; rfl
+    let Kont : List W → Except Stop (List W) := fun st => (setSlots env1 1 st).bind
+      (loopRun (fun e => ev cx z.erase e) (fun e => ev cx s.erase e) m)
+    have hK : ∀ st r vs, Kont st = .ok r → ArgsR cx.inp (di.params.drop 1) vs st →
+        ∃ v, EvCall P (nameS di.name) (.n m :: vs) v ∧ R di.res v r := by
+      intro st r vs hk hA
+      simp only [Kont] at hk
+      rcases h2 : setSlots env1 1 st with _ | env2 <;> rw [h2] at hk <;> simp only [Except.bind] at hk
+      · cases hk
+      rw [hps] at hA; simp only [List.drop_succ_cons, List.drop_zero] at hA
+      have henv2 : EnvR cx.inp env2 (binders 0 di.params []) (vs.reverse ++ [.n m]) := by
+        rw [hps]; simp only [binders]
+        exact params_env hA 1 [(0, .fuel)] [.n m] env2 (by simpa using setSlots_at h2) (.fuel .nil)
+      obtain ⟨v, hv, hR⟩ := ih env2 vs r henv2 hA.len hk
+      refine ⟨v, ⟨_, _, hl, ?_, by simpa using hv⟩, hR⟩
+      have : (V.n m :: vs).length = di.params.length := by rw [hps]; simp [hA.len]
+      rw [this]; exact strip_lamX _ _
+    have H := hdefs' m Kont hK
+    rcases hcase with hv | ⟨st, env2, hv, h2, hrest⟩
+    · obtain ⟨v, s', hs', hev, hR⟩ := (node_ok H s _ _ _ _ env1 _ hs hr1 hfu).1 _ hv
+      exact ⟨v, Ev.natS (.bv (hidx svs (m + 1) hsv)) hev, (agree_eq hss hs') ▸ hR⟩
+    · obtain ⟨v, hev, hR⟩ := (node_ok H s _ _ _ _ env1 _ hs hr1 hfu).2 st r hv (by simp [Kont, h2, Except.bind, hrest])
+      exact ⟨v, Ev.natS (.bv (hidx svs (m + 1) hsv)) hev, hR⟩
+
 end ExprSpec
