@@ -344,5 +344,71 @@ theorem n_stur {nt nb a : Nat} {f : Int} {v bv : UInt64} (hA : A[q]? = some (Arm
   rw [hv] at this
   exact nmid_store8 S hM hB hw this
 
+/-- `ldp xt, xu, [xb]` from the work cells `a = x[b]`, `a + 8` (`t ≠ u`) -/
+theorem n_ldp {dt du nb : Nat} {bv : UInt64} (hA : A[q]? = some (ArmEnc.ldp (armReg dt) (armReg du) nb))
+    (hdt : mapped dt = true) (ht0 : dt ≠ 0) (hdu : mapped du = true) (hu0 : du ≠ 0) (hne : dt ≠ du) (hnb : nb < 31)
+    (hbv : (M.observe s).register nb = bv) (hw : wok K bv.toNat) (hw8 : wok K (bv.toNat + 8)) :
+    ∃ s', Runs M s s' ∧
+      NMid X W K A s0 (CallProbe.wr (CallProbe.wr st dt (st.m bv.toNat)) du (st.m (bv.toNat + 8))) (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hL := hM.lay; have hR := S.ram.2; have hwa := hL.wlo; have hwb := hL.whi
+  have hw' := hw; have hw8' := hw8; unfold wok at hw' hw8'
+  have h16 : bv.toNat + 16 ≤ K.hi := by have := hw8'.2.1; omega
+  have hlo : K.lo ≤ bv.toNat := hw'.1
+  have hna : armReg dt ≠ armReg du := fun h => hne (armReg_inj hdu (mapped_lt hdt) h)
+  obtain ⟨s', r, c, o, kp⟩ := S.ldp s _ _ nb (st.m bv.toNat) (st.m (bv.toNat + 8)) hM.cfg (nmid_pcok hM hB hq)
+    (nmid_fx hM hB (by omega) (by omega)) (armReg_lt hdt ht0) (armReg_lt hdu hu0) hnb hna (by rw [hbv]; exact hw'.2.2)
+    (by rw [hbv]; omega) (by rw [hbv]; omega)
+    (fun k hk => by rw [hbv]; exact hM.pm.2 _ (Or.inl (by omega)))
+    (fun k hk => by rw [hbv]; exact hM.w _ hw k hk) (fun k hk => by rw [hbv]; exact hM.w _ hw8 k hk)
+    (nmid_word hM hA hB)
+  refine ⟨s', r, nmid_regs hM c kp (by rw [o]; simp only [setReg2]; rw [hM.pc, ofNat_add4]; congr 1)
+    (by rw [o]; rfl) (fun j hj0 h32 => ?_) (fun r' hr _ => ?_) ?_ ?_⟩
+  · rw [o]; simp only [setReg2]
+    by_cases e : j = du
+    · subst e; simp [CallProbe.wr, hu0, CallProbe.upd]
+    · rw [if_neg (fun h => e (armReg_inj hdu h32 h))]
+      by_cases e2 : j = dt
+      · subst e2; simp [CallProbe.wr, hu0, ht0, CallProbe.upd, e]
+      · rw [if_neg (fun h => e2 (armReg_inj hdt h32 h)), hM.x j hj0 h32]
+        simp [CallProbe.wr, hu0, ht0, CallProbe.upd, e, e2]
+  · rw [o]; simp only [setReg2]
+    rw [if_neg (fun h => hr du (by omega) (mapped_lt hdu) h.symm),
+      if_neg (fun h => hr dt (by omega) (mapped_lt hdt) h.symm)]
+  · simp [CallProbe.wr, hu0, ht0, CallProbe.upd, hM.x0, Ne.symm hu0, Ne.symm ht0]
+  · simp [CallProbe.wr, hu0, ht0]
+
+/-- `bl f` to word `q'`: x30 (J's ra) := the address of the next word -/
+theorem n_bl {q' : Nat} (hA : A[q]? = some (ArmEnc.blB ((q' : Int) - q))) (hq' : q' ≤ A.length)
+    (hL : A.length < 2 ^ 25) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st 1 (UInt64.ofNat (K.base + 4 * (q + 1)))) q' s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  obtain ⟨s', r, c, o, kp⟩ := S.bl s ((q' : Int) - q) hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
+    (by omega) (by omega) (nmid_word hM hA hB)
+  rw [hM.pc, ofNat_addInt _ _ (by omega) (by omega),
+    show ((K.base + 4 * q : Nat) : Int) + 4 * ((q' : Int) - q) = ((K.base + 4 * q' : Nat) : Int) by omega,
+    Int.toNat_natCast, ofNat_add4] at o
+  refine ⟨s', r, nmid_regs hM c kp (by rw [o]) (by rw [o]) (fun j hj0 h32 => ?_) (fun r' hr _ => ?_) ?_ ?_⟩
+  · rw [o]; simp only []
+    by_cases e : j = 1
+    · subst e
+      have : ∀ v, (CallProbe.wr st 1 v).x 1 = v := fun v => by simp [CallProbe.wr, CallProbe.upd]
+      rw [this, if_pos (show armReg 1 = 30 from rfl)]; congr 1
+    · rw [if_neg (show armReg j ≠ 30 from fun h => e (armReg_inj (r := 1) (by decide) h32 h)), hM.x j hj0 h32]
+      simp [CallProbe.wr, CallProbe.upd, e]
+  · rw [o]; simp only []
+    rw [if_neg (show r' ≠ 30 from fun h => hr 1 (by omega) (by omega) h.symm)]
+  · simp [CallProbe.wr, CallProbe.upd, hM.x0]
+  · simp [CallProbe.wr]
+
+/-- `br xn`: to the address in J register `n`, when that is the code word `q'` -/
+theorem n_br {n q' : Nat} (hA : A[q]? = some (ArmEnc.brR (armReg n))) (hn : mapped n = true) (hn0 : n ≠ 0)
+    (hv : st.x n = UInt64.ofNat (K.base + 4 * q')) : ∃ s', Runs M s s' ∧ NMid X W K A s0 st q' s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have := S.br s _ hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega)) (armReg_lt hn hn0)
+    (nmid_word hM hA hB)
+  rw [hM.x n (by omega) (mapped_lt hn), hv] at this
+  exact nmid_jump hM this
+
 end
 end JT
