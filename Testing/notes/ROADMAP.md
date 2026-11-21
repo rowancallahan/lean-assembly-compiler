@@ -3,6 +3,15 @@
 Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RISC-V first, then ARM.
 "Needs" = what the compiler lacks today (see `Testing/notes/ARRAYS.md` for the current language).
 
+## Invariants (owner, 2026-11-21) — every change must keep both
+1. Strict Lean compatibility: nano's language is a subset of Lean's. Every program nano accepts, Lean accepts with the
+   same results (fuzz: nano-accepts ⇒ Lean-accepts and agrees; any violation is a FAIL).
+2. Strict self-hosting: the compiler (all stages, every target incl. native ARM) is written in nano's bootstrap
+   subset and compiles itself; Testing/scripts/selfhost_gate.sh must pass on every merge.
+3. No @[implemented_by] / @[extern] (or other attributes/keywords that let run-time code differ from the logical
+   definition: export, csimp, unsafe, opaque): attributes are a whitelist of meaning-preserving ones only. (Owner: implemented_by may be supported LATER —
+   then nano compiles the implementation, as Lean's runtime does; banned for now.)
+
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |
 |---|---|---|
@@ -668,3 +677,41 @@ The compiler's OWN source stays in the bootstrap subset (the language as of rele
 compiler accepts more (owner, 2026-11-21: avoids confusion). New syntax is for user programs only; a check script fails
 if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outside the subset. Exception (owner,
 2026-11-21): comments are allowed in the compiler source once the comments feature is merged (they change no code). Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
+
+## Native ARM route and IR plan (owner, 2026-11-21)
+- Release (combined-2 / #17): native ARM via option E — the compiler runs Gen, takes its J program, and a thin J → ARM
+  atom translator (fusing J steps into rich A64 instructions, variable length) emits the code. The translator is written
+  in nano's bootstrap subset as part of the compiler, so the native compiler self-hosts; proven on DeepMind ARM
+  (generic over A64SemN, so Sail needs only its instruction facts). GenArm.lean stays as a test oracle.
+- Next after the release: make J an explicit, target-neutral IR that the generator emits (instead of RISC-V words),
+  with RISC-V, ARM (and later x86) as thin proven encoders; grow J with target-friendly ops so encoders can use each
+  ISA's features; do optimizations on J (proven once). Hyper-optimized per-ISA back ends can come later on top.
+- Syntax: nano's accepted language is a SUBSET of Lean's (owner, 2026-11-21): every program nano accepts, Lean
+  accepts with the same results; fuzz FAILs on any nano-accepts/Lean-rejects case. Concretely: misplaced docstrings/attributes are rejected too, via a
+  decl-modifier check in the trusted desugar spec; reject fuzz checks Lean-rejects ⇒ nano-rejects.
+- Lean parser as the model (owner, 2026-11-21): nano's syntax rules follow Lean 4's own parser (src/Lean/Parser) rule by
+  rule, with file:line citations in Testing/notes/LEAN_RULES.md; elaborator-dependent meaning (literal defaulting,
+  name resolution) is handled by rejecting ambiguous programs + differential fuzz against real Lean. TARGET (owner): nano's parser
+  becomes a transcription of Lean 4's own parser for nano's subset (same rule structure, names and order, each rule
+  citing its Lean source), written in nano once nano has monads/structures/typeclasses; real Lean is the test oracle
+  (no formal equivalence: Lean's parser is partial/meta code and not provable as is). Until then new syntax follows
+  Lean's parser rule by rule.
+- Why nano exists next to Lean (note for readers): Lean 4 self-hosts but its code generator (Lean → IR → C → clang)
+  is unverified; nano proves source-to-machine-code correctness against Sail/DeepMind ISA models with no C compiler in
+  the trust base, and proves its own binary is its compiled source.
+- DECIDED (owner, 2026-11-21): stay fully self-hosting, nano style; grow nano itself; no second Lean-hosted mode
+  for now (option (2) below is shelved). Was open: reaching big Lean programs. (1) grow nano itself (strict, self-hosting); (2) add a
+  second mode next to nano: Lean elaborates, nano's proven back end compiles the kernel-checked definition and emits a
+  per-program proof that the machine code computes that definition (trusts Lean's kernel only, not its compiler/IR/C;
+  not self-hosting; like Legacy/'s compile%). Rejected for now: compiling Lean's IR/LCNF (would trust Lean's unverified
+  optimizer). Lean source tour in Testing/notes/lean_tour/ informs this.
+- Lean as blueprint (owner, 2026-11-21): use Lean's compiler as a design source and test oracle only; nano stays a
+  subset of Lean's parser. Track Lean's IR design (LCNF passes, λRC IR, RC/borrow inference, reset/reuse in-place
+  updates, unboxing; Testing/notes/lean_tour/{lcnf,ir}.md) as the reference when J becomes an explicit IR and when
+  optimizing; compare our IR choices against it. Note: Lean emits C (then clang), its whole compile path (LCNF → IR →
+  C → clang → runtime, plus implemented_by/extern) is unverified; nano proves source → machine code.
+- Proven equivalence with Lean where possible (owner, 2026-11-21): Lean parser/lexer pieces that are total (not
+  partial; e.g. char classes, numeral decoding, escapes, keyword lists) get theorems that nano's trusted definitions
+  equal Lean's own functions (or are a subset with equal values); nano's trusted defs may be rewritten to mirror them.
+  Partial/stateful parser code: differential fuzz only; elaborator-dependent meaning: conservative rejection + fuzz.
+  Work: Nano/LeanEquiv/, Testing/notes/LEAN_EQUIV.md.

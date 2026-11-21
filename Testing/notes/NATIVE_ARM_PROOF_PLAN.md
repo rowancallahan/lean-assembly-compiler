@@ -86,3 +86,20 @@ ldur → sub+ldr, cbnz → cbz+b, movn → movz+movk) to skip step A; B–F stay
 * Accept set: GenArm applies the 2^18-word limit to A64 words, so in principle a program near the limit is accepted
   by one back end and rejected by the other (never seen; native code is smaller). The theorem is per back end, so this
   is not a proof obstacle, only a documented difference.
+
+## Decision 2026-11-21 (owner): option E, register-exact
+* The Gen/GenArm lockstep (step E above) is NOT done. Reasons: only the node-level work-item invariant (`GenE.visit_all`) is
+  generic over the encoders; def level, GenTop, GenAll, the width pass and the template layer are RISC-V-only (estimate
+  8–12 sessions); and `GenOKG` needs `gen x ≠ [] → mC x ≠ []`, false for pure GenArm (size / jump-range limits are on
+  each generator's own word indices; a big constant is 17 RV words, ≤ 4 A64 words).
+* Instead the native generator IS the atom encoder of Gen's J program: `natEncJ` (Nano/Run/NatEnc.lean, Lean spec:
+  greedy parse `atomize` into the atoms of Nano/Run/NatImg.lean, checks `NChk`, bytes `wordBytes (wordsOf tl)`), so the
+  image relation `NatV` holds by construction (`natEncJ_img`). Accept set = Gen's minus the encoder's checks.
+* The release theorem must be about the translator written in nano's bootstrap subset (self-hosting gate); the Lean
+  spec comes first, then the nano program and its program proof (= spec). `Nano/Codegen/GenArm.lean` becomes a test
+  oracle (fuzz the encoder against it). Known difference: `ld 1 12 0; ld 8 12 8` (stubs, start code) is one `ldp`.
+* No dead registers: BGET / BSET tails are 1:1 with J (`lsl x6,x6,#3; add; ldr/str`, new atom `NTm.slli` and A64SemN
+  form `lsl xd,xn,#imm`), +1 word per array get / set; the fused tails `bgetI` / `bsetI` (and the dead flags, which the
+  encoder always sets to false) stay in NatImg for a later J-level optimisation.
+* After the release: J becomes an explicit target-neutral IR emitted by the generator; the encoder's input is `List J`
+  for that reason (the nano translator reads J through one accessor layer over Gen's words).

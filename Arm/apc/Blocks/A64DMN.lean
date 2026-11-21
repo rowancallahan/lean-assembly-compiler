@@ -133,6 +133,53 @@ theorem F_addLsl3 (t : Arm64.State) (d n m : Nat) (hc : armDM.configured t) (hp 
   refine goes_set hd this ?_
   apply UInt64.toBitVec_inj.mp; simp [UInt64.toBitVec_shiftLeft]
 
+/-! ## lsl (immediate): `ubfm xd, xn, #immr, #imms` with `imms + 1 = immr` -/
+theorem dec_lslI (hK : w &&& 0xFFC00000#32 = 0xD3400000#32) (hd : (fd w).toNat < 31) (hn : (fn w).toNat < 31) :
+    Arm64.decode w = some (.bitfield .W64 .UBFM (.gpr (fd w)) (.gpr (fn w)) (w.extractLsb' 16 6).toNat
+      (w.extractLsb' 10 6).toNat) := by
+  decsym hK
+  simp only [fromZR' hd, fromZR' hn]
+  rfl
+
+/-- **`lsl xd, xn, #(64 - immr)`** (`ubfm` with `imms + 1 = immr`) -/
+theorem dm_lslI (hK : w &&& 0xFFC00000#32 = 0xD3400000#32) (hd : (fd w).toNat < 31) (hn : (fn w).toNat < 31)
+    (hs : (w.extractLsb' 10 6).toNat + 1 = (w.extractLsb' 16 6).toNat) (h : At t w) :
+    ∃ t', Arm64.Step Pg t t' ∧
+      abs t' = (abs t).setX (fd w).toNat ((abs t).x (fn w).toNat <<< (64 - (w.extractLsb' 16 6).toNat)) ∧
+      Post t t' (t.pc + 4) t.mem := by
+  refine wr1 hd (dec_lslI hK hd hn) h ?_
+  have := rd_gpr t hn
+  have h1 := (w.extractLsb' 16 6).isLt; have h2 := (w.extractLsb' 10 6).isLt
+  generalize (w.extractLsb' 16 6).toNat = r at *; generalize (w.extractLsb' 10 6).toNat = q at *
+  subst hs
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.writeReg,
+    Arm64.evalBitfield, show q % 64 = q by omega, show (q + 1) % 64 = q + 1 by omega,
+    show (Arm64.BitfieldOp.UBFM == Arm64.BitfieldOp.UBFM) = true from rfl, show ¬ q = 63 by omega, *]
+
+theorem F_lslI (t : Arm64.State) (d n sh : Nat) (hc : armDM.configured t) (hp : JT.PcOK armDM (O t)) (hx : JT.FetchX armDM XD t 4)
+    (hd : d < 31) (hn : n < 31) (hs0 : 0 < sh) (hs : sh < 64)
+    (hw : JT.WordAt (O t) (O t).programCounter.toNat (ArmEnc.lslI d n sh)) :
+    JT.GoesK armDM XD WD t (JT.setReg (O t) d ((O t).register n <<< sh.toUInt64)) := by
+  have hA := fetch hc hp hw (xat hx)
+  simp only [ArmEnc.lslI, show (64 - sh) % 64 = 64 - sh by omega] at hA
+  show JT.GoesK armDM XD WD t (JT.setReg (obsDM t) d ((obsDM t).register n <<< sh.toUInt64))
+  rw [regv t hn]
+  have F : ∀ r q : Nat, r < 64 → q < 64 →
+      (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)) &&& 0xFFC00000#32 = 0xD3400000#32 ∧
+      ((wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 16 6).toNat = r ∧
+      ((wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 10 6).toNat = q ∧
+      (fd (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d))).toNat = d ∧ (fn (wd (0xD3400000 + r * 2 ^ 16 + q * 2 ^ 10 + n * 2 ^ 5 + d))).toNat = n := by
+    intro r q hr hq
+    exact ⟨by mask32, by fldt, by fldt, by fldt, by fldt⟩
+  obtain ⟨hK, e16, e10, ed, en⟩ := F (64 - sh) (63 - sh) (by omega) (by omega)
+  have := dm_lslI hK (by rw [ed]; exact hd) (by rw [en]; exact hn) (by rw [e16, e10]; omega) hA
+  rw [ed, en, e16, show 64 - (64 - sh) = sh by omega] at this
+  refine goes_set hd this ?_
+  apply UInt64.toBitVec_inj.mp
+  have e1 : sh % 18446744073709551616 = sh := by omega
+  have e2 : sh % 64 = sh := by omega
+  simp [UInt64.toBitVec_shiftLeft, e1, e2]
+
 /-! ## ldur / stur -/
 /-- the effective address of the unscaled forms -/
 abbrev eau (t : Arm64.State) (w : BitVec 32) : BitVec 64 :=
@@ -421,5 +468,6 @@ theorem a64DMN : JT.A64SemN armDM XD WD where
   ldp s r u n v1 v2 hc hp hx hr hu hn hne hal hlo hhi hW hv1 hv2 hw := F_ldp s r u n v1 v2 hc hp hx hr hu hn hne hal hlo hhi hW hv1 hv2 hw
   ldrbR s r n m b hc hp hx hr hn hm hlo hhi hW hv hw := F_ldrbR s r n m b hc hp hx hr hn hm hlo hhi hW hv hw
   addLsl3 s d n m hc hp hx hd hn hm hw := F_addLsl3 s d n m hc hp hx hd hn hm hw
+  lslI s d n sh hc hp hx hd hn hs0 hs hw := F_lslI s d n sh hc hp hx hd hn hs0 hs hw
 
 end Proven.Apc.Blocks
