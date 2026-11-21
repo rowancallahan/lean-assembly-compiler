@@ -165,7 +165,8 @@ theorem laws_toG (L : T.Laws) : T.toG.Laws where
     intro K C I s0 pc st s hl hR _ hc h4
     obtain ⟨rfl, hl⟩ := hl
     exact L.ret_ok hl (rel_ofG L hR) hc h4
-  off_le C I hv n hn := by
+  vis_link C I n off hv _ := by obtain ⟨rfl, -⟩ := hv; exact trivial
+  off_le C I hv n hn _ := by
     obtain ⟨rfl, -⟩ := hv
     rw [uoff L]; show _ ≤ (tbytes T C).length
     rw [tbytes_len L]; exact Nat.mul_le_mul_left _ hn

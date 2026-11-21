@@ -90,7 +90,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
   obtain ⟨y', hSem', hcont⟩ := (hrun KL E0 hE0 j0 (by rw [x12]; exact sc.workAligned) (by rw [x12]; omega)
     (by rw [x12]; omega) (by omega) (fun n off h => by
       have hn := (List.getElem?_eq_some_iff.1 h).1
-      have := L.off_le Cj I hv (n + 1) (by omega)
+      have := L.off_le Cj I hv (n + 1) (by omega) (L.vis_link Cj I n off hv h)
       have e : s0.lo (n + 1) = I.off (n + 1) := rfl
       rw [jb, e]; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb

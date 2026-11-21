@@ -102,8 +102,10 @@ structure Laws : Prop where
     T.inv K C I s
   /-- the entry is an anchor at offset 0 -/
   entry : ∀ (C : List J) (I : Img), T.valid C I → I.vis 0 ∧ I.off 0 = 0
-  /-- every J instruction's offset lies in the code (return addresses do not wrap: gives `LinkOK`) -/
-  off_le : ∀ (C : List J) (I : Img), T.valid C I → ∀ n, n ≤ C.length → I.off n ≤ I.code.length
+  /-- every anchor's offset lies in the code (a non-anchor pc may have an offset outside it) -/
+  off_le : ∀ (C : List J) (I : Img), T.valid C I → ∀ n, n ≤ C.length → I.vis n → I.off n ≤ I.code.length
+  /-- every return point is an anchor (with `off_le`: return addresses do not wrap, `LinkOK`) -/
+  vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
   /-- every `jalr x0, 0(x1)` (return to the host, function return) is an anchor -/
   vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → I.vis pc
   /-- the error-status pair `addi a0, x0, imm; addi a1, x0, 0` and its successor are anchors (stubs, start check) -/
