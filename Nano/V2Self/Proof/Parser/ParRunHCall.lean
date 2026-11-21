@@ -39,7 +39,7 @@ theorem atomV_run {n : Nat} (hE : ∀ n' < n, ExprSpec n') {st st' : St} {cx : C
         unfold locOf at hlo; split at hlo
         · cases hlo
         · simp at hlo; subst hlo; simp at hst; obtain ⟨_, rfl, _⟩ := hst
-          exact hnn.1 _ (findB_mem' hbd)
+          exact hnn.1 _ (findB_mem hbd)
       | cst ht hbd hd hj hpar hm =>
         obtain ⟨_, rfl⟩ := mkNode_inv hm; simp at hst; obtain ⟨_, rfl, _⟩ := hst
         exact (hnn.2 _ (defs_sub_rows (List.mem_of_getElem? hj))).1

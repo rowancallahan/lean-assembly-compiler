@@ -21,13 +21,8 @@ theorem locOf_eqS {st st' : St} {bd : Bd} (h : locOf st bd = some st') :
                     arena := st.arena ++ [RN.mk 2 bd.slot (if bd.inp then 0 else cw bd.sh) bd.sh false []] } := by
   unfold locOf at h; split at h <;> cases h; rfl
 
-theorem findB_memS {bs : List Bd} {x : List Nat} {b : Bd} (h : findB bs x = some b) : b ∈ bs := by
-  unfold findB at h; exact List.mem_reverse.mp (List.mem_of_find?_eq_some h)
-
 theorem small_init (toks : List Tok) : Small ([.defs], init toks) := by
   simp [Small, init, DefR.fresh, cw]
-
-@[simp] theorem RN.sh_mk (t a b : Nat) (s : Option Sh) (p : Bool) (k : List RN) : (RN.mk t a b s p k).sh = s := rfl
 
 theorem cw_some (s : Sh) : cw (some s) = s.width := rfl
 
@@ -93,7 +88,7 @@ theorem small_step {f : Frame} {fs : List Frame} {st st' : St} {k : List Frame} 
         | exact ⟨by decide, h6' _⟩
         | exact ⟨by decide, h6⟩
         | exact ⟨by omega, h6' _⟩
-        | exact ⟨h7 _ (findB_memS ‹_›), h6⟩
+        | exact ⟨h7 _ (findB_mem ‹_›), h6⟩
         | exact ⟨rows_small h8 h4 ‹_›, h6' _⟩
         | exact ⟨rows_small h8 h4 ‹_›, h6⟩
         | exact ⟨h6 _ (by rw [‹st.vals = _›]; simp), h6' _⟩
