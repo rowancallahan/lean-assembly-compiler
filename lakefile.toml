@@ -1,0 +1,19 @@
+name = "armv9"
+defaultTargets = ["Armv9Core"]
+moreLeanArgs = ["--tstack=400000"]
+
+[[lean_lib]]
+name = "Armv9"
+globs = ["Armv9", "Armv9.+"]
+leanOptions.weak.linter.style.nameCheck = false
+moreLeancArgs= ["-fbracket-depth=500"]
+
+[[require]]
+name = "Sail"
+git = "https://github.com/rems-project/lean-sail"
+rev = "v10"
+[[lean_lib]]
+name = "Armv9Core"
+globs = ["Armv9Core.+"]
+leanOptions.weak.linter.style.nameCheck = false
+moreLeancArgs= ["-fbracket-depth=500"]
