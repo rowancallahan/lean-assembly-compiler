@@ -2,7 +2,9 @@
 program; the nano-subset translator is proved equal to this spec).  Input: a J program (`List J`, no RISC-V words:
 later the generator's IR).
 * `cand`: the atom that starts a J list (longest fused form first); `atomize`: the greedy parse, checked against the
-  J list, so `atomize_j : atomize n l = some tl → tl.flatMap NTm.j = l` holds by construction. -/
+  J list, so `atomize_j : atomize n l = some tl → tl.flatMap NTm.j = l` holds by construction.  Register-exact: the
+  BGET / BSET tails are three plain atoms (`slli`, `alu`, `ld` / `sd`); the fused `bgetI` / `bsetI` are never produced.
+* `NChk` (decidable checks), `natEncJ` (the encoder), `natEncJ_img` (its output is an image of the J program). -/
 import Nano.Run.NatImgLaws
 namespace JT
 open Proven.Top SimW CallProbe ArmEnc
@@ -34,9 +36,8 @@ def cand : List J → Option NTm
   | .bne r 0 off :: _ => some (.bnez r off)
   | .alu 1 d n m :: .lbu d1 d2 0 :: _ => if d1 = d ∧ d2 = d then some (.ldrbx d n m) else some (.alu 1 d n m)
   | .alu op d x y :: _ => some (.alu op d x y)
-  | .slli 6 6 3 :: .alu 1 5 5 6 :: .ld 14 5 16 :: _ => some .bgetI
-  | .slli 6 6 3 :: .alu 1 6 5 6 :: .sd 14 6 16 :: _ => some .bsetI
   | .slli 15 7 3 :: .alu 1 15 15 5 :: _ => some .bpushI
+  | .slli d n sh :: _ => some (.slli d n sh)
   | .srli d n 3 :: .slli d1 d2 3 :: _ => if d1 = d ∧ d2 = d then some (.align8 d n) else none
   | .jal rd off :: _ => some (.jal rd off)
   | .jalr 0 rs :: _ => some (.jalr rs)

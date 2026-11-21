@@ -2,12 +2,14 @@
 on the bytes of a J program `Cj` (JOK, < 2^18 instructions) it emits the specification encoder's bytes `natEncJ Cj`
 (Run/NatEnc.lean), or nothing.  Same slot as `EncOK` for rv2arm (Main/TopOn.lean); the nano-subset translator is the
 instance (its program proof gives `EncOKN`).  The image relation holds by construction (`natEncJ_img`).
-`CjUnique` (to prove; a fact about Gen's word encoding only): Gen's bytes determine the J program — needed because
-`GenOKG` fixes the image before the J program is known.
-`C_correct_nativeE` / `C_runs_nativeE`: from `A64SemN`, the native laws `NatLawsOK M X W NatV` (M3), `CjUnique`, `EncOKN`. -/
+`CjUnique` (Run/CjUnique.lean: `cjUnique`; a fact about Gen's word encoding only): Gen's bytes determine the J program —
+needed because `GenOKG` fixes the image before the J program is known.
+`C_correct_nativeE` / `C_runs_nativeE`: from `A64SemN` and `EncOKN` alone (the native laws are `natLawsOK`,
+Run/NatSeg.lean). -/
 import Nano.Main.TopOn
-import Nano.Run.NatTarget
+import Nano.Run.NatSeg
 import Nano.Run.NatEnc
+import Nano.Run.CjUnique
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc JT
 
@@ -41,16 +43,15 @@ theorem genOKG_enc (U : CjUnique) {enc : List UInt8 → List UInt8} (hE : EncOKN
   · exact ⟨hm, ⟨enc (mC x), CallProbe.LinkLay.lin 0, fun _ => True, fun _ _ => False⟩, rfl,
       fun c Cj h1 h2 h3 => absurd ⟨c, Cj, h1, h2, h3⟩ hex⟩
 
-/-- **the native compile is correct on AArch64** (option E) -/
-theorem C_correct_nativeE (S : A64SemN M X W) (L : NatLawsOK M X W NatV) (U : CjUnique)
-    (enc : List UInt8 → List UInt8) (hE : EncOKN enc) (hwin : 2 ^ 31 ≤ M.ramStart) :
-    CompileCorrectP M (ArmLoader X W) (compileOn enc) :=
-  C_correct_g (natLaws S L) (enc ∘ mC) (genOKG_enc U hE) hwin
+/-- **the native compile is correct on AArch64** (option E), for any machine with the A64 steps and any translator
+that meets `EncOKN` -/
+theorem C_correct_nativeE (S : A64SemN M X W) (enc : List UInt8 → List UInt8) (hE : EncOKN enc)
+    (hwin : 2 ^ 31 ≤ M.ramStart) : CompileCorrectP M (ArmLoader X W) (compileOn enc) :=
+  C_correct_g (natLaws S (natLawsOK S)) (enc ∘ mC) (genOKG_enc cjUnique hE) hwin
 
 /-- **the native compile runs correctly on AArch64, with any work block** (option E) -/
-theorem C_runs_nativeE (S : A64SemN M X W) (L : NatLawsOK M X W NatV) (U : CjUnique)
-    (enc : List UInt8 → List UInt8) (hE : EncOKN enc) (hwin : 2 ^ 31 ≤ M.ramStart) :
-    CompileRunsP M (ArmLoader X W) (compileOn enc) :=
-  C_runs_g (natLaws S L) (enc ∘ mC) (genOKG_enc U hE) hwin
+theorem C_runs_nativeE (S : A64SemN M X W) (enc : List UInt8 → List UInt8) (hE : EncOKN enc)
+    (hwin : 2 ^ 31 ≤ M.ramStart) : CompileRunsP M (ArmLoader X W) (compileOn enc) :=
+  C_runs_g (natLaws S (natLawsOK S)) (enc ∘ mC) (genOKG_enc cjUnique hE) hwin
 
 end NanoMain
