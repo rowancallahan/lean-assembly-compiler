@@ -46,7 +46,8 @@ then C → D → E → F (need the cleaned-up generic layer).
   `Proof/Machine/ArmNat.lean`: `NMid` (machine state at an absolute code word index vs a register/memory view) and
   the single-instruction steps from `A64SemN` (movz, movn, movk, add/sub imm, add lsl 3 → x16, alu, cbz, cbnz,
   subs+b.cond, b, bl, br, ldr, str, ldur, stur, ldp, 8-byte store). `Proof/Machine/ArmNatTm.lean`: templates done:
-  push, pop-two, BIN (all ops, mul via movz x17 + madd), RD. TODO: strb + byte store, li (movz/movn/movk chunk
+  push, pop-two, BIN (all ops, mul via movz x17 + madd), RD, IF head, LOOP head / step (ldr/str slot form); CALL is
+  `n_bl`, else-jump / exits / CONTINUE's jump are `n_b`. TODO: strb + byte store, li (movz/movn/movk chunk
   walk `a7`), slot access `a9` (3 forms), LOCAL, pop-into-slots, prims (ISIZE/LEN, RD, BNEW, BSIZE, BGET, BSET,
   BPUSH/PUT), IF head, LOOP head/step/exit/CONTINUE, call, prologue, epilogue, stubs, start code; then the native
   `GTarget` instance (image + anchors from the template list) and its `seg` law from these lemmas and the J template

@@ -145,4 +145,54 @@ theorem n_rd (S : A64SemN M X W) {h : Nat} (hM : NMid X W K A s0 st h s) (hB : K
     obtain ⟨s5, r5, N5⟩ := fin (e3 ▸ N4)
     exact ⟨s5, Runs.trans (Runs.trans (Runs.trans (Runs.trans r1 r2) r3) r4) r5, N5⟩
 
+/-- **IF head** (`a24` item 3): `ldp x6, x5, [x11]; add x11, x11, #16; subs x16, x5, x6; b.c ELSE` (`c` = 1 NE for
+`==`, 2 HS for `<`: the branch goes to the else part on the negated condition) -/
+theorem n_ifHead (S : A64SemN M X W) {h c e : Nat} (hM : NMid X W K A s0 st h s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
+    (hL : A.length < 2 ^ 18)
+    (a0 : A[h]? = some (ArmEnc.ldp (armReg 6) (armReg 5) (armReg 31)))
+    (a1 : A[h + 1]? = some (ArmEnc.addi (armReg 31) (armReg 31) 16))
+    (a2 : A[h + 2]? = some (ArmEnc.subsR (armReg 5) (armReg 6)))
+    (a3 : A[h + 3]? = some (ArmEnc.bc c ((e : Int) - (h + 3)))) (hc : c < 4) (he : e ≤ A.length)
+    (hw : wok K (st.x 31).toNat) (hw8 : wok K ((st.x 31).toNat + 8)) :
+    let st1 := CallProbe.wr (CallProbe.wr st 6 (st.m (st.x 31).toNat)) 5 (st.m ((st.x 31).toNat + 8))
+    let st2 := CallProbe.wr st1 31 (st1.x 31 + UInt64.ofNat 16)
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 st2 (if condV c (st2.x 5) (st2.x 6) then e else h + 4) s' := by
+  intro st1 st2
+  obtain ⟨s2, r2, N2⟩ := n_pop2 S hM hB a0 a1 (by decide) hw hw8
+  obtain ⟨s3, r3, N3⟩ := n_cmpbr (q' := e) S N2 hB a2 (by
+      have : ((e : Int) - (((h + 1 + 1 : Nat) : Int) + 1)) = (e : Int) - (h + 3) := by push_cast; omega
+      rw [this]; exact a3) hc (by decide) (by decide) (by decide) (by decide) he hL
+  exact ⟨s3, Runs.trans r2 r3, N3⟩
+
+/-- **LOOP head**, slot 0 by `ldr` (`a24` c = 9): `ldr x5, [x8, #f]; cbnz x5, STEP` -/
+theorem n_loopHead (S : A64SemN M X W) {h f t : Nat} (hM : NMid X W K A s0 st h s)
+    (hB : K.base + 4 * A.length ≤ 2 ^ 32) (hL : A.length < 2 ^ 18)
+    (a0 : A[h]? = some (ArmEnc.ldr (armReg 5) (armReg 8) f))
+    (a1 : A[h + 1]? = some (ArmEnc.cbnz (armReg 5) ((t : Int) - (h + 1)))) (ht : t ≤ A.length)
+    (hf8 : f % 8 = 0) (hf : f < 32768) (hw : wok K ((st.x 8).toNat + f)) :
+    let st1 := CallProbe.wr st 5 (st.m ((st.x 8).toNat + f))
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 st1 (if st1.x 5 = 0 then h + 2 else t) s' := by
+  intro st1
+  obtain ⟨s1, r1, N1⟩ := n_ldr (a := (st.x 8).toNat + f) S hM hB a0 (by decide) (by decide) (by decide)
+    (hM.x 8 (by omega) (by omega)) hf8 hf rfl hw
+  obtain ⟨s2, r2, N2⟩ := n_cbnz (q' := t) S N1 hB (by
+      have : ((t : Int) - ((h + 1 : Nat) : Int)) = (t : Int) - (h + 1) := by push_cast; omega
+      rw [this]; exact a1) (by decide) (by decide) ht hL
+  exact ⟨s2, Runs.trans r1 r2, N2⟩
+
+/-- **LOOP step prefix**, slot 0 by `str` (`a24` item 9): `sub x5, x5, #1; str x5, [x8, #f]` -/
+theorem n_loopDec (S : A64SemN M X W) {h f : Nat} (hM : NMid X W K A s0 st h s) (hB : K.base + 4 * A.length ≤ 2 ^ 32)
+    (a0 : A[h]? = some (ArmEnc.subi (armReg 5) (armReg 5) 1))
+    (a1 : A[h + 1]? = some (ArmEnc.str (armReg 5) (armReg 8) f))
+    (hf8 : f % 8 = 0) (hf : f < 32768) (hw : wok K ((st.x 8).toNat + f)) :
+    let st1 := CallProbe.wr st 5 (st.x 5 - UInt64.ofNat 1)
+    ∃ s', Runs M s s' ∧
+      NMid X W K A s0 { st1 with m := CallProbe.upd st1.m ((st1.x 8).toNat + f) (st1.x 5) } (h + 2) s' := by
+  intro st1
+  obtain ⟨s1, r1, N1⟩ := n_subi S hM hB a0 (by decide) (by decide) (by decide) (by decide) (by decide)
+  have e8 : st1.x 8 = st.x 8 := by simp [st1, CallProbe.wr, CallProbe.upd]
+  obtain ⟨s2, r2, N2⟩ := n_str (a := (st1.x 8).toNat + f) S N1 hB a1 (by decide) (N1.x 5 (by omega) (by omega))
+    (by decide) (N1.x 8 (by omega) (by omega)) hf8 hf rfl (by rw [e8]; exact hw)
+  exact ⟨s2, Runs.trans r1 r2, N2⟩
+
 end JT
