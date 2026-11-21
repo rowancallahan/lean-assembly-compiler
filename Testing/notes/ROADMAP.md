@@ -664,6 +664,7 @@ Every PR that touches the compiler (any stage, either generator) must, before me
 3. reach the fixpoint for native ARM: GA_arm compiles its own source to itself, and the 3-host cross matrix
    (RISC-V / rv2arm / native) is identical (Testing/nano/v2self/native_arm/cross_native.sh);
 4. release_check.sh gates fix1/fix23 pass.
-New syntax is bootstrapped in two steps: (a) the compiler learns the feature while its own source stays in the old
-subset (fixpoint holds); (b) only after (a) is merged may the compiler's own source start using the feature, with a
-fresh fixpoint. Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
+The compiler's OWN source stays in the bootstrap subset (the language as of release-native-arm), even as the
+compiler accepts more (owner, 2026-11-21: avoids confusion). New syntax is for user programs only; a check script fails
+if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outside the subset. (Possible later
+exception, owner to decide: comments in the compiler source.) Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
