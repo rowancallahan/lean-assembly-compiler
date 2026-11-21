@@ -131,11 +131,7 @@ theorem bcond_iff_toInt (a b : BitVec 64) : a.slt b = true ↔ a.toInt < b.toInt
 omit h hpc hok in
 theorem bcond_iff_toNat (a b : BitVec 64) : a.ult b = true ↔ a.toNat < b.toNat := by simp [BitVec.ult_iff_lt, BitVec.lt_def]
 omit h hpc hok in
-theorem bcond_iff_toInt' (a b : BitVec 64) : a.slt b = false ↔ ¬a.toInt < b.toInt := by
-  rw [← bcond_iff_toInt]; simp
 omit h hpc hok in
-theorem bcond_iff_toNat' (a b : BitVec 64) : a.ult b = false ↔ ¬a.toNat < b.toNat := by
-  rw [← bcond_iff_toNat]; simp
 
 theorem beq_5_0_t (o : BitVec 12) (hi : instrAt s pc (wB 0 5 0 o)) (hc : getX s 5 = 0#64) :
     ∃ s', Next s s' (pc + boff o) 0 0 s.mem := G.beq_t h hpc hok 5 0 o hi hc

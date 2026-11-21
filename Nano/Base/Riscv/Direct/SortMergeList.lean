@@ -60,8 +60,6 @@ theorem CS_append {m : Nat} {A B : List α} (hA : A.Pairwise (fun a b => le a b)
       rw [hl]; exact hB j
     · rw [List.append_nil, List.drop_of_length_le (by rw [Nat.succ_mul]; omega)]; simp
 
-theorem CS_drop {w : Nat} {S : List α} (h : CS le w S) (m : Nat) : CS le w (S.drop (m * w)) := fun j => by
-  rw [List.drop_drop, ← Nat.add_mul]; exact h (m + j)
 
 /-- one pass doubles the sorted chunk width -/
 theorem runs_CS (trans : ∀ (a b c : α), le a b → le b c → le a c) (total : ∀ (a b : α), le a b || le b a)

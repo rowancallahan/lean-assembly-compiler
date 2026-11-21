@@ -28,8 +28,6 @@ theorem KeepX.ofNext {s s' : St} {pc rd v m} (hn : Next s s' pc rd v m) (hrd : r
 theorem KeepX.ofRan7 {s s' : St} {pc n k} (r : Ran7 s s' pc n k) : KeepX s s' :=
   fun j h1 _ => r.keep j fun i _ hi => h1 i hi
 
-theorem unchanged_trans {s₁ s₂ s₃ : St} {R : List Region} (a : unchangedOutside s₁ s₂ R)
-    (b : unchangedOutside s₂ s₃ R) : unchangedOutside s₁ s₃ R := fun x hx => by rw [b x hx, a x hx]
 
 /-- a range outside every region of `R` reads the same -/
 theorem bytesAt_out {s s' : St} {R : List Region} (hu : unchangedOutside s s' R) {a n : Nat}
