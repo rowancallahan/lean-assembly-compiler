@@ -1041,4 +1041,167 @@ theorem fuelLoop_ok {P : Prog} {cx : Ctx} {ds : List DefI} {di : DefI} {sps : Li
     · obtain ⟨v, hev, hR⟩ := (node_ok H s _ _ _ _ env1 _ hs hr1 hfu).2 st r hv (by simp [Kont, h2, Except.bind, hrest])
       exact ⟨v, Ev.natS (.bv (hidx svs (m + 1) hsv)) hev, hR⟩
 
+theorem defMean_ok {inp κ ms d ws r} (h : defMean inp κ ms d ws = .ok r) :
+    ev ⟨inp, κ, ms⟩ d.body (ws ++ List.replicate (d.nslots - d.npw) (.w 0)) = .ok (.inl r) := by
+  simp only [defMean] at h
+  split at h
+  · rcases h1 : ev ⟨inp, κ, ms⟩ d.body (ws ++ List.replicate (d.nslots - d.npw) (.w 0)) with _ | (v | v) <;>
+      rw [h1] at h <;> (try evsimp at h) <;> try cases h
+    split at h
+    · simp at h; subst h; exact h1
+    · cases h
+  · cases h
+
+/-- **a def's meaning**: Sem's meaning of a def = the meaning of its emitted Expr, called on related arguments -/
+theorem def_ok {P : Prog} {inp : List UInt8} {κ : Nat} {ms : List (List W → Except Stop (List W))} {ds : List DefI}
+    {di : DefI} {da : DefA} {b : Na} {t val : X} (hin : inp.length < 2 ^ 64) (hdefs : DefsHyp P ⟨inp, κ, ms⟩ ds)
+    (hb : b.erase = da.body) (he : emitDef ds di b = some (t, val)) (hl : P.lookup (nameS di.name) = some val) :
+    ∀ ws r vs, defMean inp κ ms da ws = .ok r → ArgsR inp di.params vs ws →
+      ∃ v, EvCall P (nameS di.name) vs v ∧ R di.res v r := by
+  intro ws r vs hm hA
+  have hev := defMean_ok hm
+  rw [← hb] at hev
+  have henv : EnvR inp (ws ++ List.replicate (da.nslots - da.npw) (.w 0)) (binders 0 di.params []) vs.reverse := by
+    simpa using params_env hA 0 [] [] _ (by simp) .nil
+  have hstrip : ∀ x, strip vs.length (lamX di.params x) = some x := fun x => by rw [hA.len]; exact strip_lamX _ x
+  by_cases hlp : ∃ z s, b = .loop z s
+  · obtain ⟨z, s, rfl⟩ := hlp
+    unfold emitDef at he
+    simp only at he
+    split at he
+    · cases he
+    rename_i hhd
+    rcases hz : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) z with _ | ⟨zx, zs⟩ <;>
+      rw [hz] at he <;> simp only [bind, Option.bind] at he
+    · cases he
+    rcases hs : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s with _ | ⟨sx, ss⟩ <;>
+      rw [hs] at he <;> simp only [bind, Option.bind] at he
+    · cases he
+    split at he
+    · rename_i hc; simp at he; obtain ⟨-, rfl⟩ := he
+      obtain ⟨hzs, hss, -⟩ := hc
+      obtain ⟨sps, hps⟩ : ∃ sps, di.params = .fuel :: sps := by
+        rcases h : di.params with _ | ⟨p, sps⟩
+        · rw [h] at hhd; simp at hhd
+        · rw [h] at hhd; simp at hhd; subst hhd; exact ⟨sps, rfl⟩
+      rw [hps] at hA
+      rcases hA with _ | _ | @⟨p, ps, v0, svs, xs, ws', hp0, h0, hA'⟩
+      rcases h0 with _ | _ | _ | @⟨k, u, hu⟩
+      obtain ⟨n, rest, r', henv0, hrun, hr⟩ := ev_loop (by simpa [Na.erase] using hev)
+      simp only [List.cons_append, List.nil_append, List.cons.injEq, W.w.injEq] at henv0
+      obtain ⟨hun, hrest⟩ := henv0
+      subst hun; cases hr
+      have henv' : EnvR inp (W.w u :: (ws' ++ List.replicate (da.nslots - da.npw) (.w 0))) (binders 0 di.params [])
+          (svs.reverse ++ [.n u.toNat]) := by
+        rw [hu]; simpa using henv
+      obtain ⟨v, hv, hR⟩ := fuelLoop_ok hin hdefs hps hz hs hzs hss hl u.toNat _ svs r henv' hA'.len
+        (by subst hrest; simpa using hrun)
+      have hstr := strip_lamX di.params (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res),
+        .bv ((binders 0 di.params []).length - 1), zx, .lam (.c "Nat" []) sx])
+      have hlen : (V.n k :: svs).length = di.params.length := by rw [hps]; simp [hA'.len]
+      rw [← hlen] at hstr
+      exact ⟨v, ⟨_, _, hl, hstr, by rw [← hu]; simpa using hv⟩, hR⟩
+    · cases he
+  · have he' : (do
+        let (bx, bsh) ← emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) b
+        if bsh = some di.res then some (piX di.params (shTy di.res), lamX di.params bx) else none) = some (t, val) := by
+      cases b with
+      | loop z s => exact absurd ⟨z, s, rfl⟩ hlp
+      | _ => unfold emitDef at he; exact he
+    rcases heb : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) b with _ | ⟨bx, bsh⟩ <;>
+      rw [heb] at he' <;> simp only [bind, Option.bind] at he'
+    · cases he'
+    split at he'
+    · rename_i hbs; simp at he'; obtain ⟨-, rfl⟩ := he'
+      obtain ⟨k, hk⟩ := fuel_exists henv
+      have H : Hyp P ⟨inp, κ, ms⟩ ⟨ds, (nameS di.name, di.params.drop 1)⟩ di.res k (fun _ => .error .stuck) :=
+        ⟨hin, hdefs, fun _ _ _ h => by cases h⟩
+      obtain ⟨v, s', hs', hv, hR⟩ := (node_ok H b _ _ _ _ _ _ heb henv hk).1 _ hev
+      rw [hbs] at hs'; cases hs'
+      exact ⟨v, ⟨_, _, hl, hstrip bx, hv⟩, hR⟩
+    · cases he'
+
+/-! ## programs -/
+/-- the program table of emitted defs -/
+def progOf (o : List (String × X × X)) : Prog := o.map fun e => (e.1, e.2.2)
+
+theorem lookup_of_mem {o : List (String × X × X)} (hnd : (o.map (·.1)).Nodup) :
+    ∀ {n t v}, (n, t, v) ∈ o → (progOf o).lookup n = some v := by
+  induction o with
+  | nil => intro _ _ _ h; cases h
+  | cons e o ih =>
+    intro n t v h
+    simp only [List.map_cons, List.nodup_cons] at hnd
+    simp only [progOf, List.map_cons, List.lookup_cons]
+    rcases List.mem_cons.1 h with rfl | h
+    · simp
+    · have hne : (n == e.1) = false := by
+        simp only [beq_eq_false_iff_ne]; intro he; apply hnd.1; rw [← he]; exact List.mem_map.2 ⟨_, h, rfl⟩
+      rw [hne]; exact ih hnd.2 h
+
+theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} (hin : inp.length < 2 ^ 64) :
+    ∀ (as : List DefA) (j : Nat) (ms : List (List W → Except Stop (List W))) (st : Sd) (o' : List (String × X × X)),
+      emitAll ds j as st = some o' → (∀ n t v, (n, t, v) ∈ o' → P.lookup n = some v) → ms.length = j →
+      DefsHyp P ⟨inp, κ, ms⟩ ds →
+      (means inp κ ms as).length = j + as.length ∧ DefsHyp P ⟨inp, κ, means inp κ ms as⟩ ds
+  | [], j, ms, st, o', _, _, hl, hd => by simpa [means] using ⟨hl, hd⟩
+  | da :: as, j, ms, st, o', he, hlk, hl, hd => by
+    unfold emitAll at he
+    split at he
+    · cases he
+    rename_i hid
+    rcases ha : annot da.body st with _ | ⟨b, st1⟩ <;> rw [ha] at he <;> simp only [bind, Option.bind] at he
+    · cases he
+    rcases hdi : ds[j]? with _ | di <;> rw [hdi] at he <;> simp only at he
+    · cases he
+    rcases hed : emitDef ds di b with _ | ⟨t, v⟩ <;> rw [hed] at he <;> simp only at he
+    · cases he
+    rcases hrest : emitAll ds (j + 1) as st1 with _ | o2 <;> rw [hrest] at he <;> simp only at he
+    · cases he
+    simp at he; subst he
+    have hthis := def_ok (P := P) (κ := κ) (ms := ms) hin hd (annot_erase _ _ _ _ ha) hed (hlk _ t _ (by simp))
+    have hd' : DefsHyp P ⟨inp, κ, ms ++ [defMean inp κ ms da]⟩ ds := by
+      intro i f d hf hdd ws r vs hfr hA
+      simp only at hf
+      by_cases hij : i < ms.length
+      · rw [List.getElem?_append_left hij] at hf; exact hd i f d hf hdd ws r vs hfr hA
+      · have hi : i = ms.length := by
+          have := (List.getElem?_eq_some_iff.1 hf).1; simp at this; omega
+        subst hi
+        rw [List.getElem?_append_right (by omega)] at hf; simp at hf; subst hf
+        rw [hl, hdi] at hdd; cases hdd
+        exact hthis ws r vs hfr hA
+    obtain ⟨h1, h2⟩ := prog_inv hin as (j + 1) _ st1 o2 hrest (fun n t v h => hlk n t v (by simp [h])) (by simp [hl]) hd'
+    simp only [means]
+    exact ⟨by rw [h1]; simp; omega, h2⟩
+
+/-- **eval_emit**: for a program whose Exprs `emitAll` produces (distinct names; the last def is `m (x : List UInt8)
+: List UInt8`), every output Sem computes on an input is the meaning `Ev` of the emitted Expr of `m` applied to the
+input -/
+theorem eval_emit {ds : List DefI} {p : List DefA} {st : Sd} {o : List (String × X × X)} {inp : List UInt8} {κ : Nat}
+    {out : List UInt8} {dm : DefI}
+    (he : emitAll ds 0 p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
+    (hm : ds[p.length - 1]? = some dm) (hmn : dm.name = [109]) (hmp : dm.params = [.inp]) (hmr : dm.res = .ls)
+    (hs : Sem κ p inp = .ok out) : Ev (progOf o) [.l inp] (.app (.c "m" []) (.bv 0)) (.l out) := by
+  have hP : ∀ n t v, (n, t, v) ∈ o → (progOf o).lookup n = some v := fun n t v h => lookup_of_mem hnd h
+  obtain ⟨hlen, hdefs⟩ := prog_inv (P := progOf o) (κ := κ) hin p 0 [] st o he hP rfl
+    (fun i f d h => by simp at h)
+  simp only [Sem] at hs
+  rcases hlast : (means inp κ [] p).getLast? with _ | f <;> rw [hlast] at hs <;> simp only at hs
+  · cases hs
+  rcases hf : f [] with _ | r <;> rw [hf] at hs
+  · cases hs
+  rcases r with _ | ⟨_ | l, _ | _⟩ <;> simp at hs
+  have hfi : (means inp κ [] p)[p.length - 1]? = some f := by
+    rw [List.getLast?_eq_getElem?] at hlast; simpa [hlen] using hlast
+  obtain ⟨v, ⟨body, b, hl, hst, hev⟩, hR⟩ := hdefs (p.length - 1) f dm hfi hm [] [.b l] [.l inp] hf
+    (by rw [hmp]; exact .inp .nil)
+  rw [hmr] at hR
+  rcases hR with _ | _ | ⟨ho⟩
+  rw [hmn] at hl
+  have : nameS [109] = "m" := by decide
+  rw [this] at hl
+  rw [← hs, ho]
+  exact Ev.call (as := [.bv 0]) (.cons (.bv rfl) .nil) hl hst hev
+
 end ExprSpec
