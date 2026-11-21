@@ -1,8 +1,45 @@
-# EXPR: Expr side channel (round 1 design note)
+# EXPR: Expr side channel (round 1: design, results, proof)
 
 Goal: tie nano's meaning to Lean's. For every def, nano emits the Lean `Expr` its AST means; a spot check compares it
 with Lean's elaborated `Expr`; a proof (`eval (emit a) = Sem a`) plus the compiler theorem then says: the machine code
 computes the meaning of the matched Lean `Expr`.
+
+## 0. Final report (round 1)
+**What exists**
+* `emitSpec` (`Nano/Expr/ExprSpec.lean`): a reference emitter from the parsed AST (ParSpec `DefA`) plus token side info
+  (`let` form, `[]`/`bnew`) to the Lean `Expr` fragment `X`, serialized as `S`. It is pure and total, and it
+  CHECKS every typing and slot fact the proof uses (operand and argument shapes, binder widths, fresh `let` slots,
+  branch shapes, def ids, distinct names).
+* E (`Nano/Expr/Emit.lean`, 184 defs in nano's bootstrap subset): the same emitter as a nano program. It is
+  compiled by the committed self-compiled C (`B2.bin`, QEMU) to a 311 KB RISC-V binary. C itself is unchanged.
+* `eval_emit` (`Nano/Expr/Correct.lean`, proved, standard axioms): for any program whose Exprs `emitAll`
+  produces, every output nano's `Sem` computes is the big-step meaning `Ev` of the emitted Expr of `m` applied to the
+  input. `Ev` reads each fragment constant with its Lean meaning (UInt64 ops, `ite`/`decide`, `Prod`, `Nat.casesOn`,
+  the prelude).
+
+**Self-check results** (`check_E.sh`, `spot_check.sh`)
+| set | defs | nano Expr = Lean Expr | not equal | E.bin = emitSpec |
+|---|---|---|---|---|
+| C's source | 236 | **234** | 2 representation-only (`o32`, `o38`, below) | 236/236 |
+| E's own source | 184 | **184** | 0 | 184/184 |
+| examples (8 programs) | 19 | 19 | 0 | 19/19 |
+| fuzz seed 1 (300 programs; 34 rejected by nano) | 939 | 785 | 69 literal-typing, 85 Lean rejects | 939/939 (+34 rejections) |
+| fuzz seed 2 (300 programs; 37 rejected by nano) | 908 | 730 | 81 literal-typing, 97 Lean rejects | — |
+* `o32`, `o38`: `let k := (if .. then 1 else 0)` (o32) and `let k := (if 1048575 < p then 1 .. else 0)` (o38).
+  Lean types `k` as Nat, nano as UInt64. The only use of `k` is `if k == 1` with k ∈ {0,1}, so no value can differ.
+  `Cert.sem_C` (kernel-checked against the Lean defs, where `k` is Nat) already covers them. Nat step 1 (§7) makes
+  these two match exactly.
+* Lean rejects (fuzz only): programs nano accepts and Lean does not (`let t := []`, `put [] (35 <<< 51)`). These are
+  invariant-1 violations. They are recorded for SYNTAX-EXP (parser owner); repros are in `Testing/nano/expr/repro_*.src`.
+
+**What the theorems say for C**
+* `ExprSpec.C_expr` (`Nano/Expr/CExpr.lean`, built locally, standard axioms): `emitAll` succeeds on C's certified
+  AST `Cert.PC.all` (`decide +kernel`, 10 s; emitSpec is structurally recursive so the kernel can evaluate it), and
+  for every input on which C's meaning has a result, `mC inp` is the meaning `Ev` of C's emitted Expr of `m`.
+* `NanoMain.self_expr_C` (`Nano/Expr/CExprTop.lean`; it imports the RISC-V model, so it is built only on the runner,
+  slot-6 request pending): for every `SelfIn` input, C's RISC-V code writes `mC a`, and `mC a` is that Expr's meaning. That Expr text equals
+Lean's elaborated Expr on 234/236 defs (an executable check; the 2 others differ only as above). The theorem does not
+yet say "equals Lean's Expr": that link is the spot check, which is a test and not a proof (§6, step 3).
 
 ## 1. The Expr fragment `X`
 Lean's `Expr` restricted to: `bvar i`, `const n ls` (levels: closed numerals only), `app`, `lam` (binder type, body),
@@ -98,9 +135,12 @@ Mismatch categories:
 Lean-side cost: Lean's `eq_def` for a fuel loop with many states and a big body can take minutes (E's first `e55`, with 15
 parameters, did not finish). E keeps its loop bodies small: the per-def work is the non-recursive `e58`.
 
-## 6. Proof plan
-Started: `Nano/Expr/Eval.lean`, `evalX` (total, fuel-bounded) over `emitXs`'s Exprs, with a closed constant table.
-`#guard`s: the sum example and a pair/let program compute their known outputs through the emitted Expr.
+## 6. Proof (status)
+DONE: `Nano/Expr/Correct.lean`. Big-step `Ev`; the relations `R` (value ↔ Sem's flat words), `ArgsR`, `EnvR`
+(binders ↔ slots); Sem inversions. `node_ok`: induction over all node kinds, where a loop's CONTINUE becomes the self call
+via `Hyp.kont`. `fuelLoop_ok`: induction on the fuel. `def_ok`, `prog_inv`, and `eval_emit`.
+Also `Nano/Expr/Eval.lean`: a fuel-bounded executable evaluator `evalX`, with guards. Adequacy (`Ev` → `evalX`) is not proved yet.
+The original plan:
 1. `evalX : X → env → Option Val` for the fragment: a closed table of the constants above (each with its Lean
    meaning), user defs by name, `Nat.casesOn` on the fuel (structural, so `evalX` is total with fuel).
 2. `eval_emit : evalX (emitSpec p) = Sem κC p` (by induction on `Nd`, slot env ↔ de Bruijn env).
