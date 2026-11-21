@@ -211,8 +211,6 @@ theorem inner_exec (xs pre rest : List (BitVec 8)) (key : BitVec 8) (hs : Sorted
 
 /-! ## Outer loop and the whole program -/
 
-theorem toNat_eq_ofNat {a : BitVec 64} {i : Nat} (h : a.toNat = i) : a = BitVec.ofNat 64 i := by
-  subst h; simp
 
 theorem ins_exec (xs arr0 : List (BitVec 8)) (σ : AState) (hh : σ.heap = [xs, arr0])
     (h1 : σ.env 1 = BitVec.ofNat 64 arr0.length) (hn : arr0.length < 2 ^ 63) :

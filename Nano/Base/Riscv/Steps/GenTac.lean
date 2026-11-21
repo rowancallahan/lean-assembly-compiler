@@ -205,8 +205,6 @@ theorem rvc_or {c m : BitVec 32} (hc : c.extractLsb' 0 2 = 3#2) (hm : m.extractL
     isRVC (BitVec.setWidth 16 ((c ||| m).extractLsb' 24 8 ++ (c ||| m).extractLsb' 16 8 ++
       (c ||| m).extractLsb' 8 8 ++ (c ||| m).extractLsb' 0 8)) = false := rvc_of (low2_or hc hm)
 
-/-- an R-type word: `c` concrete (opcode `0x33`, funct3, funct7) -/
-def wR (c : BitVec 32) (rd rs1 rs2 : Fin 32) : BitVec 32 := c ||| fR rd rs1 rs2
 
 @[simp] theorem sign_extend_eq {n : Nat} (x : BitVec n) : sign_extend (m := 64) x = x.signExtend 64 := by
   simp [sign_extend, Sail.BitVec.signExtend]

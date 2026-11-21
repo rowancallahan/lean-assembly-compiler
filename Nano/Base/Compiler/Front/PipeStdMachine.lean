@@ -74,17 +74,6 @@ theorem unchanged_sub {s s' : St} {rs rs' : List Region} (h : unchangedOutside s
     (hs : ∀ a, (∀ r ∈ rs', a < r.base ∨ r.base + r.len ≤ a) → ∀ r ∈ rs, a < r.base ∨ r.base + r.len ≤ a) :
     unchangedOutside s s' rs' := fun a ha => h a (hs a ha)
 
-theorem ImplementsPipeLen.toPipe {code : List (BitVec 32)} {f : List UInt8 → List UInt8} {space : Nat → Nat}
-    (h : ImplementsPipeLen code f space) : ImplementsPipe code f space := by
-  intro x s entry ra input scratch output stack codeR hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18
-  exact runsTo_mono (h x s entry ra input scratch output stack hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15
-    h16 h17 h18) fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, unchanged_sub c (fun a ha r hr => by
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-      have := ha output (by simp)
-      rcases hr with rfl | rfl
-      · exact ha _ (by simp)
-      · dsimp only; omega), d, e⟩
-
 /-- from a source-level run to the machine-level specification -/
 theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8 → List UInt8} {space : Nat → Nat}
     (hex : ∀ (xs : List UInt8) (out : List (BitVec 8)) (env : AEnv), env 1 = .ofNat 64 xs.length →

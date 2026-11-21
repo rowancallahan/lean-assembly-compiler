@@ -43,8 +43,6 @@ theorem toNat_add_offset {address : UInt64} {offset bound : Nat} (hbound : addre
     (hoffset : offset < bound) : (address + offset.toUInt64).toNat = address.toNat + offset := by
   rw [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
 
-theorem toBitVec_comp_ofBitVec : UInt8.toBitVec ∘ UInt8.ofBitVec = id := rfl
-theorem ofBitVec_comp_toBitVec : UInt8.ofBitVec ∘ UInt8.toBitVec = id := rfl
 
 theorem readMemory_riscv (state : St) {address : UInt64} {length : Nat} (bytes : List UInt8)
     (hbound : address.toNat + length ≤ 2 ^ 64) :

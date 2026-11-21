@@ -25,8 +25,6 @@ def rn (i : Fin 8) : Nat := if i.val = 2 then 7 else if i.val = 7 then 8 else i.
 @[simp] theorem rn4 : rn 4 = 4 := rfl
 
 theorem rn_inj : ∀ {i j : Fin 8}, rn i = rn j → i = j := by decide
-theorem rn_ne2 : ∀ i : Fin 8, rn i ≠ 2 := by decide
-theorem rn_lt : ∀ i : Fin 8, rn i < 9 := by decide
 
 def AExp.rB : AExp → BExp
   | .var i => .var (rn i)
