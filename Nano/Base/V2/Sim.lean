@@ -244,8 +244,6 @@ theorem ea_bv {K : Lay} {c : Cfg} {p : Nat × St} {t : Proven.St} (hR : Rel K c 
 theorem toNat_lt64 {a : Nat} (h : a < 2 ^ 64) : (BitVec.ofNat 64 a).toNat = a := by
   rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt h]
 
-theorem imm12S_toNat (imm : Int) : (BitVec.ofNat 12 (bits imm 12)) = BitVec.ofNat 12 (bits imm 12) := rfl
-
 /-- **ld** -/
 theorem sim_ld {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
     {rd a : Nat} {off : Int} (hC : K.C[pc]? = some (.ld rd a off)) (hw : c.wok (ea s a off)) :

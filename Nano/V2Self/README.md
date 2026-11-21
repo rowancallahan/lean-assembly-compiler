@@ -13,6 +13,11 @@
 | `self_correct_C`, `self_runs_C` | `Proof/Main/SelfC.lean`, `RunsTopO.lean` | the same, for C compiled by itself |
 | `Cert.sem_C` | `Proof/Cert/All.lean` | the meaning of C's own source text is C's Lean function |
 
+## How the pieces connect
+`mC = g41 ∘ o41 ∘ y16 ∘ s10` (folder `C/`). Per stage a spec and a soundness proof: `Proof/Lex` (`Lexes`), `Proof/Parser` (`ParsesProgram`), `Proof/Own` (`Linear`), `Proof/Gen` (code relation) and `Proof/Machine` (J machine, Sail lift; built on `Nano/Base/V2`).
+`Proof/Bridge` ties the stage semantics `Sem` to the spec machine; `Proof/Main/Compile` composes the stage props into `compileC`, and `TopOn`/`RvTop` turn them into `CompileCorrect riscv compileC` / `CompileRuns riscv compileC` (the statements in `REVIEW.lean`). `Proof/Cert` + `Proof/SrcLink` connect C's own text to the Lean function, giving the self-compilation theorems.
+Per-folder READMEs: `C/README.md`, `Proof/{Machine,Main,Gen}/README.md`.
+
 ## Layout
 | folder | contents |
 |---|---|
