@@ -410,5 +410,52 @@ theorem n_br {n q' : Nat} (hA : A[q]? = some (ArmEnc.brR (armReg n))) (hn : mapp
   rw [hM.x n (by omega) (mapped_lt hn), hv] at this
   exact nmid_jump hM this
 
+/-- `movz x17, #0; madd xd, xn, xm, x17` (mul) -/
+theorem n_mul {d n m : Nat} (hA : A[q]? = some (ArmEnc.movz 17 0))
+    (hA1 : A[q + 1]? = some (ArmEnc.rr (ArmEnc.aluC 3) (armReg d) (armReg n) (armReg m)))
+    (hd : mapped d = true) (h0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0) (hm : mapped m = true) (hm0 : m ≠ 0) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (CallProbe.aluf 3 (st.x n) (st.x m))) (q + 2) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hq1 := (List.getElem?_eq_some_iff.1 hA1).1
+  obtain ⟨s1, r1, N1, o1⟩ := nmid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (nmid_pcok hM hB hq)
+    (nmid_fx hM hB (by omega) (by omega)) (by decide) (by decide) (nmid_word hM hA hB))
+  have z17 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
+  have := S.alu s1 3 _ _ _ N1.cfg (nmid_pcok N1 hB hq1) (nmid_fx N1 hB (by omega) (by omega)) (by decide) (by decide)
+    (armReg_lt hd h0) (armReg_lt hn hn0) (armReg_lt hm hm0) (nmid_word N1 hA1 hB)
+  rw [N1.x n (by omega) (mapped_lt hn), N1.x m (by omega) (mapped_lt hm), z17, aluV_eq 3 _ _ _ (Or.inr rfl)] at this
+  obtain ⟨s2, r2, N2⟩ := nmid_set N1 hd h0 this
+  exact ⟨s2, Runs.trans r1 r2, N2⟩
+
+/-- a readable byte (`bok`: in a work cell, or an input/output byte) as the view shows it -/
+theorem nmid_byte {a : Nat} (ha : bok K a) :
+    (M.observe s).memory (UInt64.ofNat a) = some (cbyte (st.m (a - a % 8)) (a % 8)) ∧
+      M.ramStart ≤ a ∧ a < M.ramEnd ∧ W s a := by
+  have hL := hM.lay
+  have wl := hL.wlo; have wh := hL.whi; have il := hL.ibl; have ih := hL.ibh; have ol := hL.obl; have oh := hL.obh
+  have hW : W s a := hM.pm.2 _ (by unfold bok wok io outB at ha; unfold DataK; omega)
+  rcases ha with hw | hio
+  · have := hM.w _ hw (a % 8) (Nat.mod_lt _ (by decide))
+    rw [show a - a % 8 + a % 8 = a by omega] at this
+    unfold wok at hw
+    exact ⟨this, by omega, by omega, hW⟩
+  · refine ⟨hM.bw a hio, ?_, ?_, hW⟩ <;> (unfold io outB at hio; omega)
+
+/-- `ldrb wd, [xn, xm]` of the byte at `x[n] + x[m]` -/
+theorem n_ldrbR {d n m : Nat} (hA : A[q]? = some (ArmEnc.ldrbR (armReg d) (armReg n) (armReg m)))
+    (hd : mapped d = true) (h0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0) (hm : mapped m = true) (hm0 : m ≠ 0)
+    (hb : bok K ((st.x n).toNat + (st.x m).toNat)) :
+    ∃ s', Runs M s s' ∧
+      NMid X W K A s0 (CallProbe.wr st d (CallProbe.lbm st.m ((st.x n).toNat + (st.x m).toNat))) (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  obtain ⟨hby, hlo, hhi, hW⟩ := nmid_byte S hM hB hb
+  have := S.ldrbR s _ _ _ _ hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
+    (armReg_lt hd h0) (armReg_lt hn hn0) (armReg_lt hm hm0)
+    (by rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm)]; exact hlo)
+    (by rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm)]; exact hhi)
+    (by rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm)]; exact hW)
+    (by rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm)]; exact hby) (nmid_word hM hA hB)
+  rw [← lbm_cbyte] at this
+  exact nmid_set hM hd h0 this
+
 end
 end JT
