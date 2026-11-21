@@ -420,7 +420,14 @@ result spine; (4) no literal leaf left of a shift leaf, and in a comparison none
 literal word (M12, M15); (5) in an lc position no if with a literal branch and a let/match branch.
 Prototype on fuzz seed 31 (150 valid programs): rejects all 59 Lean TYPE failures, accepts 48 of the 91 Lean accepts; C's
 own source passes except one line of `s9` (`q0 o (m + 2)`, a let variable in literal arithmetic; to be rewritten).
-Next: numerals ≥ 2^64 (M2) in the lexer; the trusted predicate in `pOf`; the checker in C (after `y16`); proofs; the
+False-reject rate (prototype): realistic code: Testing/nano/v2self/examples (8 programs) and native_arm/edge (4): all
+accepted; C's own source: 272 of 273 defs (the s9 line). Fuzz seed 31 (generator programs, deliberately odd): 48 of 91
+Lean-accepted programs kept. Rejects by rule (programs regained when the rule is switched off): (5) if with a literal
+branch and a let/match branch, no expected type: +24; (1) all-literal arithmetic: +3; (3) shift operand: +1; (2), (4): 0.
+Refinement target: rule (5) only needs to catch a postponed `match`, but after desugaring a match looks like a let and if;
+marking desugared matches (or propagating expected types into let values used at UInt64 positions) would recover most.
+M2 is done (syntax-1 3c76bef9): the lexer rejects numerals of 2^64 or more.
+Next: the trusted predicate in `pOf`; the checker in C (after `y16`); proofs; the
 generator restricted to these rules; then fuzz to 20k.
 
 Still open: B (Nat defaulting of literal-only operands, incl. M15 tuple-let operands), D (layout/offside), M1–M14.
