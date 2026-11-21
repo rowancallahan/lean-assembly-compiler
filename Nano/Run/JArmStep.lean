@@ -2,9 +2,9 @@
 `JArmBits`): at J pc `q` of Gen's words `Cj.map encG`, when the atom selection gives code `t` (`candC`, = `e35` by
 `e35_eq`) and the translator's check `e37` passes,
 * the spec has an atom `T` there (`mkAtom`), it is the head of the rest of the program (`atomize`'s check), `T.ok`;
-* `e36` is its J length;
+* it kills no register, has at most 4 words; `e36` is its J length; `e65` is its jump target (if any);
 * `e40` appends its A64 words `T.a π q h`, with `π p` = the translator's table lookup `e59 z p` and `h` the word count
-  so far.
+  so far (any buffers `z`, `o`: offsets are computed modulo 2^64 on both sides).
 `StepAt t` for the 21 codes gives `StepOK` (`stepOK_of`), which the pass proofs (JArmPass.lean) consume. -/
 import Nano.Run.JArmCand
 namespace JT
@@ -19,8 +19,10 @@ def StepAt (t : UInt64) : Prop :=
     candC (Cj.drop q) = t →
     e37 (Cj.map encG) (bsize (Cj.map encG)) q.toUInt64 t ≠ 0 →
     ∃ T : NTm, mkAtom t (Cj.drop q) = some T ∧ (Cj.drop q).take T.j.length = T.j ∧ T.ok = true ∧
+      T.kills 5 = false ∧ T.kills 6 = false ∧ T.alen ≤ 4 ∧
       e36 (Cj.map encG) (bsize (Cj.map encG)) q.toUInt64 t = T.j.length.toUInt64 ∧
-      ∀ (z o : Buf), o.length < 2 ^ 18 →
+      (∀ p ∈ T.tg q, p < 2 ^ 62 ∧ e65 (Cj.map encG) (bsize (Cj.map encG)) q.toUInt64 t = p.toUInt64) ∧
+      ∀ (z o : Buf),
         e40 (Cj.map encG) (bsize (Cj.map encG)) z o q.toUInt64 t = o ++ (T.a (zpi z) q o.length).map Nat.toUInt64
 
 /-- the obligation for every code -/
