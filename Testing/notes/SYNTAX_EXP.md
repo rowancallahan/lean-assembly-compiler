@@ -397,6 +397,32 @@ index 4333e170..936ff54c 100644
 +
 ```
 
+### B: literal typing (Nat defaulting) — rules being fixed (prototype `Testing/nano/v2self/fuzz/litcheck.lean`)
+Lean (Lean/Elab/Extra.lean `toTree`/`analyze`, binop%/binrel%; LEAN_RULES.md §6.2, §6.4): operator leaves are elaborated
+without an expected type; a numeral's type stays unknown (`OfNat ?α n`) until unified, else the default instance makes it
+Nat. nano computes every literal in UInt64. Probes on Lean 4.34.1 (`def t (x : List UInt8) (a b : UInt64) : UInt64 := …`):
+
+| expression | Lean |
+|---|---|
+| `f (300 - 301)` (UInt64 parameter) | UInt64, wraps: same as nano |
+| `f (1 <<< 64)`, `7 + (a >>> 2)`, `7 * (b >>> 3) + 1`, `7 + ((a + 1) >>> 2)` | error (shift: plain application, not binop%; the numeral defaults first) |
+| `(7 + a) >>> 2`, `(a >>> 2) - 1`, `a >>> (if b == 1 then 2 else 3)` | ok |
+| `7 + (if …)`, `7 + (let y := a; y)`, `7 + (match …)`, `(let y := a; 65) + a` | ok |
+| `if 2 == (let (p, q) := (6, a); q)` (M15) | error; `if 7 == (let y := a; y)`, `if 7 == (match a …)` ok |
+| `(match a with …) >>> 2`, `(let (p, q) := (6, a); q) >>> 2` | error; `(if …) >>> 2`, `(let y := a; y) >>> 2` ok |
+| `let v := if … then 1 else 0; if v == 0 …` (C, s22) | ok, same value (literal values below 2^64 compare alike) |
+| `let v1 := if c then 2 else match …` with `v1` unused (fuzz) | error (2 defaults to Nat, then the match's typed arm fails) |
+
+Rules (on the desugared AST; a "literal" value is a numeral, a let variable bound to one, or an if/let all of whose results are
+literal; "lc" = no expected type): (1) an all-literal operator tree only with an expected type and numeral leaves;
+(2) a comparison of literals only without arithmetic; (3) a shift's left operand neither literal nor a let/match on its
+result spine; (4) no literal leaf left of a shift leaf, and in a comparison none left of a let whose bound value has a
+literal word (M12, M15); (5) in an lc position no if with a literal branch and a let/match branch.
+Prototype on fuzz seed 31 (150 valid programs): rejects all 59 Lean TYPE failures, accepts 48 of the 91 Lean accepts; C's
+own source passes except one line of `s9` (`q0 o (m + 2)`, a let variable in literal arithmetic; to be rewritten).
+Next: numerals ≥ 2^64 (M2) in the lexer; the trusted predicate in `pOf`; the checker in C (after `y16`); proofs; the
+generator restricted to these rules; then fuzz to 20k.
+
 Still open: B (Nat defaulting of literal-only operands, incl. M15 tuple-let operands), D (layout/offside), M1–M14.
 `partial def`: rejected (the word `partial` is an identifier to the lexer and the parser expects `def`), so termination
 is never assumed.
