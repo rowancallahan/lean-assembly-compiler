@@ -235,7 +235,9 @@ def mutate(rng, prog, ns):
             if rng.random() < 0.3 and ":=" in text[j]:
                 text[j] = text[j].replace(":=", rng.choice([":= open Nat in", ":= open Nat in\n", ":= open Nat\n in"]), 1)
             else:
-                text.insert(j, rng.choice(["/-- -- x -/", "/-- -- x -/\n y -/", "/-- --/", "/--/ x -/", "/-! /- a -/ -- b -/\n c -/",
+                text.insert(j, rng.choice(["/-- d -/ /-- e -/", "@[inline] @[reducible]", "private @[inline]", "@[inline] /-- d -/",
+                    "private private", "/-- d -/ /-! m -/", "@[noinline]", "@[simp]", "@[inline,]", "@[ inline , reducible ]",
+                    "/-- -- x -/", "/-- -- x -/\n y -/", "/-- --/", "/--/ x -/", "/-! /- a -/ -- b -/\n c -/",
                     "/-- /--/ -/ -/", "/-- /-! q -/ -/", "/- /-- x -/ -/", "open Nat in", "open Nat -- c", "open Nat.Foo",
                     "namespace A.B", "@[inline -- ]\n]", "@[x.y]", "@[simp, inline]", "@[ inline ]", "/-- \r\n-- x -/\n y -/"]))
         return "\n".join(text), "lean"
@@ -262,7 +264,9 @@ def mutate(rng, prog, ns):
     if m < 0.3: del toks[p]
     elif m < 0.5: toks.insert(p, toks[p])
     elif m < 0.7 and p + 1 < len(toks): toks[p], toks[p + 1] = toks[p + 1], toks[p]
-    else: toks.insert(p, rng.choice(["match", "with", "|", "=>", "_", "(", ")", "3", ",", "end", "x", "@[x]"]))
+    else: toks.insert(p, rng.choice(["match", "with", "|", "=>", "_", "(", ")", "3", ",", "end", "x", "@[x]",
+                                     "/-- d -/", "@[inline]", "private", "/-! m -/", "@[inline] private", "/-- d -/ @[reducible]",
+                                     "@[reducible, inline]", "@[inline reducible]", "@[]", "open Nat", "namespace Q", "section"]))
     text[j] = " ".join(toks)
     return "\n".join(text), "lean"
 
