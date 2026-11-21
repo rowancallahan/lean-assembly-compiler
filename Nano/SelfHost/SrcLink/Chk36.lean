@@ -33,13 +33,5 @@ theorem lex277 : lexAll (x277.length + 1) x277 = some w277 := by decide +kernel
 theorem tok277 : tokens w277 = some S277 := by decide +kernel
 theorem nl277 : x277.getLast? = some 10 := by decide +kernel
 theorem chk277 : chkDef (pDef F D277 T277) di277 d277 T278 = true := by decide +kernel
-theorem lex278 : lexAll (x278.length + 1) x278 = some w278 := by decide +kernel
-theorem tok278 : tokens w278 = some S278 := by decide +kernel
-theorem nl278 : x278.getLast? = some 10 := by decide +kernel
-theorem chk278 : chkDef (pDef F D278 T278) di278 d278 T279 = true := by decide +kernel
-theorem lex279 : lexAll (x279.length + 1) x279 = some w279 := by decide +kernel
-theorem tok279 : tokens w279 = some S279 := by decide +kernel
-theorem nl279 : x279.getLast? = some 10 := by decide +kernel
-theorem chk279 : chkDef (pDef F D279 T279) di279 d279 T280 = true := by decide +kernel
 
 end SrcGen

@@ -6,6 +6,7 @@ import Nano.Ownership.Own
 import Nano.Parser.Par1
 import Nano.Lexer.Lex2
 import Nano.Lexer.Dsg
+import Nano.Parser.NumC
 
 namespace Cert.Sh
 
