@@ -69,8 +69,9 @@ Output is S-compact: the long fixed phrases (`gen_emitstr.ABBREV`) are written `
 its compact form is 251 KB. When C grows past about 2x, E needs a def-range selector.
 Subset rule met on the way: the first `List UInt8` parameter is the program INPUT, so every output-writing def
 takes the input `x` first (as C's own defs do).
-`check_E.sh`: B2 (QEMU) compiles E's text to E.bin (308 KB), then expand(E.bin output) = `emitSpec` byte for byte on:
-C's source (236 defs), E's own text (182), examples (19), fuzz seed 1 (939 defs + 34 rejections). E as Lean defs
+`check_E.sh`: B2 (QEMU) compiles E's text to E.bin (311 KB), then expand(E.bin output) = `emitSpec` byte for byte on:
+C's source (236 defs), E's own text (184), examples (19), fuzz seed 1 (939 defs + 34 rejections).
+Spot check of E's own text: 184/184 defs = Lean's Expr EXACTLY (no literal-typing case in E). E as Lean defs
 (`emit_lean.lean`) agrees on the examples and 60 fuzz programs.
 
 ## 5. The check (`Testing/nano/expr/`)
