@@ -72,12 +72,12 @@ structure A64SemN (M : Machine) (X W : M.State → Nat → Prop) : Prop extends 
     (∀ k < 8, (M.observe s).memory (UInt64.ofNat (((M.observe s).register n).toNat + 8 + k)) = some (cbyte v2 k)) →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.ldp t u n) →
     GoesK M X W s (setReg2 (M.observe s) t u v1 v2)
-  /-- `ldrb wt, [xn, xm]` (zero-extended) -/
+  /-- `ldrb wt, [xn, xm]` (zero-extended; the address is the 64-bit sum, wrapping as the machine does) -/
   ldrbR : ∀ (s : M.State) (t n m : Nat) (b : UInt8), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → t < 31 → n < 31 → m < 31 →
-    M.ramStart ≤ ((M.observe s).register n).toNat + ((M.observe s).register m).toNat →
-    ((M.observe s).register n).toNat + ((M.observe s).register m).toNat < M.ramEnd →
-    W s (((M.observe s).register n).toNat + ((M.observe s).register m).toNat) →
-    (M.observe s).memory (UInt64.ofNat (((M.observe s).register n).toNat + ((M.observe s).register m).toNat)) = some b →
+    M.ramStart ≤ ((M.observe s).register n + (M.observe s).register m).toNat →
+    ((M.observe s).register n + (M.observe s).register m).toNat < M.ramEnd →
+    W s (((M.observe s).register n + (M.observe s).register m).toNat) →
+    (M.observe s).memory (UInt64.ofNat (((M.observe s).register n + (M.observe s).register m).toNat)) = some b →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.ldrbR t n m) →
     GoesK M X W s (setReg (M.observe s) t b.toUInt64)
   /-- `add xd, xn, xm, lsl #3` -/

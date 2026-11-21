@@ -451,9 +451,9 @@ theorem nmid_byte {a : Nat} (ha : bok K a) :
 /-- `ldrb wd, [xn, xm]` of the byte at `x[n] + x[m]` -/
 theorem n_ldrbR {d n m : Nat} (hA : A[q]? = some (ArmEnc.ldrbR (armReg d) (armReg n) (armReg m)))
     (hd : mapped d = true) (h0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0) (hm : mapped m = true) (hm0 : m ≠ 0)
-    (hb : bok K ((st.x n).toNat + (st.x m).toNat)) :
+    (hb : bok K ((st.x n + st.x m).toNat)) :
     ∃ s', Runs M s s' ∧
-      NMid X W K A s0 (CallProbe.wr st d (CallProbe.lbm st.m ((st.x n).toNat + (st.x m).toNat))) (q + 1) s' := by
+      NMid X W K A s0 (CallProbe.wr st d (CallProbe.lbm st.m ((st.x n + st.x m).toNat))) (q + 1) s' := by
   have hq := (List.getElem?_eq_some_iff.1 hA).1
   obtain ⟨hby, hlo, hhi, hW⟩ := nmid_byte S hM hB hb
   have := S.ldrbR s _ _ _ _ hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))

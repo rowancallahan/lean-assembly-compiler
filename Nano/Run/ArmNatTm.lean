@@ -114,8 +114,8 @@ theorem n_rd (S : A64SemN M X W) {h : Nat} (hM : NMid X W K A s0 st h s) (hB : K
     (hw : wok K (st.x 31).toNat) :
     let st2 := CallProbe.wr (CallProbe.wr st 6 (st.m (st.x 31).toNat)) 5 (UInt64.ofNat 0)
     let st3 := if (st2.x 29).toNat ≤ (st2.x 6).toNat then st2
-      else CallProbe.wr st2 5 (CallProbe.lbm st2.m ((st2.x 28).toNat + (st2.x 6).toNat))
-    (¬ (st2.x 29).toNat ≤ (st2.x 6).toNat → bok K ((st2.x 28).toNat + (st2.x 6).toNat)) →
+      else CallProbe.wr st2 5 (CallProbe.lbm st2.m ((st2.x 28 + st2.x 6).toNat))
+    (¬ (st2.x 29).toNat ≤ (st2.x 6).toNat → bok K ((st2.x 28 + st2.x 6).toNat)) →
     wok K (st3.x 31).toNat →
     ∃ s', Runs M s s' ∧
       NMid X W K A s0 { st3 with m := CallProbe.upd st3.m (st3.x 31).toNat (st3.x 5) } (h + 6) s' := by
@@ -139,7 +139,7 @@ theorem n_rd (S : A64SemN M X W) {h : Nat} (hM : NMid X W K A s0 st h s) (hB : K
     obtain ⟨s4, r4, N4⟩ := fin (e3 ▸ N3)
     exact ⟨s4, Runs.trans (Runs.trans (Runs.trans r1 r2) r3) r4, N4⟩
   · rw [if_neg (by simpa using hc)] at N3
-    have e3 : st3 = CallProbe.wr st2 5 (CallProbe.lbm st2.m ((st2.x 28).toNat + (st2.x 6).toNat)) := if_neg hc
+    have e3 : st3 = CallProbe.wr st2 5 (CallProbe.lbm st2.m ((st2.x 28 + st2.x 6).toNat)) := if_neg hc
     obtain ⟨s4, r4, N4⟩ := n_ldrbR S N3 hB a4 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
       (hb hc)
     obtain ⟨s5, r5, N5⟩ := fin (e3 ▸ N4)
