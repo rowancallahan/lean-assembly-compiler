@@ -30,7 +30,7 @@ def ddmin(src, pred):
 RES=None
 def classify(src, nano, lean):
     s=src
-    if "RESULT-DIFF" in nano: kind="RESULT"
+    if lean.startswith("ACCEPT"): kind="RESULT"
     else: kind="LEANREJ"
     if re.search(r"implemented_by|@\[extern",s): return "M13"
     if re.search(r"<-|<\||<\$",s) and "unexpected token '<" in lean: return "M3"
