@@ -1,7 +1,7 @@
 /- E4, the program proof of the nano J → AArch64 translator (Nano/Codegen/JArm.lean, `C.e64` / `C.e45`) against the
 specification `natEncJ` (Nano/Run/NatEnc.lean): THE SHARED STATEMENTS.
-* The J VIEW the translator's accessor layer computes: `jk` (kind code 1..14), `jA` / `jB` / `jC` (fields, UInt64 two's
-  complement), `acode` (atom code of `e35`).
+* The J VIEW the translator's accessor layer computes is in NatEnc.lean (`jk`, `jA` / `jB` / `jC`, `jop`); here `acode`
+  (the atom code of `e35` / `candC`).
 * `JArmBits`: the bit-level facts (NATIVE-ARM-PROOF proves the instance `jArmBits` in Nano/Run/JArmBits.lean):
   L1 bytes → words (`e68`), L6 words → bytes (`e49`), L2 the accessor layer on `encG j` for `JOK j`, L4 the A64 word
   encoders `e50` … `e63`, `e42`, `e56` (li), `e57` (memW), `e58` (aluC) against `ArmEnc`'s `Nat` encoders.
@@ -13,80 +13,6 @@ import Nano.Run.NatEnc
 import Nano.Run.ArmEncOK
 namespace JT
 open Proven.Top SimW CallProbe ArmEnc C
-
-/-- the kind code of a J instruction (`e20` / `e25`) -/
-def jk : J → UInt64
-  | .addi _ _ _ => 1
-  | .slli _ _ _ => 2
-  | .srli _ _ _ => 3
-  | .ld _ _ _ => 4
-  | .sd _ _ _ => 5
-  | .sb _ _ _ => 6
-  | .lbu _ _ _ => 7
-  | .alu _ _ _ _ => 8
-  | .beq _ _ _ => 9
-  | .bne _ _ _ => 10
-  | .bltu _ _ _ => 11
-  | .bgeu _ _ _ => 12
-  | .jal _ _ => 13
-  | .jalr _ _ => 14
-
-/-- field A (`e21`): the destination; the source register of `sd` / `sb`; the first operand of a branch -/
-def jA : J → UInt64
-  | .addi d _ _ => d.toUInt64
-  | .slli d _ _ => d.toUInt64
-  | .srli d _ _ => d.toUInt64
-  | .ld d _ _ => d.toUInt64
-  | .sd s _ _ => s.toUInt64
-  | .sb s _ _ => s.toUInt64
-  | .lbu d _ _ => d.toUInt64
-  | .alu _ d _ _ => d.toUInt64
-  | .beq x _ _ => x.toUInt64
-  | .bne x _ _ => x.toUInt64
-  | .bltu x _ _ => x.toUInt64
-  | .bgeu x _ _ => x.toUInt64
-  | .jal rd _ => rd.toUInt64
-  | .jalr rd _ => rd.toUInt64
-
-/-- field B (`e22`): the base / first source; the second operand of a branch (unspecified for `jal`: 0 here) -/
-def jB : J → UInt64
-  | .addi _ n _ => n.toUInt64
-  | .slli _ n _ => n.toUInt64
-  | .srli _ n _ => n.toUInt64
-  | .ld _ n _ => n.toUInt64
-  | .sd _ n _ => n.toUInt64
-  | .sb _ n _ => n.toUInt64
-  | .lbu _ n _ => n.toUInt64
-  | .alu _ _ x _ => x.toUInt64
-  | .beq _ y _ => y.toUInt64
-  | .bne _ y _ => y.toUInt64
-  | .bltu _ y _ => y.toUInt64
-  | .bgeu _ y _ => y.toUInt64
-  | .jal _ _ => 0
-  | .jalr _ rs => rs.toUInt64
-
-/-- field C (`e23`): immediate / shift / offset (two's complement, branch offsets in J instructions); the second
-source of `alu` -/
-def jC : J → UInt64
-  | .addi _ _ imm => iu imm
-  | .slli _ _ sh => sh.toUInt64
-  | .srli _ _ sh => sh.toUInt64
-  | .ld _ _ off => iu off
-  | .sd _ _ off => iu off
-  | .sb _ _ off => iu off
-  | .lbu _ _ off => iu off
-  | .alu _ _ _ y => y.toUInt64
-  | .beq _ _ off => iu off
-  | .bne _ _ off => iu off
-  | .bltu _ _ off => iu off
-  | .bgeu _ _ off => iu off
-  | .jal _ off => iu off
-  | .jalr _ _ => 0
-
-/-- the ALU op (`e24`), 0 for other instructions -/
-def jop : J → UInt64
-  | .alu op _ _ _ => op.toUInt64
-  | _ => 0
 
 /-- the atom code of `e35` -/
 def acode : NTm → UInt64
@@ -130,10 +56,14 @@ structure JArmBits : Prop where
   l2_big : ∀ v : UInt64, 4294967295 < v → e25 v = 0
   l2_kind : ∀ j : J, JOK j → e25 (encG j) = jk j
   l2_A : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e21 c i = jA j
-  l2_B : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → jk j ≠ 13 → e22 c i = jB j
+  /-- (needs `e22` to return 0 for `jal`, kind 13) -/
+  l2_B : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e22 c i = jB j
   l2_C : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e23 c i = jC j
-  l2_op : ∀ (c : Buf) (i : UInt64) (op d x y : Nat), bget c i = encG (.alu op d x y) → JOK (.alu op d x y) →
-    e24 c i = op.toUInt64
+  /-- (needs `e24` to return 0 unless the kind is 8) -/
+  l2_op : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e24 c i = jop j
+  /-- the accessors on the word 0 (past the end of the buffer) -/
+  l2_zero : ∀ (c : Buf) (i : UInt64), bget c i = 0 →
+    e21 c i = 0 ∧ e22 c i = 0 ∧ e23 c i = 0 ∧ e24 c i = 0
   -- L4: signs and registers
   /-- the sign test -/
   l4_neg : ∀ z : Int, -2 ^ 63 ≤ z → z < 2 ^ 63 → e14 (iu z) = if z < 0 then 1 else 0
