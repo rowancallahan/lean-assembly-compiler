@@ -11,57 +11,68 @@ def encG (gs : List NumSpec.G) : List UInt64 := gs.flatMap encGr
 theorem encG_app (a b : List NumSpec.G) : encG (a ++ b) = encG a ++ encG b := by simp [encG]
 
 /-- the body of `u40` after the checks -/
-def M40 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb k a a2 : UInt64) :
-    Buf × (UInt64 × UInt64) :=
+def M40 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb k a a2 : UInt64)
+    (y y1 y2 : Buf) : Buf × (UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × Buf))))))) :=
   let u := tt - 1;
   if k == 4 then
     (let (g1, ok) := u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
-     if ok == 1 then u40 n x d b bt t u c g1 s gb a2 else (g1, (c, 0)))
-  else if k == 5 then u40 n x d b a t u c g s st gb
+     if ok == 1 then u40 n x d b bt t u c g1 s gb a2 y y1 y2 else (g1, (c, (0, (b, (t, (s, (y, (y1, y2)))))))))
+  else if k == 5 then u40 n x d b a t u c g s st gb y y1 y2
   else if k == 6 then
-    (let (b1, z) := u31 x d b bt a2;
+    (let (b1, z) := u31 x d b bt y y1 a2;
      let (v, z1) := z;
      let (vt, z2) := z1;
-     let (e, ok) := z2;
+     let (e, z3) := z2;
+     let (ok, y3) := z3;
      if ok == 1 then
-       (let (b2, z3) := u26 b1 bt v 0 vt a;
-        let (bt1, ok1) := z3;
-        if ok1 == 1 then u40 n x d b2 bt1 t u c g s st gb else (g, (c, 0)))
-     else (g, (c, 0)))
+       (let (b2, z4) := u26 b1 bt v 0 vt a;
+        let (bt1, ok1) := z4;
+        if ok1 == 1 then u40 n x d b2 bt1 t u c g s st gb v y3 y2 else (g, (c, (0, (b2, (t, (s, (v, (y3, y2)))))))))
+     else (g, (c, (0, (b1, (t, (s, (v, (y3, y2)))))))))
   else if k == 7 then
-    (if a == 0 then u40 n x d b bt t u c g s st gb
-     else u40 n x d b bt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0) (tt + 1) c g s st gb)
-  else if k == 8 then u40 n x d b bt (u27 t u 0 1 0) tt a g s st gb
+    (if a == 0 then u40 n x d b bt t u c g s st gb y y1 y2
+     else u40 n x d b bt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0) (tt + 1) c g s st gb y y1 y2)
+  else if k == 8 then u40 n x d b bt (u27 t u 0 1 0) tt a g s st gb y y1 y2
   else
-    (let (b1, z) := u49 x d b bt t u c s st gb k a a2;
+    (let (b1, z) := u49 x d b bt t u c s st gb k a a2 y y1 y2;
      let (bt1, z1) := z;
      let (t1, z2) := z1;
      let (tt1, z3) := z2;
      let (c1, z4) := z3;
      let (s1, z5) := z4;
      let (st1, z6) := z5;
-     let (gb1, ok) := z6;
-     if ok == 1 then u40 n x d b1 bt1 t1 tt1 c1 g s1 st1 gb1 else (g, (c1, 0)))
+     let (gb1, z7) := z6;
+     let (ok, z8) := z7;
+     let (y3, z9) := z8;
+     let (y4, y5) := z9;
+     if ok == 1 then u40 n x d b1 bt1 t1 tt1 c1 g s1 st1 gb1 y3 y4 y5 else (g, (c1, (0, (b1, (t1, (s1, (y3, (y4, y5)))))))))
 
-theorem u40_unf (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) :
-    u40 (n + 1) x d b bt t tt c g s st gb =
-      if tt == 0 then (g, (c, 1)) else if u36 b t g s == 0 then (g, (c, 0)) else
-      M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := rfl
+abbrev MO := Buf × (UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × Buf)))))))
 
-theorem u40_zero (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) :
-    u40 0 x d b bt t tt c g s st gb = (g, (c, 0)) := rfl
+theorem u40_unf (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64)
+    (y y1 y2 : Buf) :
+    u40 (n + 1) x d b bt t tt c g s st gb y y1 y2 =
+      if tt == 0 then (g, (c, (1, (b, (t, (s, (y, (y1, y2))))))))
+      else if u36 b t g s == 0 then (g, (c, (0, (b, (t, (s, (y, (y1, y2))))))))
+      else M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) y y1 y2 :=
+  rfl
+
+theorem u40_zero (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
+    u40 0 x d b bt t tt c g s st gb y y1 y2 = (g, (c, (0, (b, (t, (s, (y, (y1, y2)))))))) := rfl
 
 theorem u40_eq (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64)
-    (h0 : (tt == 0) = false) (h1 : (u36 b t g s == 0) = false) :
-    u40 (n + 1) x d b bt t tt c g s st gb =
-      M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := by
+    (y y1 y2 : Buf) (h0 : (tt == 0) = false) (h1 : (u36 b t g s == 0) = false) :
+    u40 (n + 1) x d b bt t tt c g s st gb y y1 y2 =
+      M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) y y1 y2 := by
   rw [u40_unf, h0, h1]; rfl
 
-abbrev MO := Buf × (UInt64 × UInt64)
-def QM (Q : MO → Prop) : Prop := ∀ r : MO, r.2.2 ≠ 1 → Q r
+def QM (Q : MO → Prop) : Prop := ∀ r : MO, r.2.2.1 ≠ 1 → Q r
+
+/-- the scratch buffers' sizes -/
+def SC (y y1 y2 : Buf) : Prop := y.length < 2 ^ 62 ∧ y1.length < 2 ^ 62 ∧ y2.length < 2 ^ 62
 
 def GM (x d : Buf) (Q : MO → Prop) (b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) : Prop :=
-  ∀ n, Q (u40 n x d b bt t tt c g s st gb)
+  ∀ y y1 y2, SC y y1 y2 → ∀ n, Q (u40 n x d b bt t tt c g s st gb y y1 y2)
 
 /-- the main machine's invariant: chain, tasks and slot stack are prefixes; the groups buffer is exact -/
 structure MI (b : Buf) (bs : List (Nat × List Bool)) (t : Buf) (ts : List T3) (g s : Buf) (S : List UInt64) : Prop where
@@ -101,9 +112,10 @@ def SZ (b t g s : Buf) : Prop := b.length < 2 ^ 40 ∧ t.length < 2 ^ 40 ∧ g.l
 theorem gm_top {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b : Buf} {bs : List (Nat × List Bool)} {t : Buf} {ts : List T3}
     {g s : Buf} {S : List UInt64} {k a a2 c gb : UInt64}
     (hI : MI b bs t (ts ++ [(k, a, a2)]) g s S)
-    (H : SZ b t g s → ∀ n, Q (M40 16777216 n x d b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb k a a2)) :
+    (H : SZ b t g s → ∀ y y1 y2, SC y y1 y2 → ∀ n,
+      Q (M40 16777216 n x d b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb k a a2 y y1 y2)) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
-  intro n
+  intro y y1 y2 hsc n
   have htl := hI.pt.length_le
   simp only [encT_len, List.length_append, List.length_singleton] at htl
   have lt := hI.lt
@@ -114,9 +126,9 @@ theorem gm_top {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b : Buf} {bs : List (N
     have h36 := u36_eq hI.lb hI.lt hI.lg hI.ls
     by_cases hs : SZ b t g s
     · have h1 : (u36 b t g s == 0) = false := by rw [h36]; simp [hs.1, hs.2.1, hs.2.2.1, hs.2.2.2]
-      rw [u40_eq n x d b _ t _ c g s _ gb h0 h1]
+      rw [u40_eq n x d b _ t _ c g s _ gb y y1 y2 h0 h1]
       obtain ⟨r1, r2, r3⟩ := top_rd hI.pt (by omega)
-      rw [r1, r2, r3]; exact H hs n
+      rw [r1, r2, r3]; exact H hs y y1 y2 hsc n
     · have h1 : (u36 b t g s == 0) = true := by
         rw [h36]; unfold SZ at hs
         by_cases h1 : b.length < 2 ^ 40 <;> by_cases h2 : t.length < 2 ^ 40 <;> by_cases h3 : g.length < 2 ^ 40 <;> simp_all

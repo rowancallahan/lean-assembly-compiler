@@ -7,45 +7,50 @@ open Templates (NB NBL)
 theorem kne {a b : UInt64} (h : (a == b) = false) : ¬ (a == b) = true := by simp [h]
 theorem keq {a b : UInt64} (h : (a == b) = true) : (a == b) = true := h
 
-theorem M40_4 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) :
-    M40 N n x d b bt t tt c g s st gb 4 a a2 =
+theorem M40_4 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    M40 N n x d b bt t tt c g s st gb 4 a a2 y y1 y2 =
       if (u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).2 == 1 then
-        u40 n x d b bt t (tt - 1) c (u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1 s gb a2
-      else ((u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1, (c, 0)) := by
+        u40 n x d b bt t (tt - 1) c (u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1 s gb a2 y y1 y2
+      else ((u47 N (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st).1, (c, (0, (b, (t, (s, (y, (y1, y2)))))))) := by
   unfold M40; rw [if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
-theorem M40_5 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) :
-    M40 N n x d b bt t tt c g s st gb 5 a a2 = u40 n x d b a t (tt - 1) c g s st gb := by
+theorem M40_5 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    M40 N n x d b bt t tt c g s st gb 5 a a2 y y1 y2 = u40 n x d b a t (tt - 1) c g s st gb y y1 y2 := by
   unfold M40; rw [if_neg (kne (show ((5 : UInt64) == 4) = false from rfl)), if_pos (keq (show ((5 : UInt64) == 5) = true from rfl))]
-theorem M40_6 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64)
-    (R : LO) (hR : u31 x d b bt a2 = R) (R2 : Buf × (UInt64 × UInt64)) (hR2 : u26 R.1 bt R.2.1 0 R.2.2.1 a = R2) :
-    M40 N n x d b bt t tt c g s st gb 6 a a2 =
-      if R.2.2.2.2 == 1 then
-        (if R2.2.2 == 1 then u40 n x d R2.1 R2.2.1 t (tt - 1) c g s st gb else (g, (c, 0)))
-      else (g, (c, 0)) := by
+theorem M40_6 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf)
+    (R : LO) (hR : u31 x d b bt y y1 a2 = R) (R2 : Buf × (UInt64 × UInt64)) (hR2 : u26 R.1 bt R.2.1 0 R.2.2.1 a = R2) :
+    M40 N n x d b bt t tt c g s st gb 6 a a2 y y1 y2 =
+      if R.2.2.2.2.1 == 1 then
+        (if R2.2.2 == 1 then u40 n x d R2.1 R2.2.1 t (tt - 1) c g s st gb R.2.1 R.2.2.2.2.2 y2
+         else (g, (c, (0, (R2.1, (t, (s, (R.2.1, (R.2.2.2.2.2, y2)))))))))
+      else (g, (c, (0, (R.1, (t, (s, (R.2.1, (R.2.2.2.2.2, y2)))))))) := by
   unfold M40
   rw [if_neg (kne (show ((6 : UInt64) == 4) = false from rfl)), if_neg (kne (show ((6 : UInt64) == 5) = false from rfl)),
     if_pos (keq (show ((6 : UInt64) == 6) = true from rfl)), hR]
   clear hR
-  obtain ⟨b1, v, vt, e, ok⟩ := R
+  obtain ⟨b1, v, vt, e, ok, w1⟩ := R
   replace hR2 : u26 b1 bt v 0 vt a = R2 := hR2
   show (if ok == 1 then (if (u26 b1 bt v 0 vt a).2.2 == 1 then u40 n x d (u26 b1 bt v 0 vt a).1 (u26 b1 bt v 0 vt a).2.1 t
-    (tt - 1) c g s st gb else (g, (c, 0))) else (g, (c, 0))) = _
+    (tt - 1) c g s st gb v w1 y2 else (g, (c, (0, ((u26 b1 bt v 0 vt a).1, (t, (s, (v, (w1, y2))))))))) else
+    (g, (c, (0, (b1, (t, (s, (v, (w1, y2))))))))) = _
   rw [hR2]
-theorem M40_7 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) :
-    M40 N n x d b bt t tt c g s st gb 7 a a2 = (if a == 0 then u40 n x d b bt t (tt - 1) c g s st gb
-     else u40 n x d b bt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0) (tt + 1) c g s st gb) := by
+theorem M40_7 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    M40 N n x d b bt t tt c g s st gb 7 a a2 y y1 y2 = (if a == 0 then u40 n x d b bt t (tt - 1) c g s st gb y y1 y2
+     else u40 n x d b bt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0) (tt + 1) c g s st gb y y1 y2) := by
   unfold M40; rw [if_neg (kne (show ((7 : UInt64) == 4) = false from rfl)), if_neg (kne (show ((7 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((7 : UInt64) == 6) = false from rfl)), if_pos (keq (show ((7 : UInt64) == 7) = true from rfl))]
-theorem M40_8 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) :
-    M40 N n x d b bt t tt c g s st gb 8 a a2 = u40 n x d b bt (u27 t (tt - 1) 0 1 0) tt a g s st gb := by
+theorem M40_8 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    M40 N n x d b bt t tt c g s st gb 8 a a2 y y1 y2 = u40 n x d b bt (u27 t (tt - 1) 0 1 0) tt a g s st gb y y1 y2 := by
   unfold M40; rw [if_neg (kne (show ((8 : UInt64) == 4) = false from rfl)), if_neg (kne (show ((8 : UInt64) == 5) = false from rfl)), if_neg (kne (show ((8 : UInt64) == 6) = false from rfl)), if_neg (kne (show ((8 : UInt64) == 7) = false from rfl)), if_pos (keq (show ((8 : UInt64) == 8) = true from rfl))]
-abbrev R9 := Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64)))))))
+abbrev R12 := Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf))))))))))
 /-- the tasks that read the tree: k ∈ {0, 1, 2, 3, 9} -/
 theorem M40_r (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb k a a2 : UInt64)
+    (y y1 y2 : Buf)
     (h4 : (k == 4) = false) (h5 : (k == 5) = false) (h6 : (k == 6) = false) (h7 : (k == 7) = false)
-    (h8 : (k == 8) = false) (R : R9) (hR : u49 x d b bt t (tt - 1) c s st gb k a a2 = R) :
-    M40 N n x d b bt t tt c g s st gb k a a2 =
-      if R.2.2.2.2.2.2.2.2 == 1 then u40 n x d R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1
-      else (g, (R.2.2.2.2.1, 0)) := by
+    (h8 : (k == 8) = false) (R : R12) (hR : u49 x d b bt t (tt - 1) c s st gb k a a2 y y1 y2 = R) :
+    M40 N n x d b bt t tt c g s st gb k a a2 y y1 y2 =
+      if R.2.2.2.2.2.2.2.2.1 == 1 then u40 n x d R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1
+        R.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2
+      else (g, (R.2.2.2.2.1, (0, (R.1, (R.2.2.1, (R.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.1, (R.2.2.2.2.2.2.2.2.2.2.1,
+        R.2.2.2.2.2.2.2.2.2.2.2)))))))) := by
   unfold M40
   rw [if_neg (by simp [h4]), if_neg (by simp [h5]), if_neg (by simp [h6]), if_neg (by simp [h7]), if_neg (by simp [h8]), hR]
 
@@ -76,10 +81,10 @@ theorem m_popm {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs bs0 t ts g s S a2
     (hP : MI b bs0 t ts g s S → GM x d Q b (u (encB bs0).length) t (u ts.length) c g s (u S.length) gb) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro _ n
+  intro _ y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   rw [M40_5, upred _ (by omega)]
-  exact hP ⟨(encB_prefix h0).trans hI.pb, hI.lb, fun r hr => hI.sb r (h0.subset hr), hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ n
+  exact hP ⟨(encB_prefix h0).trans hI.pb, hI.lb, fun r hr => hI.sb r (h0.subset hr), hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ y y1 y2 hsc n
 
 /-- COLAT pos: COL 1 at pos -/
 theorem m_colat {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb} {pos : Nat}
@@ -88,13 +93,13 @@ theorem m_colat {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c 
       GM x d Q b (u (encB bs).length) t' (u (ts.length + 1)) (u pos) g s (u S.length) gb) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro hsz n
+  intro hsz y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   rw [M40_8, upred _ (by omega)]
   have hp := u27_ok hI.pop.pt (by have := hsz.2.1; omega) (by omega) 0 1 0
   have hl : (u27 t (u ts.length) 0 1 0).length < 2 ^ 42 := by
     have := hp.2; have := hsz.2.1; have := hI.pop.pt.length_le; rw [encT_len] at *; omega
-  exact hP _ ⟨hI.pb, hI.lb, hI.sb, hp.1, hl, hI.lg, hI.ps, hI.ls⟩ n
+  exact hP _ ⟨hI.pb, hI.lb, hI.sb, hp.1, hl, hI.lg, hI.ps, hI.ls⟩ y y1 y2 hsc n
 
 /-- COLSEQ: none left -/
 theorem m_colseq0 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb}
@@ -102,10 +107,10 @@ theorem m_colseq0 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 
     (hP : MI b bs t ts g s S → GM x d Q b (u (encB bs).length) t (u ts.length) c g s (u S.length) gb) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro _ n
+  intro _ y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   rw [M40_7, if_pos (keq (show (u 0 == 0) = true from rfl)), upred _ (by omega)]
-  exact hP hI.pop n
+  exact hP hI.pop y y1 y2 hsc n
 
 /-- COLSEQ m+1: COL 1 on the next node, then COLSEQ m -/
 theorem m_colseq1 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb} {m : Nat} (hm : m < 2 ^ 32)
@@ -114,7 +119,7 @@ theorem m_colseq1 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 
       GM x d Q b (u (encB bs).length) t' (u (ts.length + 2)) c g s (u S.length) gb) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro hsz n
+  intro hsz y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   have hm0 : (u (m + 1) == 0) = false := by rw [u0, ueq (by omega) (by omega)]; simp
   rw [M40_7, if_neg (kne hm0)]
@@ -123,7 +128,7 @@ theorem m_colseq1 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 
   have hp := u27_ok (ts := ts ++ [(7, u m, a2)]) q1 (by have := hsz.2.1; omega) (by simp; omega) 0 1 0
   simp only [List.length_append, List.length_singleton] at hp
   rw [show u (ts.length + 1) + 1 = u (ts.length + 2) by rw [u1, uadd]]
-  refine hP _ ⟨hI.pb, hI.lb, hI.sb, by simpa using hp.1, ?_, hI.lg, hI.ps, hI.ls⟩ n
+  refine hP _ ⟨hI.pb, hI.lb, hI.sb, by simpa using hp.1, ?_, hI.lg, hI.ps, hI.ls⟩ y y1 y2 hsc n
   have h2 := hp.2; rw [q2] at h2; have h3 := hI.pt.length_le; simp [encT_len] at h3; have := hsz.2.1; omega
 
 /-- CLOSE d gbp: the innermost open group becomes a group record -/
@@ -134,7 +139,7 @@ theorem m_close {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s c} {S0 
       GM x d Q b (u (encB bs).length) t (u ts.length) c (g ++ encGr ⟨SL, dd, ar⟩) s (u S0.length) gbp) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u (S0 ++ w2 ar :: SL.map u).length) (u S0.length) := by
   apply gm_top hQ hI
-  intro hsz n
+  intro hsz y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   have hSl := hI.ps.length_le; simp at hSl
   have hsl := hI.ls
@@ -161,7 +166,7 @@ theorem m_close {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s c} {S0 
     rw [hge, upred _ (by omega)]
     have hgl : (g ++ encGr ⟨SL, dd, ar⟩).length < 2 ^ 42 := by
       have := hsz.2.2.1; have := hsz.2.2.2; simp [encGr]; omega
-    exact hP ⟨hI.pb, hI.lb, hI.sb, hI.pop.pt, hI.lt, hgl, (List.prefix_append _ _).trans hI.ps, hI.ls⟩ n
+    exact hP ⟨hI.pb, hI.lb, hI.sb, hI.pop.pt, hI.lt, hgl, (List.prefix_append _ _).trans hI.ps, hI.ls⟩ y y1 y2 hsc n
   · rw [if_neg (by simpa using hok)]; exact hQ _ (show u 0 ≠ 1 by decide)
 
 /-- BINDM slot pos: bind the slot to lw of the value at pos -/
@@ -173,15 +178,15 @@ theorem m_bindm {x d : Buf} {np : Nat} {ws : List Nat} (hC : LC x d ws) {Q : MO 
       GM x d Q b' (u (encB (bs ++ [(sl, NumSpec.lw f ws (envOf bs) v)])).length) t (u ts.length) c g s (u S.length) gb) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro hsz n
+  intro hsz y y1 y2 hsc n
   have hts := hI.lts; simp at hts
-  have hR := u31_ok hC hf hnb hx hpv hI.pb (by have := hsz.1; omega) hI.sb
-  generalize hRe : u31 x d b (u (encB bs).length) (u pv) = R at hR
-  obtain ⟨b1, vv, vt, e, ok⟩ := R
+  have hR := u31_ok hC hf hnb hx hpv hI.pb (by have := hsz.1; omega) hI.sb hsc.1 hsc.2.1
+  generalize hRe : u31 x d b (u (encB bs).length) y y1 (u pv) = R at hR
+  obtain ⟨b1, vv, vt, e, ok, w1⟩ := R
   by_cases hok : ok = 1
   · subst hok
-    obtain ⟨p1, p2, p3, p3', p4, -⟩ := hR rfl
-    simp only at p1 p2 p3 p3' p4
+    obtain ⟨p1, p2, p3, p3', p4, -, p5⟩ := hR rfl
+    simp only at p1 p2 p3 p3' p4 p5
     subst p4
     have hL := p3.length_le
     have hb1 := p1.length_le
@@ -190,7 +195,7 @@ theorem m_bindm {x d : Buf} {np : Nat} {ws : List Nat} (hC : LC x d ws) {Q : MO 
     simp only [List.length_nil, Nat.zero_add] at hR2
     generalize hR2e : u26 b1 (u (encB bs).length) vv (u 0) (u (List.map w2 (NumSpec.lw f ws (envOf bs) v)).length) (u sl) = R2 at hR2
     obtain ⟨b2, bt2, ok2⟩ := R2
-    rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ _ hRe _ (show u26 b1 (u (encB bs).length) vv 0
+    rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ y y1 y2 _ hRe _ (show u26 b1 (u (encB bs).length) vv 0
       (u (List.map w2 (NumSpec.lw f ws (envOf bs) v)).length) (u sl) = (b2, bt2, ok2) from hR2e)]
     rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))]
     by_cases hok2 : ok2 = 1
@@ -204,13 +209,13 @@ theorem m_bindm {x d : Buf} {np : Nat} {ws : List Nat} (hC : LC x d ws) {Q : MO 
       have e2 : bt2 = u (encB (bs ++ [(sl, NumSpec.lw f ws (envOf bs) v)])).length := by
         rw [q2, encB_snoc, List.length_append, encR_len]; simp only [List.length_map]; exact congrArg u (by omega)
       rw [e2]
-      refine hP _ ⟨?_, by simp only; omega, ?_, hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ n
+      refine hP _ ⟨?_, by simp only; omega, ?_, hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ vv w1 y2 ⟨by omega, by omega, hsc.2.2⟩ n
       · rw [encB_snoc]; simpa [encR] using q1
       · intro r hr; rcases List.mem_append.1 hr with hr | hr
         · exact hI.sb r hr
         · simp at hr; subst hr; exact hsl
     · rw [if_neg (by simpa using hok2)]; exact hQ _ (show u 0 ≠ 1 by decide)
-  · rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ _ hRe _ rfl, if_neg (by simpa using hok)]
+  · rw [M40_6 16777216 n x d b _ t _ c g s _ gb _ _ y y1 y2 _ hRe _ rfl, if_neg (by simpa using hok)]
     exact hQ _ (show u 0 ≠ 1 by decide)
 
 end NumP

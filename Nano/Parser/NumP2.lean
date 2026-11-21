@@ -7,7 +7,7 @@ open Templates (NB NBL)
 
 /-- the body of `u28` after the checks (k, a, a2: the top task) -/
 def L28 (n : Nat) (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c k a a2 : UInt64) :
-    Buf × (Buf × (UInt64 × (UInt64 × UInt64))) :=
+    Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × Buf)))) :=
   let u := tt - 1;
   if k == 0 then
     (let (v1, z) := u29 x d b bt v vt t u c;
@@ -15,7 +15,7 @@ def L28 (n : Nat) (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) 
      let (t1, z2) := z1;
      let (tt1, z3) := z2;
      let (c1, ok) := z3;
-     if ok == 1 then u28 n x d b bt v1 vt1 t1 tt1 c1 else (b, (v1, (vt1, (c1, 0)))))
+     if ok == 1 then u28 n x d b bt v1 vt1 t1 tt1 c1 else (b, (v1, (vt1, (c1, (0, t1))))))
   else if k == 1 then u28 n x d b bt (u20 v a (if a < vt then bget v a else 0)) (a + 1) t u c
   else if k == 2 then u28 n x d b bt (bset v a (bget v a &&& bget v (a + 1))) (a + 1) t u c
   else if k == 3 then u28 n x d b bt (bset v a (vt - a - 1)) vt t u c
@@ -25,16 +25,16 @@ def L28 (n : Nat) (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) 
      let e := vt - m;
      let q := (if l < e then l else e);
      let (v1, ok) := u24 16777216 v a m 0 q;
-     if ok == 1 then u28 n x d b bt v1 (a + q) t u c else (b, (v1, (vt, (c, 0)))))
+     if ok == 1 then u28 n x d b bt v1 (a + q) t u c else (b, (v1, (vt, (c, (0, t))))))
   else if k == 5 then
     (let (b1, z) := u26 b bt v a2 vt a;
      let (bt1, ok) := z;
-     if ok == 1 then u28 n x d b1 bt1 v a2 t u c else (b1, (v, (vt, (c, 0)))))
+     if ok == 1 then u28 n x d b1 bt1 v a2 t u c else (b1, (v, (vt, (c, (0, t))))))
   else if k == 6 then u28 n x d b a v vt t u c
   else if k == 7 then
     (if a == 0 then u28 n x d b bt v vt t u c
      else u28 n x d b bt v vt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 0 0) (tt + 1) c)
-  else (b, (v, (vt, (c, 0))))
+  else (b, (v, (vt, (c, (0, t)))))
 
 theorem u28_eq (n : Nat) (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UInt64)
     (h0 : (tt == 0) = false) (h1 : (u35 v t b == 0) = false) :
@@ -42,9 +42,9 @@ theorem u28_eq (n : Nat) (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t 
       L28 n x d b bt v vt t tt c (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) := by
   simp only [u28, h0, h1, Bool.false_eq_true, if_false]; rfl
 
-abbrev LO := Buf × (Buf × (UInt64 × (UInt64 × UInt64)))
+abbrev LO := Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × Buf))))
 /-- Q holds for every error output -/
-def QE (Q : LO → Prop) : Prop := ∀ r : LO, r.2.2.2.2 ≠ 1 → Q r
+def QE (Q : LO → Prop) : Prop := ∀ r : LO, r.2.2.2.2.1 ≠ 1 → Q r
 
 def GL (x d : Buf) (Q : LO → Prop) (b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UInt64) : Prop :=
   ∀ n, Q (u28 n x d b bt v vt t tt c)

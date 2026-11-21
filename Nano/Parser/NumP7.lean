@@ -23,34 +23,41 @@ theorem GA.perm {g g1 : Buf} {A B : List NumSpec.G} (h : GA g g1 A) (hp : A.Perm
 
 theorem GA.nil (g : Buf) : GA g g [] := ⟨[], List.Perm.refl _, by simp [encG]⟩
 
-theorem u49_0 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) :
-    u49 x d b bt t tt c s st gb 0 a a2 = u41 x d b bt t tt c s st gb a := by
+theorem u49_0 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
+    u49 x d b bt t tt c s st gb 0 a a2 y y1 y2 = u41 x d b bt t tt c s st gb a y y1 y2 := by
   unfold u49; rw [if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))]
 
-theorem u41_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb e : UInt64} {b1 : Buf} {r : UInt64}
-    (h : u32 x d b bt c = (b1, r)) :
-    u41 x d b bt t tt c s st gb e =
-      if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, 0))))))))
-      else if r == 1 then (b1, (bt, (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0, (tt + 2, (c, (u20 s st 0, (st + 1, (st, 1))))))))
-      else u42 x d b1 bt t tt c s st gb e := by
+theorem u41_eq {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb e : UInt64} {y y1 y2 : Buf}
+    {b1 : Buf} {r : UInt64} {y3 y4 : Buf}
+    (h : u32 x d b bt y y1 c = (b1, (r, (y3, y4)))) :
+    u41 x d b bt t tt c s st gb e y y1 y2 =
+      if r == 2 then (b1, (bt, (t, (tt, (c, (s, (st, (gb, (0, (y3, (y4, y2)))))))))))
+      else if r == 1 then (b1, (bt, (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0, (tt + 2, (c, (u20 s st 0, (st + 1, (st, (1, (y3, (y4, y2)))))))))))
+      else u42 x d b1 bt t tt c s st gb e y3 y4 y2 := by
   unfold u41; rw [h]
+
+/-- the scratch buffers of a tree task's result -/
+def SCR (R : R12) : Prop := SC R.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.2.2.2.2
 
 /-- a task that reads the tree, by its u49 result -/
 theorem m_read {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S} {k a a2 c gb : UInt64}
-    (hk : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 9) (hI : MI b bs t (ts ++ [(k, a, a2)]) g s S) (R : R9)
-    (hR : SZ b t g s → u49 x d b (u (encB bs).length) t (u ts.length) c s (u S.length) gb k a a2 = R)
-    (hg : SZ b t g s → R.2.2.2.2.2.2.2.2 = 1 →
-      GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1) :
+    (hk : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 9) (hI : MI b bs t (ts ++ [(k, a, a2)]) g s S)
+    (hg : SZ b t g s → ∀ y y1 y2, SC y y1 y2 → ∀ R : R12,
+      u49 x d b (u (encB bs).length) t (u ts.length) c s (u S.length) gb k a a2 y y1 y2 = R →
+      R.2.2.2.2.2.2.2.2.1 = 1 →
+      SCR R ∧ GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply gm_top hQ hI
-  intro hsz n
+  intro hsz y y1 y2 hsc n
   have hts := hI.lts; simp at hts
   have hk' : (k == 4) = false ∧ (k == 5) = false ∧ (k == 6) = false ∧ (k == 7) = false ∧ (k == 8) = false := by
     rcases hk with rfl | rfl | rfl | rfl | rfl <;> decide
-  rw [M40_r 16777216 n x d b _ t _ c g s _ gb k a a2 hk'.1 hk'.2.1 hk'.2.2.1 hk'.2.2.2.1 hk'.2.2.2.2 R
-    (by rw [upred _ (by omega)]; exact hR hsz)]
-  by_cases hok : R.2.2.2.2.2.2.2.2 = 1
-  · rw [if_pos (by simp [hok])]; exact hg hsz hok n
+  have e1 : u (ts.length + 1) - 1 = u ts.length := upred _ (by omega)
+  rw [M40_r 16777216 n x d b _ t _ c g s _ gb k a a2 y y1 y2 hk'.1 hk'.2.1 hk'.2.2.1 hk'.2.2.2.1 hk'.2.2.2.2 _ rfl, e1]
+  have hR := hg hsz y y1 y2 hsc _ rfl
+  generalize u49 x d b (u (encB bs).length) t (u ts.length) c s (u S.length) gb k a a2 y y1 y2 = R at hR ⊢
+  by_cases hok : R.2.2.2.2.2.2.2.2.1 = 1
+  · rw [if_pos (by simp [hok])]; obtain ⟨h1, h2⟩ := hR hok; exact h2 _ _ _ h1 n
   · rw [if_neg (by simpa using hok)]; exact hQ _ (show u 0 ≠ 1 by decide)
 
 /-! ## the spec, one fuel step -/
