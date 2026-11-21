@@ -11,7 +11,7 @@ open NanoMain ParSpec
 theorem ok_29 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 29) :
     Spec29 inp (defMean inp κC ms PC.d29) := by
   have L : ∀ (n : Nat), n < 18446744073709551616 → ∀ (w0 : UInt64) (a2 : UInt64) (a3 : Buf),
-      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z29 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s29 e) n ([.w w0, .w a2, .b a3] ++ List.replicate 7 (.w 0))) (enc (C.s9 n inp a2 a3)) := by
+      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z29 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s29 e) n ([.w w0, .w a2, .b a3] ++ List.replicate 8 (.w 0))) (enc (C.s9 n inp a2 a3)) := by
     intro n
     induction n with
     | zero => intro _ w0 a2 a3; rw [C.s9.eq_def]; den_match 0; unfold PC.z29; exact loop_zero (by den)
@@ -19,9 +19,9 @@ theorem ok_29 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       intro hn w0 a2 a3
       rw [C.s9.eq_def]
       den_match 1
-      refine loop_succ (env1 := [.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 7 (.w 0)) rfl ?_
+      refine loop_succ (env1 := [.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 8 (.w 0)) rfl ?_
       have hc : ∀ (a2' : UInt64) (a3' : Buf) {e : Nd} {env : List W}, DenT ⟨inp, κC, ms⟩ e env (a2', a3') →
-          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z29 e) PC.s29 n ([.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 7 (.w 0))) (.cont e) env (C.s9 n inp a2' a3') :=
+          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z29 e) PC.s29 n ([.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 8 (.w 0))) (.cont e) env (C.s9 n inp a2' a3') :=
         fun a2' a3' _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ a2' a3'⟩
       unfold PC.s29
       den [hc]

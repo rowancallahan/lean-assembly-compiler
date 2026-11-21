@@ -247,8 +247,9 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
       let b := s1 (len' x) x a;
       let e := s13 (len' x) x b;
       let m := if k == 97 then 49 else 48;
+      let m2 := if k == 97 then 51 else 50;
       if s22 x q a b e k == 1 then
-        if a == b then s9 n x e (q0 o (m + 2)) else s9 n x e (s7 (len' x) x a b (q0 (q0 o m) 14))
+        if a == b then s9 n x e (q0 o m2) else s9 n x e (s7 (len' x) x a b (q0 (q0 o m) 14))
       else bnew
     else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
     else if k == 95 then
