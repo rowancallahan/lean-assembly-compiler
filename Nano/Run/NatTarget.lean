@@ -11,7 +11,7 @@ Nothing here mentions a model: DeepMind and Sail only supply `A64SemN`. -/
 import Nano.Run.GTarget
 import Nano.Run.ArmNat
 namespace JT
-open Proven.Top SimW CallProbe
+open Proven.Top SimW CallProbe ArmEnc
 
 /-- **the native AArch64 target** with image relation `V` -/
 def natTarget (M : Machine) (X W : M.State → Nat → Prop) (V : List J → Img → Prop) : GTarget where
