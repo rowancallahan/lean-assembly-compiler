@@ -228,4 +228,130 @@ theorem u14_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) : ∀ (n : Nat) (p
       | loop _ _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.spineLet])
       | cont _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.spineLet])
 
+theorem u17_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) {e : Nd} {f q : Nat} {r : Buf}
+    (hx : x.drop q = e.ser ++ r) (hf : e.ser.length ≤ f) (hnb : NB np e) (hq : 0 < q) :
+    u17 x (u q) = 2 ∨ u17 x (u q) = w2 (NumSpec.spineLet f e) := by
+  have := u14_ok hxl 16777216 [(e, f, q)] (bpush bnew (u q)) (by simp [bpush, bnew]) (by simp [bpush, bnew])
+    (by intro p hp; simp at hp; subst hp; exact ⟨⟨r, hx⟩, hf, hnb, hq⟩)
+  rw [u17, show (1 : UInt64) = u ([(e, f, q)] : List (Nd × Nat × Nat)).length from rfl]; simpa using this
+
+/-- the leaves with their positions -/
+def lvP : Nat → Nd → Nat → List (Nd × Nat)
+  | f + 1, .bin op a b, pos =>
+    if NumSpec.isShift op then [(.bin op a b, pos)] else lvP f a (pos + 2) ++ lvP f b (pos + 2 + a.ser.length)
+  | _, e, pos => [(e, pos)]
+
+theorem lvP_fst : ∀ (f : Nat) (e : Nd) (pos : Nat), (lvP f e pos).map Prod.fst = NumSpec.leaves f e
+  | 0, e, pos => by cases e <;> simp [lvP, NumSpec.leaves]
+  | f + 1, e, pos => by
+    cases e with
+    | bin op a b =>
+      simp only [lvP, NumSpec.leaves]
+      split
+      · simp
+      · simp [lvP_fst f a, lvP_fst f b]
+    | _ => simp [lvP, NumSpec.leaves]
+
+theorem u13_succ (n : Nat) (x p w : Buf) (t : UInt64) : u13 (n + 1) x p w t =
+    if t == 0 then (p, 1)
+    else
+      let q := bget w (t - 1);
+      if bget x q == 3 then
+        (if u34 x q == 1 then u13 n x (bpush p q) w (t - 1)
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then (p, 0)
+            else u13 n x p (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1)))
+      else u13 n x (bpush p q) w (t - 1) := rfl
+
+/-- the leaves of the stack's nodes, top first -/
+def lvS (ps : List (Nd × Nat × Nat)) : List (Nd × Nat) := ps.reverse.flatMap fun p => lvP p.2.1 p.1 p.2.2
+
+/-- `u13`: the leaves of the nodes on the work stack, appended to p -/
+theorem u13_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) : ∀ (n : Nat) (ps : List (Nd × Nat × Nat)) (P w : Buf),
+    ps.map (fun p => u p.2.2) <+: w → w.length + n < 2 ^ 40 → (∀ p ∈ ps, SP x np p) →
+    (u13 n x P w (u ps.length)).2 = 1 → (u13 n x P w (u ps.length)).1 = P ++ (lvS ps).map (fun q => u q.2)
+  | 0, _, _, _, _, _, _, h => by simp [u13] at h
+  | n + 1, ps, P, w, hw, hwl, hps, h => by
+    rcases List.eq_nil_or_concat ps with h0 | ⟨ps0, p, h0⟩
+    · subst h0; simp [u13_succ, lvS, show u 0 = 0 from rfl]
+    · rw [List.concat_eq_append] at h0; subst h0
+      have hl2 := hw.length_le; simp at hl2
+      obtain ⟨⟨r, hx⟩, hf, hnb, hc⟩ := hps p (by simp)
+      have hps0 : ∀ q ∈ ps0, SP x np q := fun q hq => hps q (by simp [hq])
+      have hcl := drop_len hx (ser_pos _)
+      have ht0 : (u (ps0 ++ [p]).length == 0) = false := by rw [u0, ueq (by simp; omega) (by omega)]; simp
+      have hp0 : ps0.map (fun p => u p.2.2) <+: w :=
+        (by simp : ps0.map (fun p => u p.2.2) <+: (ps0 ++ [p]).map (fun p => u p.2.2)).trans hw
+      rw [u13_succ, ht0] at h ⊢
+      simp only [Bool.false_eq_true, if_false] at h ⊢
+      rw [pop_rd hw (by omega), tag_rd hx (by omega), u34_ok hx (by omega) hnb] at h ⊢
+      rw [List.length_append, List.length_singleton, upred _ (by omega)] at h ⊢
+      obtain ⟨e, f, q⟩ := p
+      simp only at hx hf hnb hc hcl h ⊢
+      obtain ⟨f', rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by have := ser_pos e; omega⟩
+      have hleaf : lvP (f' + 1) e q = [(e, q)] → (u13 n x (bpush P (u q)) w (u ps0.length)).2 = 1 →
+          (u13 n x (bpush P (u q)) w (u ps0.length)).1 = P ++ (lvS (ps0 ++ [(e, f' + 1, q)])).map (fun q => u q.2) := by
+        intro hl h1
+        rw [u13_ok hxl n ps0 _ w hp0 (by omega) hps0 h1]
+        simp [lvS, hl, bpush]
+      cases e with
+      | bin op a b =>
+        simp only [hdr, List.getD_cons_zero, show ((3 : UInt64) == 3) = true from rfl, if_true] at h ⊢
+        by_cases hsh : NumSpec.isShift op
+        · simp only [shN, hsh, w2, if_true, show ((1 : UInt64) == 1) = true from rfl] at h ⊢
+          exact hleaf (by simp [lvP, hsh]) h
+        · simp only [shN, hsh, w2, show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false] at h ⊢
+          simp only [NB] at hnb
+          obtain ⟨-, hna, hnb1⟩ := hnb
+          have hx2 : x.drop (q + 2) = a.ser ++ (b.ser ++ r) := by
+            have h0 : x.drop q = [3, u op] ++ (a.ser ++ (b.ser ++ r)) := by rw [hx]; simp [Nd.ser, toU]
+            simpa using drop_shift h0
+          have hx3 := drop_shift hx2
+          have hf' : a.ser.length ≤ f' ∧ b.ser.length ≤ f' := by simp [Nd.ser] at hf; omega
+          have hsl : (Nd.bin op a b).ser.length = 2 + a.ser.length + b.ser.length := by simp [Nd.ser]; omega
+          rw [u2, uadd] at h ⊢
+          rcases u15_ok (by omega) hx2 hna with h0 | ⟨h1, -⟩
+          · rw [h0] at h; simp at h
+          rw [h1] at h ⊢
+          have hne0 : (u (q + 2 + a.ser.length) == 0) = false := by
+            rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
+          simp only [hne0, Bool.false_eq_true, if_false] at h ⊢
+          obtain ⟨p1, l1⟩ := u20_push hp0 (by omega) (u (q + 2 + a.ser.length))
+          simp only [List.length_map] at p1 l1
+          obtain ⟨p2, l2⟩ := u20_push (vs := (ps0 ++ [(b, f', q + 2 + a.ser.length)]).map (fun p => u p.2.2))
+            (by simpa using p1) (by omega) (u (q + 2))
+          simp only [List.length_map, List.length_append, List.length_singleton] at p2 l2
+          have ih := u13_ok hxl n (ps0 ++ [(b, f', q + 2 + a.ser.length), (a, f', q + 2)]) P _ (by simpa using p2)
+            (by omega) (by
+            intro p hp
+            simp only [List.mem_append, List.mem_cons, List.mem_nil_iff, or_false] at hp
+            rcases hp with hp | rfl | rfl
+            · exact hps0 p hp
+            · exact ⟨⟨r, hx3⟩, hf'.2, hnb1, by simp only; omega⟩
+            · exact ⟨⟨_, hx2⟩, hf'.1, hna, by simp only; omega⟩)
+          have e2 : u (ps0.length + 1) + 1 = u (ps0 ++ [(b, f', q + 2 + a.ser.length), (a, f', q + 2)]).length := by
+            simp [u1, uadd]
+          rw [e2] at h ⊢
+          rw [ih h]
+          simp [lvS, lvP, hsh]
+      | const _ =>
+        simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | loc _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | ite _ _ _ _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | letE _ _ _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | pair _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | call _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | prim _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | loop _ _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+      | cont _ => simp only [hdr, List.getD_cons_zero] at h ⊢; exact hleaf (by simp [lvP]) h
+
+theorem u16_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) {e : Nd} {f q : Nat} {r : Buf} (P : Buf)
+    (hx : x.drop q = e.ser ++ r) (hf : e.ser.length ≤ f) (hnb : NB np e) (hq : 0 < q) :
+    (u16 x P (u q)).2 = 1 → (u16 x P (u q)).1 = P ++ (lvP f e q).map (fun q => u q.2) := by
+  have := u13_ok hxl 16777216 [(e, f, q)] P (bpush bnew (u q)) (by simp [bpush, bnew]) (by simp [bpush, bnew])
+    (by intro p hp; simp at hp; subst hp; exact ⟨⟨r, hx⟩, hf, hnb, hq⟩)
+  rw [u16, show (1 : UInt64) = u ([(e, f, q)] : List (Nd × Nat × Nat)).length from rfl]
+  intro h; rw [this h]; simp [lvS]
+
 end NumP
