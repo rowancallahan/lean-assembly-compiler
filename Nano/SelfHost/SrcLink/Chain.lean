@@ -39,13 +39,17 @@ import Nano.SelfHost.SrcLink.Data36
 namespace SrcGen
 open ParSpec SrcLink
 
-def F : Nat := 291984
-def T272 : List Tok := []
-def X271 : List UInt8 := x271
-def W271 : List UInt64 := w271
-def Ls272 : List DefA := []
+def F : Nat := 293064
+def T273 : List Tok := []
+def X272 : List UInt8 := x272
+def W272 : List UInt64 := w272
+def Ls273 : List DefA := []
+def T272 : List Tok := S272 ++ T273
+def Ls272 : List DefA := d272 :: Ls273
 def T271 : List Tok := S271 ++ T272
 def Ls271 : List DefA := d271 :: Ls272
+def X271 : List UInt8 := x271 ++ X272
+def W271 : List UInt64 := w271 ++ W272
 def T270 : List Tok := S270 ++ T271
 def Ls270 : List DefA := d270 :: Ls271
 def X270 : List UInt8 := x270 ++ X271
@@ -1403,5 +1407,6 @@ def D269 : List DefI := D268 ++ [di268]
 def D270 : List DefI := D269 ++ [di269]
 def D271 : List DefI := D270 ++ [di270]
 def D272 : List DefI := D271 ++ [di271]
+def D273 : List DefI := D272 ++ [di272]
 
 end SrcGen

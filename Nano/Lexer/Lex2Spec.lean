@@ -2,7 +2,7 @@
 `Lexes x t`: the byte list `x` lexes to the token word list `t`.  One token at a time (`step`), maximal munch:
 whitespace (space, newline) is skipped; the operator table is searched longest-first; a word is a maximal run of
 [A-Za-z0-9_'] (a keyword/prim, an identifier `14 (1,b)* 0`, or, when it starts with a digit, a decimal number
-`5` + 8 little-endian bytes of the value mod 2^64, all characters of the word must then be digits).
+`5` + 8 little-endian bytes of the value, all characters of the word must then be digits and the value below 2^64).
 Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
 (slash-dash ... dash-slash; unterminated: rejected); a doc comment (slash-dash-dash or slash-dash-bang): as Lean, the
 whitespace, line comments and plain block comments right after the opener are skipped before its nested body; an
@@ -151,6 +151,9 @@ def scopeTok (o : Bool) (n : List UInt8) : List UInt64 :=
 
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
+/-- the exact decimal value; a numeral of 2^64 or more is rejected (LEAN_RULES M2: Lean reads it as a Nat, e.g. as fuel,
+where nano's value would wrap) -/
+def numN (w : List UInt8) : Nat := w.foldl (fun a b => a * 10 + (b.toNat - 48)) 0
 /-- 8 little-endian bytes -/
 def le8 (n : Nat) : List UInt64 := (List.range 8).map fun i => ((n / 256 ^ i) % 256).toUInt64
 
@@ -172,7 +175,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
       | none =>
         let w := (c :: r).takeWhile isW
         let rest := (c :: r).dropWhile isW
-        if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
+        if isD c then (if w.all isD ∧ numN w < 2 ^ 64 then some (5 :: le8 (numVal w), rest) else none)
         else if isW c then
           if w == OPEN then none
           else match scopeKw.lookup w with

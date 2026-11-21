@@ -164,6 +164,62 @@ theorem s8_eq (v : UInt64) (o : Buf) : s8 v o = o ++ le8 v.toNat := by
   rw [h0, sh v 1 8 rfl (by omega), sh v 2 16 rfl (by omega), sh v 3 24 rfl (by omega), sh v 4 32 rfl (by omega),
     sh v 5 40 rfl (by omega), sh v 6 48 rfl (by omega), sh v 7 56 rfl (by omega)]
 
+theorem dig_nat (b : UInt8) (h : isD b = true) : (b.toUInt64 - 48).toNat = b.toNat - 48 ∧ b.toNat - 48 ≤ 9 := by
+  have := isD_nat b h; exact ⟨sub48 b this.1, by omega⟩
+
+theorem dig53 (b : UInt8) (h : isD b = true) (h5 : ¬ 53 < b.toUInt64) : b.toNat - 48 ≤ 5 := by
+  have : ∀ v : BitVec 8, isD (UInt8.ofBitVec v) = true → ¬ 53 < (UInt8.ofBitVec v).toUInt64 → v.toNat - 48 ≤ 5 := by decide
+  exact this b.toBitVec h h5
+
+/-- s28 (when it accepts): the digits from `a` on stay below 2^64 -/
+theorem s28_sound : ∀ (n : Nat) (x : List UInt8) (i e a : UInt64), x.length < 2 ^ 32 → e.toNat ≤ x.length →
+    i.toNat ≤ e.toNat → e.toNat - i.toNat ≤ n → ((x.drop i.toNat).take (e.toNat - i.toNat)).all isD = true →
+    s28 n x i e a = 1 → ((x.drop i.toNat).take (e.toNat - i.toNat)).foldl (fun a b => a * 10 + (b.toNat - 48)) a.toNat < 2 ^ 64
+  | 0, _, _, _, _, _, _, _, _, _, h => by simp [s28] at h
+  | n + 1, x, i, e, a, hx, he, hi, hn, hd, h => by
+    simp only [s28] at h
+    by_cases hlt : i < e
+    · rw [if_pos hlt] at h
+      have hl : i.toNat < e.toNat := UInt64.lt_iff_toNat_lt.1 hlt
+      have hi1 : (i + 1).toNat = i.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
+      have hm : e.toNat - i.toNat = (e.toNat - (i.toNat + 1)) + 1 := by omega
+      rw [hm, take_step (by omega)] at hd ⊢
+      simp only [List.all_cons, Bool.and_eq_true] at hd
+      obtain ⟨hb, hd'⟩ := hd
+      have hrd : rd x i = (x.getD i.toNat 0).toUInt64 := rd_eq x i
+      generalize x.getD i.toNat 0 = bb at hrd hb ⊢
+      obtain ⟨d1, d2⟩ := dig_nat _ hb
+      simp only [List.foldl_cons]
+      have step : ∀ a' : UInt64, a'.toNat = a.toNat * 10 + (bb.toNat - 48) →
+          s28 n x (i + 1) e a' = 1 → _ := fun a' ha' h' => by
+        have := s28_sound n x (i + 1) e a' hx he (by omega) (by omega) (by rw [hi1]; exact hd') h'
+        rw [hi1, ha'] at this; exact this
+      by_cases g1 : 1844674407370955161 < a
+      · rw [if_pos g1] at h; cases h
+      rw [if_neg g1] at h
+      have ga : a.toNat ≤ 1844674407370955161 := by
+        have := UInt64.not_lt.1 g1; rw [UInt64.le_iff_toNat_le] at this; simpa using this
+      have hadd : a.toNat * 10 + (bb.toNat - 48) < 2 ^ 64 →
+          (a * 10 + (rd x i - 48)).toNat = a.toNat * 10 + (bb.toNat - 48) := fun hb' => by
+        rw [hrd, UInt64.toNat_add, UInt64.toNat_mul, d1, show (10 : UInt64).toNat = 10 from rfl,
+          Nat.mod_eq_of_lt (show a.toNat * 10 < 2 ^ 64 by omega), Nat.mod_eq_of_lt hb']
+      by_cases g2 : a = 1844674407370955161
+      · rw [if_pos (by simpa using g2)] at h
+        by_cases g3 : 53 < rd x i
+        · rw [if_pos g3] at h; cases h
+        rw [if_neg g3] at h
+        rw [hrd] at g3
+        have d5 := dig53 _ hb g3
+        have ga' : a.toNat = 1844674407370955161 := by rw [g2]; rfl
+        exact step _ (hadd (by omega)) h
+      · rw [if_neg (by simpa using g2)] at h
+        have ga' : a.toNat < 1844674407370955161 := by
+          have : a.toNat ≠ 1844674407370955161 := fun e => g2 (UInt64.toNat.inj (by simpa using e))
+          omega
+        exact step _ (hadd (by omega)) h
+    · have : e.toNat - i.toNat = 0 := by have := UInt64.le_iff_toNat_le.1 (UInt64.not_lt.1 hlt); omega
+      rw [this]; simp; exact a.toNat_lt
+
 theorem s7_eq : ∀ (n : Nat) (x : List UInt8) (i e : UInt64) (o : Buf), x.length < 2 ^ 32 → e.toNat ≤ x.length →
     i.toNat ≤ e.toNat → e.toNat - i.toNat ≤ n →
     s7 n x i e o = o ++ (((x.drop i.toNat).take (e.toNat - i.toNat)).flatMap fun b => [1, b.toUInt64]) ++ [0]
@@ -913,7 +969,9 @@ theorem kind_spec (c : UInt8) (r : List UInt8) :
       step (c :: r) = (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none) ∨
     (∃ e ∈ opTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).drop e.1.length) ∧
         e.1.isPrefixOf (c :: r) = true) ∨
-    (kind (c :: r) = 5 ∧ ((c :: r).takeWhile isW).all isD = true ∧ step (c :: r) = some (5 :: le8 (numVal ((c :: r).takeWhile isW)), (c :: r).dropWhile isW)) ∨
+    (kind (c :: r) = 5 ∧ ((c :: r).takeWhile isW).all isD = true ∧ step (c :: r) =
+      if numN ((c :: r).takeWhile isW) < 2 ^ 64 then some (5 :: le8 (numVal ((c :: r).takeWhile isW)), (c :: r).dropWhile isW)
+      else none) ∨
     kind (c :: r) = 0 ∨
     (∃ e ∈ kwTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).dropWhile isW)) ∨
     (kind (c :: r) = 14 ∧ step (c :: r) = some (14 :: (((c :: r).takeWhile isW).flatMap fun b => [1, b.toUInt64]) ++ [0],
@@ -2086,15 +2144,21 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
           rw [s5_word x p 5 (Or.inl rfl)] at h
           generalize hed : s1 (len' x) x p = ee at *
           have hm : p.toNat ≤ ee.toNat := by omega
-          have hv := s6_eq (len' x) x p ee 0 hx wb2 hm (by unfold len'; omega) (by rw [wb4]; exact hall)
-          rw [wb4] at hv
-          obtain ⟨t', hL, ht'⟩ := s9_sound n x ee _ t hx wb2 h ht
-          rw [wb3] at hL
-          refine ⟨(5 :: le8 (numVal ((c :: r).takeWhile isW))) ++ t', Lexes.cons hst hL, ?_⟩
-          rw [ht', s8_eq, q0_eq]
-          have hnv : (s6 (len' x) x p ee 0).toNat = numVal ((c :: r).takeWhile isW) := by rw [hv]; simp [numVal]
-          have h5' : (5 : UInt64) &&& 255 = 5 := by decide
-          rw [hnv, h5']; simp
+          split at h
+          · rename_i h28
+            have hbig := s28_sound (len' x) x p ee 0 hx wb2 hm (by unfold len'; omega) (by rw [wb4]; exact hall) (by simpa using h28)
+            rw [wb4] at hbig
+            rw [if_pos (by simpa [numN] using hbig)] at hst
+            have hv := s6_eq (len' x) x p ee 0 hx wb2 hm (by unfold len'; omega) (by rw [wb4]; exact hall)
+            rw [wb4] at hv
+            obtain ⟨t', hL, ht'⟩ := s9_sound n x ee _ t hx wb2 h ht
+            rw [wb3] at hL
+            refine ⟨(5 :: le8 (numVal ((c :: r).takeWhile isW))) ++ t', Lexes.cons hst hL, ?_⟩
+            rw [ht', s8_eq, q0_eq]
+            have hnv : (s6 (len' x) x p ee 0).toNat = numVal ((c :: r).takeWhile isW) := by rw [hv]; simp [numVal]
+            have h5' : (5 : UInt64) &&& 255 = 5 := by decide
+            rw [hnv, h5']; simp
+          · exact absurd (by simpa [bnew] using h.symm) ht
         · simp [s23, hk0] at h; exact absurd h.symm ht
         · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := kw_props e he
           obtain ⟨g1, g2, g3, g4, g5, g6, g7⟩ := kw_props2 e he

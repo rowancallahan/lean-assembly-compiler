@@ -117,6 +117,14 @@ def s6 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
   | 0, x, i, e, a => a
   | n + 1, x, i, e, a => if i < e then s6 n x (i + 1) e (a * 10 + (rd x i - 48)) else a
 
+def s28 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, e, a => 0
+  | n + 1, x, i, e, a => if i < e then
+      if 1844674407370955161 < a then 0
+      else if a == 1844674407370955161 then (if 53 < rd x i then 0 else s28 n x (i + 1) e (a * 10 + (rd x i - 48)))
+      else s28 n x (i + 1) e (a * 10 + (rd x i - 48))
+    else 1
+
 def s7 : Nat → List UInt8 → UInt64 → UInt64 → Buf → Buf
   | 0, x, i, e, o => q0 o 0
   | n + 1, x, i, e, o => if i < e then s7 n x (i + 1) e (q0 (q0 o 1) (rd x i)) else q0 o 0
@@ -230,7 +238,7 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     if k == 0 then bnew
     else if k == 91 then o
     else if k == 90 then s9 n x (p + 1) o
-    else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
+    else if k == 5 then if s28 (len' x) x p (s5 x p k) 0 == 1 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5)) else bnew
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
     else if s23 k == 1 then

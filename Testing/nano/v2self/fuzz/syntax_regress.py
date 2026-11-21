@@ -39,6 +39,7 @@ CASES = [  # (name, text, Lean accepts)
     ('E too many ends', 'namespace Ab1\n' + M + 'end Ab1\nend\n', False),
     ('E namespace two names', 'namespace Fz1 Fz2\n' + M, False),
     ('E module doc mid-expression', 'def g (n : UInt64) : UInt64 := n /-! x -/ + 1\n' + M, False),
+    ('M2 numeral 2^64 - 1', 'def g (n : UInt64) : UInt64 := 18446744073709551615\n' + M, True),
     ('A protected def at the root', 'protected ' + M, False),
     ('E module doc before def', 'def g (n : UInt64) : UInt64 := n\n/-! x -/\n' + M, True),
 ]
@@ -52,6 +53,8 @@ REJ_NANO_ONLY = [  # Lean accepts, nano rejects (stricter, allowed): the frame r
     ('E open', 'open Nat\n' + M),
     ('E module doc at the end', M + '/-! d -/\n'),
     ('A partial def', 'partial ' + M),
+    ('M2 numeral 2^64 (Lean: wraps as UInt64, is 2^64 as fuel)', 'def g (n : UInt64) : UInt64 := 18446744073709551616\n' + M),
+    ('M2 numeral 10^20', 'def g (n : UInt64) : UInt64 := 100000000000000000000\n' + M),
     ('A unsafe def', 'unsafe ' + M),
     ('A noncomputable def', 'noncomputable ' + M),
     ('A opaque', 'opaque g : UInt64\n' + M),
