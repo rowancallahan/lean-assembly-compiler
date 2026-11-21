@@ -3,6 +3,12 @@
 Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RISC-V first, then ARM.
 "Needs" = what the compiler lacks today (see `Testing/notes/ARRAYS.md` for the current language).
 
+## Invariants (owner, 2026-11-21) — every change must keep both
+1. Strict Lean compatibility: nano's language is a subset of Lean's. Every program nano accepts, Lean accepts with the
+   same results (fuzz: nano-accepts ⇒ Lean-accepts and agrees; any violation is a FAIL).
+2. Strict self-hosting: the compiler (all stages, every target incl. native ARM) is written in nano's bootstrap
+   subset and compiles itself; Testing/scripts/selfhost_gate.sh must pass on every merge.
+
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |
 |---|---|---|
