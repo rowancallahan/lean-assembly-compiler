@@ -85,7 +85,16 @@ generic J-run proof and needs one lemma per template on the A64 side (see the pr
 | sum | 207 / 828 / 171 | 13335 / 49079 / 13613 | 0.02 / 0.02 / 0.03 |
 | upper | 274 / 1096 / 235 | 33111 / 117923 / 35067 | 0.02 / 0.02 / 0.03 |
 
-Example wall times are QEMU start-up (~0.02 s). Self-compile (C compiling C's source, 3 runs): see below.
+Example wall times are QEMU start-up (~0.02 s).
+
+| C compiling C's source | wall s (3 runs, QEMU) | dynamic instructions |
+|---|---|---|
+| RISC-V B2 | 0.55 0.53 0.58 | 642 M |
+| rv2arm B2_arm | 0.90 0.87 0.91 | ≈ 3.6 × (not counted: the exec log needs > 30 min) |
+| native B2_na | 0.80 0.78 0.92 | ≈ 1.0 × (B2 compiling rle.lean: RV 7.77 M, rv2arm 27.9 M, native 7.70 M) |
+
+QEMU wall time is not a CPU measure: it translates RV and A64 at different costs and rv2arm's PAD words are cheap, so
+the 3.6× instruction gap shows as only ≈ 1.15× in QEMU time. Real ARM hardware (not available here) is the test for speed.
 
 ## Uniform (U) vs variable (V) blocks: what the non-uniform proof buys
 The proof's layout layer assumes one fixed-size block per J instruction. GenArm is V (variable, per template).
