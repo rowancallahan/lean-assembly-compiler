@@ -26,7 +26,7 @@ def work(f):
         a=ld.arm(body,inp)
         if a.startswith("ACCEPT"):
             if st=="same" and a!=n: return "ARM-RESULT-DIFF",dict(file=f,kind="ARM-RESULT-DIFF",cls="ARM",min=body,inp=inp.hex(),nano=n,lean=a,orig=body)
-            if st=="x":  # RV rejected, ARM accepts: the invariant applies to ARM too
+            if st=="x" and not ld.nano(body,inp).startswith("ACCEPT"):  # RV rejected (re-checked: transient RV rejects were seen), ARM accepts: the invariant applies to ARM too
                 l2=ld.lean(body,inp)
                 if l2.startswith("REJ") or (l2.startswith("ACC") and l2!=a): return "ARM-ONLY-"+("REJ" if l2.startswith("REJ") else "DIFF"),dict(file=f,kind="ARM-ONLY",cls="ARM",min=body,inp=inp.hex(),nano=a,lean=l2[:120],orig=body)
         elif st=="same": return "arm-stricter",None
