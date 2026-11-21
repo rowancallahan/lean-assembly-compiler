@@ -15,7 +15,7 @@ def p2 : List DefA := (refParse (C.s10 Witness.x2)).get hs2
 
 theorem hp2 : ParsesProgram (C.s10 Witness.x2) p2 := by unfold ParsesProgram p2; simp
 
-theorem pOf2 : pOf Witness.x2 = some p2 := pOf_eq Witness.w2.1 hp2
+theorem pOf2 : pOf Witness.x2 = some p2 := pOf_eq Witness.w2.1 hp2 (by decide +kernel)
 
 theorem lin2 : LinearK p2 := by
   obtain ⟨p, hp, -, hL, -⟩ := Witness.w2.2.1

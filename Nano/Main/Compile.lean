@@ -8,6 +8,7 @@ import Nano.Ownership.OwnStage
 import Nano.Base.Compiler.AllocSpec
 import Nano.Run.RunsDef
 import Nano.Lexer.DsTok
+import Nano.Parser.NumSound
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc ParSpec
 
@@ -36,15 +37,15 @@ structure SrcC where
   text : List UInt8
 
 open Classical in
-/-- the program a text denotes (Lex2Spec, the match desugaring DsSpec, then ParSpec) -/
+/-- the program a text denotes (Lex2Spec, the match desugaring DsSpec, then ParSpec; its numerals typed as in Lean, NumSpec) -/
 noncomputable def pOf (x : List UInt8) : Option (List DefA) :=
-  if h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
+  if h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ NumSpec.numOkP p then some (Classical.choose h) else none
 
-theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : DsSpec.LexesD x ts) (hp : ParsesProgram ts p) :
-    pOf x = some p := by
-  have h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
+theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : DsSpec.LexesD x ts) (hp : ParsesProgram ts p)
+    (hn : NumSpec.numOkP p) : pOf x = some p := by
+  have h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ NumSpec.numOkP p := ⟨p, ts, hl, hp, hn⟩
   unfold pOf; rw [dif_pos h]
-  obtain ⟨ts', hl', hp'⟩ := Classical.choose_spec h
+  obtain ⟨ts', hl', hp', -⟩ := Classical.choose_spec h
   rw [lexesD_det hl hl'] at hp
   unfold ParsesProgram at hp hp'; rw [hp'] at hp; cases hp; rfl
 
@@ -74,14 +75,18 @@ theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
 theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
 
 /-- as `compiler_correct`, for any property `Q` of Gen's code and the program that codegen provides -/
-theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop)
+theorem compiler_correctG (HB : BndStage)
+    (HD : ∀ (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → ∀ d ∈ p, Templates.DB d)
+    (Q : List UInt8 → List DefA → Prop)
     (HG : ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
       C.g41 c (serialize p) ≠ [] → Q (C.g41 c (serialize p)) p)
     (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
-    ∃ ts p, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
-  have hy0 : C.o41 (C.y16 (C.t10 (C.s10 x))) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
+    ∃ ts p, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ NumSpec.numOkP p ∧ LinearK p ∧ Q (mC x) p := by
+  have hy0 : C.o41 (C.u10 (C.y16 (C.t10 (C.s10 x)))) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
   have hoe := o41_ne _ hy0
-  have hy : C.y16 (C.t10 (C.s10 x)) ≠ [] := by rw [← hoe]; exact hy0
+  have hu0 : C.u10 (C.y16 (C.t10 (C.s10 x))) ≠ [] := by rw [← hoe]; exact hy0
+  have hue := u10_ne _ hu0
+  have hy : C.y16 (C.t10 (C.s10 x)) ≠ [] := by rw [← hue]; exact hu0
   by_cases h0 : C.t10 (C.s10 x) = []
   · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
     rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
@@ -91,13 +96,14 @@ theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop
     have hd := DsSpec.t10_sound _ (by omega) h0
     obtain ⟨hW, hts⟩ := DsSpec.ds_tokWF (lexes_tokWF hL) hd
     obtain ⟨p, hp, he⟩ := parStage _ hW hts hy
-    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
+    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hue, ← hoe]; exact h
     have hbd := HB x _ p hp hts hg
     have hsl : (serialize p).length < 2 ^ 64 := by have := ParSerLen.ser_lt hp hts; omega
-    have hlin : LinearK p := ownStage _ p hp hbd hsl (by rw [← he]; exact hy0)
-    refine ⟨_, p, ⟨_, hL, hd⟩, hp, hlin, ?_⟩
+    have hn := (NumP.u10_sound p (HD _ p hp hts) hsl (by rw [← he]; exact hu0)).1
+    have hlin : LinearK p := ownStage _ p hp hbd hsl (by rw [← he, ← hue]; exact hy0)
+    refine ⟨_, p, ⟨_, hL, hd⟩, hp, hn, hlin, ?_⟩
     have := HG x _ p hp hts hlin hg
-    rw [mC, hoe, he]; exact this
+    rw [mC, hoe, hue, he]; exact this
 
 /-- the field bounds `DB` (fields < 2^32, `NB`) for every program Gen accepts -/
 def DBStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →

@@ -11,12 +11,13 @@ import Nano.Ownership.OwnSpec
 import Nano.Parser.ParInv
 import Nano.Lexer.MainTokWF
 import Nano.Parser.ParSerLen
+import Nano.Parser.NumC
 
 namespace NanoMain
 open ParSpec
 
 /-- C's driver, verbatim from `Testing/nano/v2self/build_self_S.py` (not in `C/Main.lean`, which holds the old chain) -/
-def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
+def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.u10 (C.y16 (C.t10 (C.s10 x)))))
 
 /-! ## the meaning of a resolved program -/
 
@@ -166,6 +167,13 @@ theorem o41_ne (x : Buf) (h : C.o41 x ≠ []) : C.o41 x = x := by
     · rw [if_pos hc]
     · rw [if_neg hc] at hr; exact absurd rfl hr
   exact key _ h
+
+/-- `u10` returns its input or nothing -/
+theorem u10_ne (x : Buf) (h : C.u10 x ≠ []) : C.u10 x = x := by
+  unfold C.u10 at *
+  by_cases hc : (C.u11 x == 1) = true
+  · rw [if_pos hc]
+  · rw [if_neg hc] at h; exact absurd rfl h
 
 theorem g41_nil (c : List UInt8) : C.g41 c [] = [] := by
   simp [C.g41, C.g42, bget]

@@ -5,30 +5,30 @@ open C ParSpec OwnP
 open Templates (NB NBL)
 
 theorem u49_1 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb a a2 : UInt64) :
-    u49 x d b bt t tt c s st gb 1 a a2 = u44 x d b bt t tt c s st gb := by
+    u49 x d b bt t tt c s st gb 1 a a2 = u44 x b bt t tt c s st gb := by
   unfold u49; rw [if_neg (kne (show ((1 : UInt64) == 0) = false from rfl)), if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))]
 
 section
 variable {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb : UInt64}
 
 theorem u44_2 (hg : bget x c = 2) :
-    u44 x d b bt t tt c s st gb = (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, 1)))))))) := by
+    u44 x b bt t tt c s st gb = (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, 1)))))))) := by
   unfold u44; rw [hg]; zeta_only; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))]
 
 theorem u44_3 (hg : bget x c = 3) :
-    u44 x d b bt t tt c s st gb = (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, 1)))))))) := by
+    u44 x b bt t tt c s st gb = (b, (bt, (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0, (tt + 2, (c + 2, (bset s gb 1, (st, (gb, 1)))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((3 : UInt64) == 2) = false from rfl)), if_pos (keq (show ((3 : UInt64) == 3) = true from rfl))]
 
 theorem u44_4 (hg : bget x c = 4) :
-    u44 x d b bt t tt c s st gb =
+    u44 x b bt t tt c s st gb =
       (b, (bt, (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, 1)))))))) := by
   unfold u44; rw [hg]; zeta_only
   rw [if_neg (kne (show ((4 : UInt64) == 2) = false from rfl)), if_neg (kne (show ((4 : UInt64) == 3) = false from rfl)),
     if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
 
 theorem u44_5 (hg : bget x c = 5) :
-    u44 x d b bt t tt c s st gb =
+    u44 x b bt t tt c s st gb =
       (b, (bt, (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 1 0 0) (tt + 2) 6 (bget x (c + 1)) (c + 3)) (tt + 3) 3 (bget x (c + 1)) 0,
        (tt + 4, (c + 3, (s, (st, (gb, 1)))))))) := by
   unfold u44; rw [hg]; zeta_only
@@ -37,16 +37,16 @@ theorem u44_5 (hg : bget x c = 5) :
 
 theorem u44_skip {k : UInt64} (hg : bget x c = k) (h2 : (k == 2) = false) (h3 : (k == 3) = false) (h4 : (k == 4) = false)
     (h5 : (k == 5) = false) :
-    u44 x d b bt t tt c s st gb = (b, (bt, (t, (tt, (u15 x c, (s, (st, (gb, (if u15 x c == 0 then 0 else 1))))))))) := by
+    u44 x b bt t tt c s st gb = (b, (bt, (t, (tt, (u15 x c, (s, (st, (gb, (if u15 x c == 0 then 0 else 1))))))))) := by
   unfold u44; rw [hg]; zeta_only
-  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5)]
+  rw [if_neg (kne h2), if_neg (kne h3), if_neg (kne h4), if_neg (kne h5), u62_id]
 
 end
 
 /-- LIT entry: the u44 result -/
 theorem m_lit_read {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S} {c gb : UInt64}
     (hI : MI b bs t (ts ++ [(1, 0, 0)]) g s S)
-    (H : SZ b t g s → ∀ R : R9, u44 x d b (u (encB bs).length) t (u ts.length) c s (u S.length) gb = R →
+    (H : SZ b t g s → ∀ R : R9, u44 x b (u (encB bs).length) t (u ts.length) c s (u S.length) gb = R →
       R.2.2.2.2.2.2.2.2 = 1 → GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1) :
     GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
   apply m_read hQ (Or.inr (Or.inl rfl)) hI _ (fun _ => rfl)

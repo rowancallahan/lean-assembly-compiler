@@ -11,6 +11,9 @@ open Templates (NB NBL)
 /-! ## words and buffers -/
 theorem toU (n : Nat) : n.toUInt64 = u n := rfl
 
+/-- `u62` is the identity (it only gives the ownership stage evidence that its argument is a buffer) -/
+@[simp] theorem u62_id (b : Buf) : u62 b = b := by unfold u62; split <;> rfl
+
 theorem u20_eq (b : Buf) {j : Nat} (hj : j < 2 ^ 64) (hb : b.length < 2 ^ 64) (v : UInt64) : u20 b (u j) v = OwnP.wr b j v := by
   unfold u20 wr
   by_cases h : j < b.length
