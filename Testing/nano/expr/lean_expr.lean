@@ -2,14 +2,15 @@
 the source, Lean's elaborated Expr, normalized (EXPR.md "Normalization"), printed in the S format. -/
 open Lean Meta
 
-/-- N1: a recursive def is read through its unfolding equation `f.eq_def` (RHS abstracted over its binders) -/
+/-- N1: a recursive def (a fuel loop, structural recursion) is read through Lean's own pre-definition value, the
+RHS of its unfolding equation `f.eq_def` (`Lean.Elab.Structural.eqnInfoExt`: `f.eq_def` is `f xs = value xs`).
+Read directly, so the equation is not proved here (that can take minutes for big loops); `letToHave` as Lean applies
+it to def values (Elab/PreDefinition/Basic.lean) and to `eq_def`. -/
 def rhsOf (n : Name) : MetaM Expr := do
   let ci ← getConstInfo n
-  let some eq ← getUnfoldEqnFor? n (nonRec := false) | return ci.value!
-  forallTelescope (← getConstInfo eq).type fun xs t => do
-    let some (_, l, r) := t.eq? | throwError "eq_def shape"
-    assert! l.getAppFn.constName? == some n
-    mkLambdaFVars xs r
+  match Lean.Elab.Structural.eqnInfoExt.find? (← getEnv) n with
+  | some info => Meta.letToHave info.value  -- as Lean does for def values and for `eq_def` (Meta/Eqns.lean)
+  | none => return ci.value!
 
 /-- N2: delta-unfold every matcher application, then beta-normalize (the source subset has no lambdas, so every
 redex comes from an unfolded matcher) -/
