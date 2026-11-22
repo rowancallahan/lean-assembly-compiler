@@ -2,15 +2,22 @@
 the source, Lean's elaborated Expr, normalized (EXPR.md "Normalization"), printed in the S format. -/
 open Lean Meta
 
-/-- N1: a recursive def (a fuel loop, structural recursion) is read through Lean's own pre-definition value, the
-RHS of its unfolding equation `f.eq_def` (`Lean.Elab.Structural.eqnInfoExt`: `f.eq_def` is `f xs = value xs`).
-Read directly, so the equation is not proved here (that can take minutes for big loops); `letToHave` as Lean applies
-it to def values (Elab/PreDefinition/Basic.lean) and to `eq_def`. -/
+/-- N1: a recursive def (a fuel loop) is read through the RHS of Lean's unfolding equation `f.eq_def`, λ-abstracted
+over its binders (`getUnfoldEqnFor?`): a KERNEL-CHECKED theorem `f xs = rhs` about the kernel's definition of f.
+Only for the defs listed in `preDefs` (whose `eq_def` takes minutes to prove) the RHS is read from Lean's stored
+pre-definition instead (`Lean.Elab.Structural.eqnInfoExt`, then `Meta.letToHave` as Lean applies it to def values
+and to `eq_def`): ELABORATOR OUTPUT, not kernel-checked (EXPR.md §0). -/
 def rhsOf (n : Name) : MetaM Expr := do
   let ci ← getConstInfo n
-  match Lean.Elab.Structural.eqnInfoExt.find? (← getEnv) n with
-  | some info => Meta.letToHave info.value  -- as Lean does for def values and for `eq_def` (Meta/Eqns.lean)
-  | none => return ci.value!
+  if preDefs.contains n then
+    let some info := Lean.Elab.Structural.eqnInfoExt.find? (← getEnv) n | throwError "no pre-definition: {n}"
+    IO.eprintln s!"N1 via the pre-definition (not kernel-checked): {n}"
+    return ← Meta.letToHave info.value
+  let some eq ← getUnfoldEqnFor? n (nonRec := false) | return ci.value!
+  forallTelescope (← getConstInfo eq).type fun xs t => do
+    let some (_, l, r) := t.eq? | throwError "eq_def shape"
+    assert! l.getAppFn.constName? == some n
+    mkLambdaFVars xs r
 
 /-- N2: delta-unfold every matcher application, then beta-normalize (the source subset has no lambdas, so every
 redex comes from an unfolded matcher) -/

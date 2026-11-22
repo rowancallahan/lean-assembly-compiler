@@ -32,6 +32,14 @@ computes the meaning of the matched Lean `Expr`.
 * Lean rejects (fuzz only): programs nano accepts and Lean does not (`let t := []`, `put [] (35 <<< 51)`). These are
   invariant-1 violations. They are recorded for SYNTAX-EXP (parser owner); repros are in `Testing/nano/expr/repro_*.src`.
 
+**What the Lean side reads (trust)**: per def, the kernel's type (`ConstantInfo.type`) and value. For a fuel loop,
+N1 uses the RHS of `f.eq_def` (`Lean.Meta.getUnfoldEqnFor?`), a KERNEL-CHECKED theorem about the kernel's
+definition. A non-recursive def uses its kernel value directly. Only the defs listed in `PREDEFS` (their `eq_def`
+stalls: currently `u40` of SYNTAX-EXP's Nat-step-1 C, a 15-state loop) are read from Lean's stored pre-definition
+(`Lean.Elab.Structural.eqnInfoExt` + `Meta.letToHave`). That is ELABORATOR OUTPUT, not kernel-checked, and
+lean_side.sh logs every such def. On C, E and the fuzz set, both routes give identical output. The generated
+`ExprLeanC.defs` (main's C: 236 defs) uses `eq_def` only.
+
 **What the theorems say for C**
 * `ExprSpec.C_expr` (`Nano/Expr/CExpr.lean`, built locally, standard axioms): `emitAll` succeeds on C's certified
   AST `Cert.PC.all` (`decide +kernel`, 10 s; emitSpec is structurally recursive so the kernel can evaluate it), and
