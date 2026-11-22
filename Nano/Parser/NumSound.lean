@@ -1,6 +1,6 @@
 /- Nano/Parser/NumSound: **the numeral check is sound**: `C.u10` (Nano/Parser/NumC.lean) accepts a serialized program
 only if `NumSpec.numOkP` holds, and then returns its input. -/
-import Nano.Parser.NumP26
+import Nano.Parser.NumP27
 namespace NumP
 open C ParSpec OwnP
 open Templates (NB NBL)
@@ -100,10 +100,54 @@ theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat
     have hxl := hK.lc.xl
     have hcl := drop_len hx1 (by simp [DefA.ser])
     have hlt : u i < bsize x := by rw [bsize_u, ult (by omega) (by omega)]; simp [DefA.ser] at hcl; omega
-    have hd := def_ok hK (hdb df (by simp)) hx1 hi hB hgA
     rw [u61, if_pos hlt] at h
-    generalize u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2 = W at h hd
-    obtain ⟨e, g1, b1, t1, s1, y5, ok, f1, h1⟩ := W
+    obtain ⟨-, -, hns, -, -, hnbd⟩ := hdb df (by simp)
+    have hx3 : bget x (u i + 3) = u df.nslots := by
+      rw [u3, uadd, rd hx1 (k := 3) (by simp [DefA.ser]) (by omega)]; simp [DefA.ser, toU]
+    have hx6 : x.drop (i + 6) = df.body.ser ++ ([21] ++ q.flatMap DefA.ser) := by
+      have h0 : x.drop i = [20, u df.id, u df.npw, u df.nslots, u df.kind, u df.nres] ++
+          (df.body.ser ++ ([21] ++ q.flatMap DefA.ser)) := by rw [hx1]; simp [DefA.ser, toU]
+      simpa using drop_shift h0
+    have e6 : u i + 6 = u (i + 6) := by rw [show (6 : UInt64) = u 6 from rfl, uadd]
+    rw [hx3] at h
+    have z0 := u57_ok 16777216 y2 0 df.nslots (by omega) (by omega) hB.sc.2.2 (by omega) (by intro i hi; omega)
+    rw [show u 0 = (0 : UInt64) from rfl] at z0
+    generalize u57 16777216 y2 0 (u df.nslots) = Z at h z0
+    obtain ⟨f0, k0⟩ := Z
+    dsimp only at h z0
+    by_cases hk0 : k0 = 1
+    rotate_left
+    · rw [if_neg (by simpa using hk0)] at h; exact absurd h (by decide)
+    subst hk0
+    rw [if_pos (keq rfl)] at h
+    obtain ⟨-, hf0, -⟩ := z0 rfl
+    have hf0' : f0.length < 2 ^ 62 := by have := hB.sc.2.2; omega
+    have hbody : df.body.ser.length ≤ 2 ^ 24 := by simp [DefA.ser] at hcl; omega
+    have hlate := late_ok (np := df.npw) hxl hx6 hnbd hbody (by omega) hB.sc.2.1 hf0'
+    have hm73 := u73_ok (np := df.npw) hxl (2 ^ 24) 16777216 [df.body] ([21] ++ q.flatMap DefA.ser) (i + 6) f0 y1
+      (by simpa [serL] using hx6) (by simpa using ⟨hnbd, hbody⟩) (by omega) hB.sc.2.1 hf0'
+    have hmono := u73_mono (x := x) 16777216 f0 y1 (u (i + 6)) 1
+    rw [e6] at h
+    generalize u73 16777216 x f0 y1 (u (i + 6)) 1 = M at h hlate hm73 hmono
+    obtain ⟨f1, w1, k1⟩ := M
+    dsimp only at h hlate hm73 hmono
+    by_cases hk1 : k1 = 1
+    rotate_left
+    · rw [if_neg (by simpa using hk1)] at h; exact absurd h (by decide)
+    subst hk1
+    rw [if_pos (keq rfl)] at h
+    have hm1 := (hm73 rfl).2
+    simp only at hm1
+    by_cases h74 : u74 16777216 x f1 (u (i + 6)) 1 = 1
+    rotate_left
+    · rw [if_neg (by simpa using h74)] at h; exact absurd h (by decide)
+    rw [if_pos (by rw [h74]; rfl)] at h
+    have hL := hlate rfl h74
+    have hB' : BI b t g s y w1 f1 := ⟨hB.lb, hB.lt, hB.lg, hB.ls, ⟨hB.sc.1, hm1, by rw [hmono.1]; exact hf0'⟩⟩
+    have hd := def_ok hK (hdb df (by simp)) hx1 hi hB' hgA
+    rw [hx3, e6] at hd
+    generalize u48 x d (u (i + 6)) (u df.nslots) b t g s y w1 f1 = W at h hd
+    obtain ⟨e, g1, b1, t1, s1, y5, ok, f2, h2⟩ := W
     iota_only at h
     by_cases hok : ok = 1
     · subst hok
@@ -116,10 +160,12 @@ theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat
         have e1 : u (i + 6 + df.body.ser.length) + 1 = u (i + df.ser.length) := by
           rw [u1, uadd, ser_def_len]; congr 1; omega
         rw [e1] at h
-        have ih := u61_ok hK n q _ b1 t1 g1 s1 f1 h1 y5 A' hx2 (fun d hd => hdb d (by simp [hd])) (by omega) hB1 hg1 h
+        have ih := u61_ok hK n q _ b1 t1 g1 s1 f2 h2 y5 A' hx2 (fun d hd => hdb d (by simp [hd])) (by omega) hB1 hg1 h
         intro df' hdf'
         simp at hdf'; rcases hdf' with rfl | hdf'
-        · exact hnum
+        · rw [numOkD_eq]; rw [numC] at hnum
+          simp only [Bool.and_eq_true] at hnum ⊢
+          exact ⟨⟨hnum.1, hL⟩, hnum.2⟩
         · exact ih df' hdf'
       · rw [if_neg h21] at h; exact absurd h (by decide)
     · rw [if_neg (by simpa using hok)] at h; exact absurd h (by decide)
