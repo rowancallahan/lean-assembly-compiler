@@ -6,24 +6,14 @@ open Templates (NB NBL)
 
 theorem u42_4 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {st gb e : UInt64} {y y1 y2 : Buf}
     (hg : bget x c = 4) (R : R12) (hR : u42 x d b bt t tt c s st gb e y y1 y2 = R) :
-    ((if u15 x (u15 x (u15 x (c + 2))) == 0 then u64 b t s y y1 y2
-     else
-       (let (b1, z) := u32 x d b bt y y1 (u15 x (u15 x (c + 2)));
-        let (lt, z1) := z;
-        let (y3, y4) := z1;
-        let (b2, z2) := u32 x d b1 bt y3 y4 (u15 x (u15 x (u15 x (c + 2))));
-        let (le, z3) := z2;
-        let (y5, y6) := z3;
-        let (y7, pt) := u17 x y6 (u15 x (u15 x (c + 2)));
-        let (y8, pe) := u17 x y7 (u15 x (u15 x (u15 x (c + 2))));
-        if lt == 2 then u64 b2 t s y5 y8 y2
-        else if le == 2 then u64 b2 t s y5 y8 y2
-        else if pt == 2 then u64 b2 t s y5 y8 y2
-        else if pe == 2 then u64 b2 t s y5 y8 y2
-        else if e == 0 then
-          (if ((lt &&& pe) ||| (le &&& pt)) == 1 then u64 b2 t s y5 y8 y2
-           else (b2, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y5, (y8, y2))))))))))))
-        else (b2, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y5, (y8, y2))))))))))))) :
+    ((if e == 0 then
+      (let (b1, z) := u70 x d b bt y y1 c;
+       let (mx, z1) := z;
+       let (y3, y4) := z1;
+       if mx == 0 then
+         (b1, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))
+       else u64 b1 t s y3 y4 y2)
+     else (b, (bt, (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0, (tt + 3, (c + 2, (s, (st, (gb, (1, (y, (y1, y2)))))))))))) :
       R12) = R := by
   rw [← hR]; unfold u42; rw [hg]; zeta_only; unfold u65; zeta_only
   rw [if_neg (kne (show ((4 : UInt64) == 3) = false from rfl)), if_pos (keq (show ((4 : UInt64) == 4) = true from rfl))]
@@ -34,7 +24,7 @@ theorem u15_zero (x : Buf) : u15 x 0 = 0 := by
 theorem w2_eq1 (p : Bool) : (w2 p == 1) = p := by cases p <;> rfl
 theorem w2_eq2 (p : Bool) : (w2 p == 2) = false := by cases p <;> rfl
 
-/-- an IF: the r5 rule at demand 0; CMP on the condition, COL 1 on both branches -/
+/-- an IF: the mixIte rule at demand 0; CMP on the condition, COL 1 on both branches -/
 theorem m_col_ite {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hCOL : MCOL x d np ks ws f)
     (hCMP : MCMP x d np ks ws f)
     {cm : Nat} {a bb tb eb : Nd} {dd : Nat} {Q : MO → Prop} {bs : List (Nat × List Bool)} {ts : List T3} {c : Nat}
@@ -59,65 +49,17 @@ theorem m_col_ite {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
   have hx3 := drop_shift hx2
   have hx4 := drop_shift hx3
   have hcl := drop_len hH.hx (ser_pos _); simp [Nd.ser] at hcl
-  rw [show u c + 2 = u (c + 2) by rw [u2, uadd]] at hR'
-  have rej : ∀ b' t' s' y' y'' y''' : Buf, u64 b' t' s' y' y'' y''' = R → False := by
-    intro b' t' s' y' y'' y''' h; subst h; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
-  rcases u15_ok (by omega) hx1 na with h1 | ⟨h1, -⟩
-  · rw [h1, u15_zero, u15_zero, if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  rcases u15_ok (by omega) hx2 nb with h2 | ⟨h2, -⟩
-  · rw [h1, h2, u15_zero, if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  rcases u15_ok (by omega) hx3 nt with h3 | ⟨h3, -⟩
-  · rw [h1, h2, h3, if_pos (keq (show ((0 : UInt64) == 0) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  rw [h1, h2, h3, if_neg (kne (by rw [u0, ueq (by omega) (by omega)]; simp))] at hR'
-  have hU1 := u32_ok hK.lc (f := f) (by omega) nt hx3 (by omega) hb1 hbl1 hI.sb hsc.1 hsc.2.1
-  generalize hU1e : u32 x d b1 (u (encB bs).length) y y1 (u (c + 2 + a.ser.length + bb.ser.length)) = U1 at hU1 hR'
-  obtain ⟨b2, lt, y3, y4⟩ := U1
-  iota_only at hR'
-  simp only at hU1
-  generalize hU2e : u32 x d b2 (u (encB bs).length) y3 y4 (u (c + 2 + a.ser.length + bb.ser.length + tb.ser.length)) = U2 at hR'
-  obtain ⟨b3, le, y5, y6⟩ := U2
-  iota_only at hR'
-  generalize hV1e : u17 x y6 (u (c + 2 + a.ser.length + bb.ser.length)) = V1 at hR'
-  obtain ⟨y7, pt⟩ := V1
-  iota_only at hR'
-  generalize hV2e : u17 x y7 (u (c + 2 + a.ser.length + bb.ser.length + tb.ser.length)) = V2 at hR'
-  obtain ⟨y8, pe⟩ := V2
-  iota_only at hR'
-  by_cases hlt : lt = 2
-  · subst hlt; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  obtain ⟨elt, hb2, hbl2, hy3, hy4⟩ := hU1 hlt
-  have hU2 := u32_ok hK.lc (f := f) (by omega) ne hx4 (by omega) hb2 hbl2 hI.sb (v := y3) (w := y4) (by omega) (by omega)
-  rw [hU2e] at hU2
-  simp only at hU2
-  rw [if_neg (kne (by rw [elt]; exact w2_eq2 _))] at hR'
-  by_cases hle : le = 2
-  · subst hle; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  obtain ⟨ele, hb3, hbl3, hy5, hy6⟩ := hU2 hle
-  rw [if_neg (kne (by rw [ele]; exact w2_eq2 _))] at hR'
-  have q1 := u17_ok (f := f) hx23 hx3 (by omega) nt (by omega) (w := y6) (by omega)
-  rw [hV1e] at q1
-  obtain ⟨hy7, p1⟩ := q1
-  simp only at hy7 p1
-  rcases p1 with p1 | p1
-  · rw [p1, if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  rw [p1, if_neg (kne (w2_eq2 _))] at hR'
-  have q2 := u17_ok (f := f) hx23 hx4 (by omega) ne (by omega) (w := y7) (by omega)
-  rw [hV2e] at q2
-  obtain ⟨hy8, p2⟩ := q2
-  simp only at hy8 p2
-  rcases p2 with p2 | p2
-  · rw [p2, if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hR'; exact (rej _ _ _ _ _ _ hR').elim
-  rw [p2, if_neg (kne (w2_eq2 _)), elt, ele, w2_and, w2_and, w2_or, w2_eq1] at hR'
   rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
   -- the pushed state
-  have hgo : ((b3, (u (encB bs).length, (u27 (u27 (u27 t (u ts.length) 0 1 0) (u ts.length + 1) 0 1 0) (u ts.length + 2) 2 0 0,
-      (u ts.length + 3, (u (c + 2), (s, (u S.length, (gb, (1, (y5, (y8, y2))))))))))) : R12) = R →
-      (!(dd == 0 && ((NumSpec.isL f ws (envOf bs) tb && NumSpec.spineLet f eb) ||
-        (NumSpec.isL f ws (envOf bs) eb && NumSpec.spineLet f tb)))) = true →
+  have hgo : ∀ b3 y5 y8 : Buf, encB bs <+: b3 → b3.length < 2 ^ 42 → SC y5 y8 y2 →
+      ((b3, (u (encB bs).length, (u27 (u27 (u27 t (u ts.length) 0 1 0) (u ts.length + 1) 0 1 0) (u ts.length + 2) 2 0 0,
+      (u ts.length + 3, (u c + 2, (s, (u S.length, (gb, (1, (y5, (y8, y2))))))))))) : R12) = R →
+      (!(dd == 0 && NumSpec.mixIte f ws (envOf bs) (.ite cm a bb tb eb))) = true →
       SCR R ∧ GM x d Q R.1 R.2.1 R.2.2.1 R.2.2.2.1 R.2.2.2.2.1 g R.2.2.2.2.2.1 R.2.2.2.2.2.2.1 R.2.2.2.2.2.2.2.1 := by
-    intro h r5; subst h
-    refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
+    intro b3 y5 y8 hb3 hbl3 hsc3 h r5; subst h
+    refine ⟨hsc3, ?_⟩
     dsimp only
+    rw [show u c + 2 = u (c + 2) by rw [u2, uadd]]
     have hP1 := MCp.app hP r5 (GA.nil g)
     have hts := hI.lts; simp at hts
     have hI0 := hI.pop.withb hb3 hbl3
@@ -140,12 +82,21 @@ theorem m_col_ite {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) 
   by_cases hd0 : dd = 0
   · subst hd0
     rw [if_pos (keq (show (u 0 == 0) = true from rfl))] at hR'
-    cases hX : (NumSpec.isL f ws (envOf bs) tb && NumSpec.spineLet f eb || NumSpec.isL f ws (envOf bs) eb && NumSpec.spineLet f tb)
-    · rw [hX, if_neg (by simp)] at hR'
-      exact hgo hR' (by simp [hX])
-    · rw [hX, if_pos rfl] at hR'; exact (rej _ _ _ _ _ _ hR').elim
+    have hM := u70_ok hK.lc (f := f) hH.hf hH.hnb hH.hx hH.hc hb1 hbl1 hI.sb hsc.1 hsc.2.1
+    generalize u70 x d b1 (u (encB bs).length) y y1 (u c) = M at hM hR'
+    obtain ⟨b3, mx, y5, y8⟩ := M
+    dsimp only at hM hR'
+    by_cases hm2 : mx = 2
+    · subst hm2; rw [if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    obtain ⟨hm, hb3, hbl3, hy5, hy8⟩ := hM hm2
+    cases hX : NumSpec.mixIte f ws (envOf bs) (.ite cm a bb tb eb)
+    · rw [hm, hX, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
+      exact hgo b3 y5 y8 hb3 hbl3 ⟨hy5, hy8, hsc.2.2⟩ hR' (by simp [hX])
+    · rw [hm, hX, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
   · rw [if_neg (kne (by rw [u0, ueq (by omega) (by omega)]; simp [hd0]))] at hR'
-    exact hgo hR' (by simp [hd0])
+    exact hgo b1 y y1 hb1 hbl1 hsc hR' (by simp [hd0])
 
 /-- a LET: LETG on the value, BINDM, COL dd on the body, POPM -/
 theorem m_col_let {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f : Nat} (hCOL : MCOL x d np ks ws f)

@@ -16,9 +16,20 @@ theorem u42_3 {x d b : Buf} {bt : UInt64} {t : Buf} {tt c : UInt64} {s : Buf} {s
        let (y3, y4) := z1;
        if r == 0 then
          (let (y5, h) := u17 x y4 (c + 2);
+          let (b2, z2) := u70 x d b1 bt y3 y5 (c + 2);
+          let (ma, z3) := z2;
+          let (y6, y7) := z3;
+          let (b3, z4) := u70 x d b2 bt y6 y7 (u15 x (c + 2));
+          let (mb, z5) := z4;
+          let (y8, y9) := z5;
           if h == 0 then
-           (b1, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, (1, (y3, (y5, y2)))))))))))
-          else u64 b1 t s y3 y5 y2)
+            (if ma == 0 then
+              (if mb == 0 then
+                (if u15 x (c + 2) == 0 then u64 b3 t s y8 y9 y2
+                 else (b3, (bt, (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0, (tt + 2, (c + 2, (s, (st, (gb, (1, (y8, (y9, y2))))))))))))
+               else u64 b3 t s y8 y9 y2)
+             else u64 b3 t s y8 y9 y2)
+          else u64 b3 t s y8 y9 y2)
        else u64 b1 t s y3 y4 y2)
      else
       (let (p, z) := u16 x y2 0 y1 c;
@@ -71,33 +82,90 @@ theorem m_col_shift {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws
   subst hr
   cases hla : NumSpec.isL f ws (envOf bs) a
   · rw [hla, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
-    obtain ⟨hy5, h17⟩ := u17_ok (f := f) (by have := hK.lc.xl; omega) hx1 (by omega) hnb.2.1 (by omega) (w := y4) (by omega)
+    have hx23 : x.length < 2 ^ 23 := hK.lc.xl
+    obtain ⟨hy5, h17⟩ := u17_ok (f := f) hx23 hx1 (by omega) hnb.2.1 (by omega) (w := y4) (by omega)
     generalize hVe : u17 x y4 (u (c + 2)) = V at hy5 h17 hR'
     obtain ⟨y5, hv⟩ := V
     dsimp only at hR' hy5 h17
+    have hM1 := u70_ok hK.lc (f := f) (by omega) hnb.2.1 hx1 (by omega) hb2 hbl2 hI.sb (v := y3) (w := y5) (by omega) hy5
+    generalize hM1e : u70 x d b2 (u (encB bs).length) y3 y5 (u (c + 2)) = M1 at hM1 hR'
+    obtain ⟨b3, ma, y6, y7⟩ := M1
+    dsimp only at hR' hM1
+    have hcl := drop_len hx2 (ser_pos bb)
+    rcases u15_ok (by omega) hx1 hnb.2.1 with h15 | ⟨h15, -⟩
+    · generalize u70 _ _ _ _ _ _ _ = M2 at hR'
+      obtain ⟨b4, mb, y8, y9⟩ := M2
+      dsimp only at hR'
+      rw [h15] at hR'
+      by_cases h0 : hv = 0
+      · by_cases h1 : ma = 0
+        · by_cases h2 : mb = 0
+          · subst h0 h1 h2; simp only [show ((0 : UInt64) == 0) = true from rfl, if_true] at hR'
+            subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+          · rw [if_pos (by simp [h0]), if_pos (by simp [h1]), if_neg (by simpa using h2)] at hR'
+            subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+        · rw [if_pos (by simp [h0]), if_neg (by simpa using h1)] at hR'
+          subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+      · rw [if_neg (by simpa using h0)] at hR'
+        subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    have hne : (u (c + 2 + a.ser.length) == 0) = false := by
+      rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
+    rw [h15] at hR'
     rcases h17 with h17 | h17
-    · rw [h17, if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
+    · generalize u70 _ _ _ _ _ _ _ = M2 at hR'
+      obtain ⟨b4, mb, y8, y9⟩ := M2
+      dsimp only at hR'
+      rw [h17, if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
       subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
     cases hsa : NumSpec.spineLet f a
-    · rw [h17, hsa, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
-      subst hR'
-      refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
-      rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
-      rw [if_pos hsh, hla, hsa] at hP
-      have hts := hI.lts; simp at hts
-      obtain ⟨h1, l1⟩ := (hI.pop.withb hb2 hbl2).pushw rfl (by have := hsz.2.1; omega) 0 1 0
-      obtain ⟨h2, -⟩ := h1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0 1 0
-      dsimp only
-      refine (hCOL a 1 Q bs (ts ++ [(0, 1, 0)]) (c + 2) _ b2 _ g s S gb (by omega) hnb.2.1 (by omega) hH.hQ hx1
-        (by omega) (by rw [u1e]; simpa using h2) ?_).cast rfl (by simp [u2, uadd]) rfl rfl rfl
-      intro hA b3 t3 g3 s3 hI3 hga
-      refine (hCOL bb 1 Q bs ts (c + 2 + a.ser.length) rest b3 t3 g3 s3 S gb (by omega) hnb.2.2 (by omega) hH.hQ hx2
-        (by omega) (by rw [u1e]; simpa using hI3) ?_).cast rfl (by simp) rfl rfl rfl
-      have hP2 := MCp.app (A := ([], true)) hP rfl (GA.nil g)
-      have e : c + 2 + a.ser.length + bb.ser.length = c + (Nd.bin op a bb).ser.length := by simp [Nd.ser]; omega
-      rw [e]; exact MCp.app hP2 hA hga
-    · rw [h17, hsa, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
+    rotate_left
+    · generalize u70 _ _ _ _ _ _ _ = M2 at hR'
+      obtain ⟨b4, mb, y8, y9⟩ := M2
+      dsimp only at hR'
+      rw [h17, hsa, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
       subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    rw [h17, hsa, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
+    by_cases hm12 : ma = 2
+    · generalize u70 _ _ _ _ _ _ _ = M2 at hR'
+      obtain ⟨b4, mb, y8, y9⟩ := M2
+      dsimp only at hR'
+      rw [hm12, if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    obtain ⟨hma, hb3, hbl3, hy6, hy7⟩ := hM1 hm12
+    have hM2 := u70_ok hK.lc (f := f) (by omega) hnb.2.2 hx2 (by omega) hb3 hbl3 hI.sb (v := y6) (w := y7) hy6 hy7
+    generalize hM2e : u70 x d b3 (u (encB bs).length) y6 y7 (u (c + 2 + a.ser.length)) = M2 at hM2 hR'
+    obtain ⟨b4, mb, y8, y9⟩ := M2
+    dsimp only at hR' hM2
+    cases hmA : NumSpec.mixIte f ws (envOf bs) a
+    rotate_left
+    · rw [hma, hmA, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    rw [hma, hmA, if_pos (keq (show (w2 false == 0) = true from rfl))] at hR'
+    by_cases hm22 : mb = 2
+    · rw [hm22, if_neg (kne (show ((2 : UInt64) == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    obtain ⟨hmb, hb4, hbl4, hy8, hy9⟩ := hM2 hm22
+    cases hmB : NumSpec.mixIte f ws (envOf bs) bb
+    rotate_left
+    · rw [hmb, hmB, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
+      subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
+    rw [hmb, hmB, if_pos (keq (show (w2 false == 0) = true from rfl)), if_neg (kne hne)] at hR'
+    subst hR'
+    refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
+    rw [col_succ, if_neg (by simp [hl])] at hP; dsimp only at hP
+    rw [if_pos hsh, hla, hsa, hmA, hmB] at hP
+    have hts := hI.lts; simp at hts
+    obtain ⟨h1, l1⟩ := (hI.pop.withb hb4 hbl4).pushw rfl (by have := hsz.2.1; omega) 0 1 0
+    obtain ⟨h2, -⟩ := h1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0 1 0
+    dsimp only
+    refine (hCOL a 1 Q bs (ts ++ [(0, 1, 0)]) (c + 2) _ b4 _ g s S gb (by omega) hnb.2.1 (by omega) hH.hQ hx1
+      (by omega) (by rw [u1e]; simpa using h2) ?_).cast rfl (by simp [u2, uadd]) rfl rfl rfl
+    intro hA b5 t3 g3 s3 hI3 hga
+    refine (hCOL bb 1 Q bs ts (c + 2 + a.ser.length) rest b5 t3 g3 s3 S gb (by omega) hnb.2.2 (by omega) hH.hQ hx2
+      (by omega) (by rw [u1e]; simpa using hI3) ?_).cast rfl (by simp) rfl rfl rfl
+    have hP2 := MCp.app (A := ([], true)) hP rfl (GA.nil g)
+    have e : c + 2 + a.ser.length + bb.ser.length = c + (Nd.bin op a bb).ser.length := by simp [Nd.ser]; omega
+    rw [e]; exact MCp.app hP2 hA hga
   · rw [hla, if_neg (kne (show (w2 true == 0) = false from rfl))] at hR'
     subst hR'; exact absurd hok (show (0 : UInt64) ≠ 1 by decide)
 

@@ -45,7 +45,7 @@ theorem u39_s {l k : UInt64} (hk : (k == 0) = false) (R : R12) (hR : u39 x d b b
       else if r == 1 then
         (b1, (bt, (u27 (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 4 0 gb) (tt + 2) 1 0 0,
           (tt + 3, (c, (u20 (u20 s st 0) (st + 1) l, (st + 2, (st, (1, (y3, (y4, y2)))))))))))
-      else (b1, (bt, (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 0 1 0, (tt + 2, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
+      else (b1, (bt, (u27 (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) 0 0 0, (tt + 2, (c, (s, (st, (gb, (1, (y3, (y4, y2)))))))))))) : R12) = R := by
   have e1 : tt + 1 + 1 = tt + 2 := by rw [UInt64.add_assoc]; rfl
   have e2 : tt + 1 + 2 = tt + 3 := by rw [UInt64.add_assoc]; rfl
   rw [← hR]; unfold u39 u66; unfold u65; zeta_only; rw [if_neg (kne hk), e1, e2]
@@ -57,7 +57,7 @@ def lf (f : Nat) (ks ws : List Nat) (env : List Bool) (sl : Nat) (p : Nd × Nat)
   if NumSpec.isL f ws env p.1 then
     (⟨(sl + p.2) :: (NumSpec.litG f ks ws env p.1).1.1, 0, (NumSpec.litG f ks ws env p.1).1.2⟩ ::
       (NumSpec.litG f ks ws env p.1).2.1, (NumSpec.litG f ks ws env p.1).2.2)
-  else NumSpec.col f ks ws env 1 p.1
+  else NumSpec.col f ks ws env 0 p.1
 
 def lpL (f : Nat) (ks ws : List Nat) (env : List Bool) (sl : Nat) (cs : List Nd) (i : Nat) : NumSpec.R :=
   (cs.zipIdx i).foldr (fun p r => (lf f ks ws env sl p).app r) NumSpec.R.ok
@@ -67,7 +67,7 @@ theorem lp_attach (f : Nat) (ks ws : List Nat) (env : List Bool) (sl : Nat) : �
         (if NumSpec.isL f ws env c then
           let (ic, rc) := NumSpec.litG f ks ws env c
           (⟨(sl + j) :: ic.1, 0, ic.2⟩ :: rc.1, rc.2)
-        else NumSpec.col f ks ws env 1 c).app r) NumSpec.R.ok = lpL f ks ws env sl cs i
+        else NumSpec.col f ks ws env 0 c).app r) NumSpec.R.ok = lpL f ks ws env sl cs i
   | [], _ => rfl
   | c :: cs, i => by
     have ih := lp_attach f ks ws env sl cs (i + 1)
@@ -151,11 +151,11 @@ theorem m_lpseq {x d : Buf} {np : Nat} {ks ws : List Nat} (hK : LK x d ks ws) {f
       subst hR'
       refine ⟨⟨by dsimp only; omega, by dsimp only; omega, hsc.2.2⟩, ?_⟩
       dsimp only
-      obtain ⟨k2, -⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0 1 0
-      refine (hCOL e 1 Q bs (ts ++ [(9, u (sl + (i + 1)), u cs.length)]) c (serL cs ++ rest) b1 _ g s S gb hfe hne
-        (by omega) hQ hx' hc (by rw [u1e]; simpa using k2) ?_).cast rfl (by simp [u2, uadd]) rfl rfl rfl
+      obtain ⟨k2, -⟩ := k1.pushw (n := u ts.length + 1) (by simp [u1, uadd]) (by have := hsz.2.1; omega) 0 0 0
+      refine (hCOL e 0 Q bs (ts ++ [(9, u (sl + (i + 1)), u cs.length)]) c (serL cs ++ rest) b1 _ g s S gb hfe hne
+        (by omega) hQ hx' hc (by rw [← u0]; simpa using k2) ?_).cast rfl (by simp [u2, uadd]) rfl rfl rfl
       intro hA b2 t2 g2 s2 hI2 hga
-      have hlf : lf f ks ws (envOf bs) sl (e, i) = NumSpec.col f ks ws (envOf bs) 1 e := by simp [lf, hle]
+      have hlf : lf f ks ws (envOf bs) sl (e, i) = NumSpec.col f ks ws (envOf bs) 0 e := by simp [lf, hle]
       exact (hrec b2 t2 g2 s2 (by simpa using hI2) (by rw [hlf]; exact hA) (by rw [hlf]; exact hga)).cast rfl
         (by simp) rfl rfl rfl
     · rw [hle, if_pos (keq (show (w2 true == 1) = true from rfl))] at hR'

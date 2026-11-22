@@ -65,7 +65,7 @@ theorem lpL_gb {np f : Nat} (ih : SB np f) (ks ws : List Nat) (env : List Bool) 
       intro v hv; simp at hv; rcases hv with rfl | hv
       · simp at hi; omega
       · have := h2 v hv; omega
-    · exact h1 1 (by omega)
+    · exact h1 0 (by omega)
 
 theorem call_gb {np f : Nat} (ih : SB np f) (ks ws : List Nat) (env : List Bool) (id : Nat) (as : List Nd)
     (has : ∀ c ∈ as, NB np c) :

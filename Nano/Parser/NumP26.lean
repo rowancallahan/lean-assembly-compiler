@@ -4,8 +4,15 @@ namespace NumP
 open C ParSpec OwnP
 open Templates (NB NBL)
 
+/-- the class part of `numOkD` -/
+def numC (ks ws : List Nat) (df : DefA) : Bool :=
+  (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).2 &&
+    (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1.all
+      (gspec (NumSpec.marked 1 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) [])
+        (NumSpec.marked 2 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) []))
+
 theorem numOkD_eq (ks ws : List Nat) (df : DefA) : NumSpec.numOkD ks ws df =
-    ((NumSpec.col (2 ^ 24) ks ws [] 1 df.body).2 &&
+    ((NumSpec.col (2 ^ 24) ks ws [] 1 df.body).2 && NumSpec.lateOk (2 ^ 24) df.body &&
       (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1.all
         (gspec (NumSpec.marked 1 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) [])
           (NumSpec.marked 2 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) []))) := by
@@ -19,7 +26,7 @@ theorem def_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) {df : DefA} (h
     {A : List NumSpec.G} (hgA : g = encG A) :
     (u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2).2.2.2.2.2.2.1 = 1 →
       (u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2).1 = u (i + 6 + df.body.ser.length) ∧
-      NumSpec.numOkD ks ws df = true ∧
+      numC ks ws df = true ∧
       ∃ A', (u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2).2.1 = encG A' ∧
         BI (u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2).2.2.1
           (u48 x d (u i + 6) (bget x (u i + 3)) b t g s y y1 y2).2.2.2.1
@@ -50,7 +57,7 @@ theorem def_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) {df : DefA} (h
   have h50 : (u50 (encG A ++ encG X) (bsize (encG A)) (u df.nslots) f hh).1 = 1 := by rw [← hU]; exact h
   obtain ⟨hspec, hf', hh'⟩ := u50_ok rfl rfl (by omega) hXb (by omega) hfl hhl h50
   refine ⟨h1, ?_, A ++ X, by rw [hg1, encG_app], ⟨hb1, ht1, by rw [hg1]; omega, hs1, ?_⟩⟩
-  · rw [numOkD_eq, h2, Bool.true_and]
+  · rw [numC, h2, Bool.true_and]
     exact all_perm hX _ hspec
   · rw [hU]; exact ⟨hf', hh', hy5⟩
 

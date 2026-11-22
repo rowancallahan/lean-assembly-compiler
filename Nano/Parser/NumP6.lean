@@ -4,8 +4,6 @@ namespace NumP
 open C ParSpec OwnP
 open Templates (NB NBL)
 
-theorem kne {a b : UInt64} (h : (a == b) = false) : ¬ (a == b) = true := by simp [h]
-theorem keq {a b : UInt64} (h : (a == b) = true) : (a == b) = true := h
 
 theorem M40_4 (N n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb a a2 : UInt64) (y y1 y2 : Buf) :
     M40 N n x d b bt t tt c g s st gb 4 a a2 y y1 y2 =

@@ -334,7 +334,9 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
           let (y8, y9) := z5;
           if h == 0 then
             (if ma == 0 then
-              (if mb == 0 then u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y8 y9 y2
+              (if mb == 0 then
+                (if u15 x (c + 2) == 0 then u64 b3 t s y8 y9 y2
+                 else u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y8 y9 y2)
                else u64 b3 t s y8 y9 y2)
              else u64 b3 t s y8 y9 y2)
           else u64 b3 t s y8 y9 y2)

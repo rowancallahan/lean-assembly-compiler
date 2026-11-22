@@ -67,13 +67,15 @@ theorem col_succ (f : Nat) (ks ws : List Nat) (env : List Bool) (dd : Nat) (e : 
       (⟨(NumSpec.litG f ks ws env e).1.1, dd, (NumSpec.litG f ks ws env e).1.2⟩ :: (NumSpec.litG f ks ws env e).2.1, (NumSpec.litG f ks ws env e).2.2)
     else match e with
     | .bin op a b =>
-      if NumSpec.isShift op then NumSpec.R.app ([], !NumSpec.isL f ws env a && !NumSpec.spineLet f a) ((NumSpec.col f ks ws env 1 a).app (NumSpec.col f ks ws env 1 b))
+      if NumSpec.isShift op then
+        NumSpec.R.app ([], !NumSpec.isL f ws env a && !NumSpec.spineLet f a && !NumSpec.mixIte f ws env a &&
+          !NumSpec.mixIte f ws env b) ((NumSpec.col f ks ws env 1 a).app (NumSpec.col f ks ws env 1 b))
       else
         let ls := NumSpec.leaves f e
         NumSpec.R.app ([], NumSpec.shapeOk f ws env ls) (ls.attach.foldr (fun ⟨l, _⟩ r => (NumSpec.col f ks ws env 1 l).app r) NumSpec.R.ok)
-    | .ite _ a b t e =>
-      let r5 := !(dd == 0 && ((NumSpec.isL f ws env t && NumSpec.spineLet f e) || (NumSpec.isL f ws env e && NumSpec.spineLet f t)))
-      NumSpec.R.app ([], r5) ((NumSpec.cmpG f ks ws env a b).app ((NumSpec.col f ks ws env 1 t).app (NumSpec.col f ks ws env 1 e)))
+    | .ite c a b t el =>
+      NumSpec.R.app ([], !(dd == 0 && NumSpec.mixIte f ws env (.ite c a b t el)))
+        ((NumSpec.cmpG f ks ws env a b).app ((NumSpec.col f ks ws env 1 t).app (NumSpec.col f ks ws env 1 el)))
     | .letE s w v b => (NumSpec.letG f ks ws env s w v).app (NumSpec.col f ks ws (NumSpec.setW env s (NumSpec.lw f ws env v)) dd b)
     | .pair cs => cs.attach.foldr (fun ⟨c, _⟩ r => (NumSpec.col f ks ws env 1 c).app r) NumSpec.R.ok
     | .call id as => as.zipIdx.attach.foldr (fun ⟨(a, i), _⟩ r =>
