@@ -504,7 +504,7 @@ def b220 : Nd := (.bin 2 (.call 202 []) (.const 2))
 def d220 : DefA := { id := 220, npw := 0, nslots := 0, kind := 0, nres := 1, body := b220 }
 def b221 : Nd := (.bin 2 (.call 202 []) (.const 8))
 def d221 : DefA := { id := 221, npw := 0, nslots := 0, kind := 0, nres := 1, body := b221 }
-def b222 : Nd := (.const 524288)
+def b222 : Nd := (.const 2097152)
 def d222 : DefA := { id := 222, npw := 0, nslots := 0, kind := 0, nres := 1, body := b222 }
 def b223 : Nd := (.bin 5 (.bin 5 (.bin 5 (.bin 5 (.bin 5 (.bin 6 (.loc 0 1) (.const 25)) (.bin 6 (.loc 4 1) (.const 20))) (.bin 6 (.loc 3 1) (.const 15))) (.bin 6 (.loc 1 1) (.const 12))) (.bin 6 (.loc 2 1) (.const 7))) (.call 209 []))
 def d223 : DefA := { id := 223, npw := 5, nslots := 5, kind := 0, nres := 1, body := b223 }

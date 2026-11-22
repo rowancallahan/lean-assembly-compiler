@@ -7,7 +7,7 @@ Not imported by the final theorems; each file is named in `REVIEW.lean` or `Test
 | `OwnNV.lean` | `pOk` accepted by `o41` and linear; `pAlias` (read after consume) rejected: non-vacuity of `o41_sound` |
 | `MainWitness.lean` | three small sources pass lexer, parser spec, `o41`, `g41` in the kernel (`stages`, `x1..`): `OwnStage`/`GenStage` premises hold |
 | `MainCert.lean` | per-program meaning certificates: `srcRun ⟨x⟩ inp = some (f inp)` via `progEq`, `sem`, `cert` |
-| `AuditSpace.lean` | audit A2: `spaceC_ex1_eq : spaceC Witness.x2 [5] = 4194416` (kernel run + `shiftInv`) |
+| `AuditSpace.lean` | audit A2: `spaceC_ex1_eq : spaceC Witness.x2 [5] = 16777328` (kernel run + `shiftInv`) |
 | `AuditWitness.lean` | `C_correctLO` instantiated for `ex1` (`ex1_computes`, `ex1_compiles`, `ex1_applies`) |
 | `SelfInCapFree.lean` | step A: push-free defs never report `cap` (`ev_nocap`, `Quiet`) |
 | `SelfInQuiet.lean` | step B: the 171 push-free defs of C are quiet on all inputs (`S`, `quiet`) |

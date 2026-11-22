@@ -17,7 +17,7 @@
 
 #define BASE 0x80000000ull          /* guest address of mem[0] (RAM start of the proved machine) */
 #define CODE_OFF 0x1000ull          /* code starts here; mem[0..4) is the sentinel return address */
-#define OUT_CAP (2ull << 20)        /* output block: the compiler never emits more than 1 MiB */
+#define OUT_CAP (2ull << 20)        /* output block: = κ = 2^21 bytes, the most any program can emit */
 
 static uint8_t *mem;                /* one flat block: sentinel | code | input | output | work */
 static uint64_t mem_size, code_end, out_off;
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     { uint16_t one = 1; assert(*(uint8_t *)&one == 1 && "little-endian host required"); }
     uint8_t *code, *input;
     uint64_t code_len = load_input(argv[1], &code), in_len = load_input(argv[2], &input);
-    uint64_t work_len = (argc == 5 ? strtoull(argv[4], 0, 10) : 80) << 20;
+    uint64_t work_len = (argc == 5 ? strtoull(argv[4], 0, 10) : 512) << 20;
     assert(code_len % 4 == 0 && code_len > 0 && "CODE.bin must be non-empty 32-bit words");
     assert(in_len <= (1ull << 20) && "the compiler's contract covers inputs up to 2^20 bytes");
     assert(work_len >= 16);

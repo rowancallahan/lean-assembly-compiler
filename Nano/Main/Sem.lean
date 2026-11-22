@@ -135,7 +135,7 @@ def Sem (κ : Nat) (p : List DefA) (inp : List UInt8) : Except Stop (List UInt8)
   | none => .error .stuck
 
 /-- Gen's buffer capacity (`C.g_999`) -/
-def κC : Nat := 524288
+def κC : Nat := 2097152
 
 /-! ## the stage hypotheses -/
 

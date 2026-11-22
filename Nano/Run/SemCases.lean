@@ -12,11 +12,11 @@ open Templates CallProbe C GenRef ParSpec
 /-- the semantic case split the machine theorem needs, for input `x`, work block `[wb, wb + wl)` (8-aligned base, at
 least 16 usable bytes) and every code-position table `T` -/
 def SemCases (p : List DefA) (R : List UInt8 → Nat) (x : List UInt8) (wb wl : Nat) : Prop :=
-  (∃ y, NanoMain.Sem NanoMain.κC p x = .ok y ∧ ∀ T, ∃ vs H', semAt (pcOf 524288 (wb + 16) (UInt64.ofNat x.length)
+  (∃ y, NanoMain.Sem NanoMain.κC p x = .ok y ∧ ∀ T, ∃ vs H', semAt (pcOf 2097152 (wb + 16) (UInt64.ofNat x.length)
       (NanoMain.inpW x) T) p (p.length - 1) [] ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = some (vs, H')) ∨
-  (NanoMain.Sem NanoMain.κC p x = .error .cap ∧ ∀ T, semAtF (pcOf 524288 (wb + 16) (UInt64.ofNat x.length)
+  (NanoMain.Sem NanoMain.κC p x = .error .cap ∧ ∀ T, semAtF (pcOf 2097152 (wb + 16) (UInt64.ofNat x.length)
       (NanoMain.inpW x) T) p (p.length - 1) [] ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = .error .cap) ∨
-  ((∀ T, semAtF (pcOf 524288 (wb + 16) (UInt64.ofNat x.length) (NanoMain.inpW x) T) p (p.length - 1) []
+  ((∀ T, semAtF (pcOf 2097152 (wb + 16) (UInt64.ofNat x.length) (NanoMain.inpW x) T) p (p.length - 1) []
       ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = .error .room) ∧ wl < R x)
 
 theorem semAtF_pcT (κ hb : Nat) (c : UInt64) (i : Nat → UInt64) (T T' : Buf) (p : List DefA) (k : Nat) :

@@ -92,7 +92,7 @@ theorem gen_HDM {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p) (hL
     refine Or.inl ⟨_, hS, fun T => ⟨[a], H', ?_⟩⟩
     rw [SimW.semAt_pcT _ _ _ _ T [], ← oD_semAt]
     show toO (semAtF _ p _ [] _ _) = _
-    rw [show (524288 : Nat) = κC from rfl, e']; rfl
+    rw [show (2097152 : Nat) = κC from rfl, e']; rfl
   · refine Or.inr (Or.inr ⟨fun T => by rw [SimW.semAtF_pcT _ _ _ _ T []]; exact hc, ?_⟩)
     have hr : RS p x [] (wb + 16) (wl / 8 * 8 - 16) = .error .room := by unfold RS; rw [← e]; exact hc
     have := room_lt (by omega) (by omega) (by omega) hr

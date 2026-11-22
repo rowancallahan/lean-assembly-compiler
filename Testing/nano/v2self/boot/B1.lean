@@ -2366,7 +2366,7 @@ def g_4095 : UInt64 := 4095
 def g_901 : UInt64 := g_0 - 1
 def g_902 : UInt64 := g_0 - 2
 def g_908 : UInt64 := g_0 - 8
-def g_999 : UInt64 := 524288
+def g_999 : UInt64 := 2097152
 
 /-! ## encoders (RV64I/M) -/
 def g1 (f7 f3 d a b : UInt64) : UInt64 :=

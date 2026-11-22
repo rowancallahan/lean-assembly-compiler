@@ -21,7 +21,7 @@ theorem gen_mainN (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Pars
     (s0 : St) (x : List UInt8) (hx11 : s0.x 11 = UInt64.ofNat x.length) (hxl : x.length < 2 ^ 64)
     (hxm : ∀ i, i < x.length → lbm s0.m ((s0.x 10).toNat + i) = (x.getD i 0).toUInt64) :
     ∃ (C : List J) (pr S : Nat) (T : Buf),
-      let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T
+      let P := pcOf 2097152 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T
       g41 c (serialize p) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ S) ∧
       At C S startPre ∧ S + 32 ≤ C.length ∧ (∀ j ∈ C, SimW.JOK j) ∧
       ∀ (KL : SimW.LayW) E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
