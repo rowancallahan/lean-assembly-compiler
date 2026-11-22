@@ -12,7 +12,9 @@ model (as on `rv-regen-434`); that change is **not committed** (release-434 stil
   driver `g41 x (o41 (u10 (y16 (t10 (s10 x)))))`.  At most 8 `bnew`s per run (scratch buffers threaded).
 * Proof: `NumP.u10_sound` (NumP0..NumP26, NumSound): `u10 (serialize p) ≠ [] → numOkP p ∧ u10 (serialize p) = serialize p`
   (std axioms).  `compiler_correctG` takes Gen's field bounds `DB` (from `parsed_DB`) for it.
-* Status: RISC-V fixpoint B3 == B2 holds; the native ARM self-compile exceeds the AST budget (below), NumC being shrunk.
+* Status (endpoint 2026-11-22): NumSpec also rejects an untyped `if` with a literal branch and a late branch (`mixIte`)
+  and a shift whose left operand Lean types late (`lateOk`, late slots propagate through lets); `slotNat`/`slotNatP`
+  for EXPR-1.  Full lake build, review_axioms, selfhost_gate PASS (RISC-V + native ARM, κ = 2^21); syntax_regress 87.
 
 ### Code-size budget (a compiler's output `List UInt8` is ONE buffer, one word per byte: κ = 2^19 = 524,288 bytes)
 (Correction: the AST is NOT the limit; `B1 own` writes 8 bytes per word, so C's AST is ~58k words, self_A's ~65k.)
@@ -22,8 +24,8 @@ model (as on `rv-regen-434`); that change is **not committed** (release-434 stil
 | C (B2.bin), with NumC | 516,824 | 98.6% |
 | self_A (C + GenArm), with NumC | 586,224 | 112% (B2 on self_A stops: status −2) |
 NumC is ~95k bytes of code; the shrink pass (result-tuple helpers u64/u65/u66, merged u29 branches) saved 2,960 bytes.
-selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  Raising κ to 2^20 (or a larger output buffer)
-is a structural item (lead / owner); 524288 is fixed in the Run proofs (`pcOf`, `κC`).
+selfhost_gate.sh step `ast` prints both and a WARNING above 90% of κ.  RESOLVED (lead / owner): κ = 2^21 = 2,097,152
+(see the design note below); at the Nat-step endpoint C's B2 is 540,888 B (26%), self_A 610,288 B (29%).
 
 ## Design note: raising the buffer capacity κ (owner: output ≤ 2^24 bytes; 2026-11-21)
 ### (1) Constants and where they are fixed
