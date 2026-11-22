@@ -9,12 +9,16 @@ import Nano.SelfHost.Cert.PC
 namespace ExprSpec
 open NanoMain ParSpec
 
-theorem emitC_isSome : (emitAll ExprC.ds 0 Cert.PC.all ExprC.st).isSome = true := by decide +kernel
+/-- C's def kinds and result widths (the numeral classes' inputs, `NumSpec.slotNat`) -/
+def ksC : List Nat := Cert.PC.all.map (·.kind)
+def wsC : List Nat := Cert.PC.all.map (·.nres)
+
+theorem emitC_isSome : (emitAll ExprC.ds ksC wsC 0 Cert.PC.all ExprC.st).isSome = true := by decide +kernel
 
 /-- C's emitted Exprs: (name, type, value) per def -/
-def oC : List (String × X × X) := (emitAll ExprC.ds 0 Cert.PC.all ExprC.st).get emitC_isSome
+def oC : List (String × X × X) := (emitAll ExprC.ds ksC wsC 0 Cert.PC.all ExprC.st).get emitC_isSome
 
-theorem emitC : emitAll ExprC.ds 0 Cert.PC.all ExprC.st = some oC := by simp [oC]
+theorem emitC : emitAll ExprC.ds ksC wsC 0 Cert.PC.all ExprC.st = some oC := by simp [oC]
 
 theorem oC_nodup : (oC.map (·.1)).Nodup := by
   have : (oC.map (·.1)) = ExprC.ds.map (fun d => nameS d.name) := by decide +kernel

@@ -51,6 +51,10 @@ def ew (i j : UInt64) : UInt64 :=
   else if i == 45 then (if j == 0 then 32 else 0)
   else if i == 46 then (if j == 0 then 2642 else 0)
   else if i == 47 then (if j == 0 then 8480 else 0)
+  else if i == 48 then (if j == 0 then 7142779516268593184 else if j == 1 then 2341081786432439584 else if j == 2 then 4620812443545903203 else if j == 3 then 7142779516268593184 else if j == 4 then 8171045050542015008 else if j == 5 then 5629608525403552558 else if j == 6 then 7142779516268606561 else if j == 7 then 8162002967599147296 else if j == 8 then 7017849994971735631 else if j == 9 then 3493436999986408546 else if j == 10 then 2338601094690840701 else if j == 11 then 7297085335369490531 else if j == 12 then 5000522131061369187 else if j == 13 then 1952534129 else 0)
+  else if i == 49 then (if j == 0 then 3345171146870907680 else if j == 1 then 4620763725567455860 else if j == 2 then 4932694409924862752 else if j == 3 then 7308324465751450469 else if j == 4 then 4620812443545923909 else if j == 5 then 7142779516268593184 else if j == 6 then 8171045050542015008 else if j == 7 then 5629608525403552558 else if j == 8 then 7142779516268606561 else if j == 9 then 8162002967599147296 else if j == 10 then 7017849994971735631 else if j == 11 then 3493436999986408546 else if j == 12 then 2338601094690840701 else if j == 13 then 7297085335369490531 else if j == 14 then 5000522131061369187 else if j == 15 then 1952534129 else 0)
+  else if i == 50 then (if j == 0 then 4620763724941115424 else if j == 1 then 8389131145473712928 else if j == 2 then 5629608525403552558 else if j == 3 then 8317701149622826081 else if j == 4 then 127961274797172 else 0)
+  else if i == 51 then (if j == 0 then 5629608524379078688 else if j == 1 then 8380182293753263201 else if j == 2 then 0 else 0)
   else 0
 
 end C

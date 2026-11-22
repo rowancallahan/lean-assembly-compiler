@@ -33,6 +33,10 @@ inductive EvB (P : Prog) : List V → X → Bool → Prop
       EvB P env (apps (.c "Eq" ls) [B, apps (.c "BEq.beq" ls') [T, I, a, b], tr]) (x == y)
   | lt {env ls T I a b x y} : Ev P env a (.w x) → Ev P env b (.w y) →
       EvB P env (apps (.c "LT.lt" ls) [T, I, a, b]) (decide (x < y))
+  | eqN {env ls ls' B T I a b tr x y} : Ev P env a (.n x) → Ev P env b (.n y) →
+      EvB P env (apps (.c "Eq" ls) [B, apps (.c "BEq.beq" ls') [T, I, a, b], tr]) (x == y)
+  | ltN {env ls T I a b x y} : Ev P env a (.n x) → Ev P env b (.n y) →
+      EvB P env (apps (.c "LT.lt" ls) [T, I, a, b]) (decide (x < y))
 inductive EvL (P : Prog) : List V → List X → List V → Prop
   | nil {env} : EvL P env [] []
   | cons {env a as v vs} : Ev P env a v → EvL P env as vs → EvL P env (a :: as) (v :: vs)
@@ -317,14 +321,49 @@ theorem bin_ok {P cx cxe res k Kont op a b} (ha : NodeOK P cx cxe res k Kont a) 
 theorem agree_eq {r : Sh} {t : Option Sh} {s : Sh} (h : agree r t = true) (ht : t = some s) : s = r := by
   subst ht; simpa [agree] using h
 
+/-- a comparison operand's value: a word, or (Nat comparison) its Nat -/
+def nv (n : Bool) (x : UInt64) : V := if n then .n x.toNat else .w x
+
+theorem ite_of {P venv T c d xt xe v} (bc : Bool) (hB : EvB P venv c bc) (hv : Ev P venv (if bc then xt else xe) v) :
+    Ev P venv (apps (.c "ite" [1]) [T, c, d, xt, xe]) v := by
+  cases bc
+  · exact .iteF hB hv
+  · exact .iteT hB hv
+
+theorem cond_ev {P venv n xa xb x y cmp r xt xe v bc} (hx : Ev P venv xa (nv n x)) (hy : Ev P venv xb (nv n y))
+    (hc : cmp = 1 ∨ cmp = 2) (hbc : (if cmp = 1 then decide (x = y) else decide (x < y)) = bc)
+    (hv : Ev P venv (if bc then xt else xe) v) : Ev P venv (iteX r n cmp xa xb xt xe) v := by
+  subst hbc
+  have h21 : ((2 : Nat) = 1) = False := by decide
+  rcases hc with rfl | rfl <;> cases n <;> simp only [nv, Bool.false_eq_true, h21, ↓reduceIte] at hx hy hv <;>
+    simp only [iteX, Bool.false_eq_true, h21, ↓reduceIte]
+  · refine ite_of (decide (x = y)) ?_ (by simpa using hv)
+    have h := EvB.eq (P := P) (env := venv) (ls := [1]) (ls' := [0]) (B := .c "Bool" []) (tr := .c "Bool.true" [])
+      (T := U) (I := apps (.c "instBEqOfDecidableEq" [0]) [U, .c "instDecidableEqUInt64" []]) hx hy
+    rwa [show (x == y) = decide (x = y) by by_cases h' : x = y <;> simp [h']] at h
+  · refine ite_of (decide (x = y)) ?_ (by simpa using hv)
+    have h := EvB.eqN (P := P) (env := venv) (ls := [1]) (ls' := [0]) (B := .c "Bool" []) (tr := .c "Bool.true" [])
+      (T := .c "Nat" []) (I := apps (.c "instBEqOfDecidableEq" [0]) [.c "Nat" [], .c "instDecidableEqNat" []]) hx hy
+    rwa [show (x.toNat == y.toNat) = decide (x = y) by by_cases h' : x = y <;> simp [h', UInt64.toNat_inj]] at h
+  · refine ite_of (decide (x < y)) ?_ (by simpa using hv)
+    exact EvB.lt (ls := [0]) (T := U) (I := .c "instLTUInt64" []) hx hy
+  · refine ite_of (decide (x < y)) ?_ (by simpa using hv)
+    have h := EvB.ltN (P := P) (env := venv) (ls := [0]) (T := .c "Nat" []) (I := .c "instLTNat" []) hx hy
+    rwa [show decide (x.toNat < y.toNat) = decide (x < y) by simp [UInt64.lt_iff_toNat_lt]] at h
+
 theorem ite_ok {P cx cxe res k Kont c a b t e} (ha : NodeOK P cx cxe res k Kont a) (hb : NodeOK P cx cxe res k Kont b)
     (ht : NodeOK P cx cxe res k Kont t) (hel : NodeOK P cx cxe res k Kont e) :
     NodeOK P cx cxe res k Kont (.ite c a b t e) := by
   intro bs exp x sh env venv he hr hfu
   unfold emit at he
-  rcases hea : emit cxe bs (some .uw) a with _ | ⟨xa, sa⟩ <;> rw [hea] at he <;> simp only [bind, Option.bind] at he
+  simp only at he
+  generalize (natE cxe.nat bs a && natE cxe.nat bs b) = n at he
+  generalize ho : (if n = true then Sh.nt else Sh.uw) = o at he
+  rcases hea : emit cxe bs (some o) a with _ | ⟨xa, sa⟩ <;> rw [hea] at he <;>
+    simp only [bind, Option.bind] at he
   · cases he
-  rcases heb : emit cxe bs (some .uw) b with _ | ⟨xb, sb⟩ <;> rw [heb] at he <;> simp only [bind, Option.bind] at he
+  rcases heb : emit cxe bs (some o) b with _ | ⟨xb, sb⟩ <;> rw [heb] at he <;>
+    simp only [bind, Option.bind] at he
   · cases he
   rcases het : emit cxe bs exp t with _ | ⟨xt, st⟩ <;> rw [het] at he <;> simp only [bind, Option.bind] at he
   · cases he
@@ -335,69 +374,45 @@ theorem ite_ok {P cx cxe res k Kont c a b t e} (ha : NodeOK P cx cxe res k Kont 
   split at he
   · rename_i hc; simp at he; obtain ⟨rfl, rfl⟩ := he
     obtain ⟨rfl, rfl, hcmp, hagt, hage⟩ := hc
-    -- the operands and the condition
+    -- the operands (words, or their Nats) and Sem's branch
+    have opnd : ∀ (xo : X) (so : Option Sh) (q : Na), NodeOK P cx cxe res k Kont q →
+        emit cxe bs (some o) q = some (xo, so) →
+        so = some o → ∀ x, ev cx q.erase env = .ok (.inl [.w x]) → Ev P venv xo (nv n x) := by
+      intro xo so q hq heo hso x hx
+      obtain ⟨vo, _, hs, hvo, hRo⟩ := (hq bs _ _ _ env venv heo hr hfu).1 _ hx
+      rw [hso] at hs; cases hs
+      cases n
+      · simp at ho; subst ho; cases hRo; simpa [nv] using hvo
+      · simp at ho; subst ho; cases hRo with
+        | nt hk => subst hk; simpa [nv] using hvo
     have key : ∀ q, ev cx (Na.erase (.ite c a b t e)) env = .ok q →
-        ∃ x y, Ev P venv xa (.w x) ∧ Ev P venv xb (.w y) ∧
-          ((c = 1 ∧ ev cx (if x = y then t.erase else e.erase) env = .ok q) ∨
-           (c = 2 ∧ ev cx (if x < y then t.erase else e.erase) env = .ok q)) := by
+        ∃ x y, Ev P venv xa (nv n x) ∧ Ev P venv xb (nv n y) ∧
+          ev cx (if (if c = 1 then decide (x = y) else decide (x < y)) then t.erase else e.erase) env = .ok q := by
       intro q hq
       obtain ⟨x, y, h1, h2, h3⟩ := ev_ite hq
-      obtain ⟨va, _, hsa, hva, hRa⟩ := (ha bs _ _ _ env venv hea hr hfu).1 _ h1
-      obtain ⟨vb, _, hsb, hvb, hRb⟩ := (hb bs _ _ _ env venv heb hr hfu).1 _ h2
-      cases hsa; cases hsb; cases hRa; cases hRb
-      exact ⟨x, y, hva, hvb, h3⟩
-    -- the chosen branch
-    have pick : ∀ (x y : UInt64) (bc : Bool), (∀ q, ev cx (if bc then t.erase else e.erase) env = .ok q → True) →
-        EvB P venv (if c = 1 then apps (.c "Eq" [1]) [.c "Bool" [], apps (.c "BEq.beq" [0]) [U,
-          apps (.c "instBEqOfDecidableEq" [0]) [U, .c "instDecidableEqUInt64" []], xa, xb], .c "Bool.true" []]
-          else apps (.c "LT.lt" [0]) [U, .c "instLTUInt64" [], xa, xb]) bc →
-        ∀ v, Ev P venv (if bc then xt else xe) v → Ev P venv (iteX r0 c xa xb xt xe) v := by
-      intro x y bc _ hB v hv
-      unfold iteX
-      split
-      · rename_i h1; simp only [h1, ite_true] at hB
-        cases bc
-        · exact Ev.iteF hB hv
-        · exact Ev.iteT hB hv
-      · rename_i h1; simp only [h1, ite_false] at hB
-        cases bc
-        · exact Ev.iteF hB hv
-        · exact Ev.iteT hB hv
-    have branch : ∀ q, ev cx (Na.erase (.ite c a b t e)) env = .ok q →
-        ∃ bc, EvB P venv (if c = 1 then apps (.c "Eq" [1]) [.c "Bool" [], apps (.c "BEq.beq" [0]) [U,
-          apps (.c "instBEqOfDecidableEq" [0]) [U, .c "instDecidableEqUInt64" []], xa, xb], .c "Bool.true" []]
-          else apps (.c "LT.lt" [0]) [U, .c "instLTUInt64" [], xa, xb]) bc ∧
-          ev cx (if bc then t.erase else e.erase) env = .ok q := by
-      intro q hq
-      obtain ⟨x, y, hx, hy, h3⟩ := key q hq
+      refine ⟨x, y, opnd _ _ a ha hea rfl x h1, opnd _ _ b hb heb rfl y h2, ?_⟩
       rcases h3 with ⟨rfl, h3⟩ | ⟨rfl, h3⟩
-      · refine ⟨x == y, ?_, ?_⟩
-        · rw [if_pos rfl]; exact EvB.eq hx hy
-        · by_cases hxy : x = y
-          · rw [if_pos hxy] at h3; rw [if_pos (by simp [hxy])]; exact h3
-          · rw [if_neg hxy] at h3; rw [if_neg (by simp [hxy])]; exact h3
-      · refine ⟨decide (x < y), ?_, ?_⟩
-        · rw [if_neg (by decide)]; exact EvB.lt hx hy
-        · by_cases hxy : x < y
-          · rw [if_pos hxy] at h3; rw [if_pos (by simp [hxy])]; exact h3
-          · rw [if_neg hxy] at h3; rw [if_neg (by simp [hxy])]; exact h3
+      · simpa using h3
+      · simpa using h3
     refine ⟨fun ws hws => ?_, fun st0 r hws hk => ?_⟩
-    · obtain ⟨bc, hB, hbr⟩ := branch _ hws
+    · obtain ⟨x, y, hx, hy, hbr⟩ := key _ hws
+      generalize hbc : (if c = 1 then decide (x = y) else decide (x < y)) = bc at hbr
       cases bc
       · rw [if_neg (by decide)] at hbr
         obtain ⟨v, s', hs', hv, hR⟩ := (hel bs _ _ _ env venv hee hr hfu).1 _ hbr
-        exact ⟨v, r0, rfl, pick 0 0 false (fun _ _ => trivial) hB v (by simpa using hv), (agree_eq hage hs') ▸ hR⟩
+        exact ⟨v, r0, rfl, cond_ev hx hy hcmp hbc (by simpa using hv), (agree_eq hage hs') ▸ hR⟩
       · rw [if_pos rfl] at hbr
         obtain ⟨v, s', hs', hv, hR⟩ := (ht bs _ _ _ env venv het hr hfu).1 _ hbr
-        exact ⟨v, r0, rfl, pick 0 0 true (fun _ _ => trivial) hB v (by simpa using hv), (agree_eq hagt hs') ▸ hR⟩
-    · obtain ⟨bc, hB, hbr⟩ := branch _ hws
+        exact ⟨v, r0, rfl, cond_ev hx hy hcmp hbc (by simpa using hv), (agree_eq hagt hs') ▸ hR⟩
+    · obtain ⟨x, y, hx, hy, hbr⟩ := key _ hws
+      generalize hbc : (if c = 1 then decide (x = y) else decide (x < y)) = bc at hbr
       cases bc
       · rw [if_neg (by decide)] at hbr
         obtain ⟨v, hv, hR⟩ := (hel bs _ _ _ env venv hee hr hfu).2 _ _ hbr hk
-        exact ⟨v, pick 0 0 false (fun _ _ => trivial) hB v (by simpa using hv), hR⟩
+        exact ⟨v, cond_ev hx hy hcmp hbc (by simpa using hv), hR⟩
       · rw [if_pos rfl] at hbr
         obtain ⟨v, hv, hR⟩ := (ht bs _ _ _ env venv het hr hfu).2 _ _ hbr hk
-        exact ⟨v, pick 0 0 true (fun _ _ => trivial) hB v (by simpa using hv), hR⟩
+        exact ⟨v, cond_ev hx hy hcmp hbc (by simpa using hv), hR⟩
   · cases he
 
 theorem take_split {L xs ys : List W} (h : L.take (xs ++ ys).length = xs ++ ys) :
@@ -411,13 +426,18 @@ theorem let_ok {P cx cxe res k Kont pr s w v b} (hv : NodeOK P cx cxe res k Kont
     (hb : NodeOK P cx cxe res k Kont b) : NodeOK P cx cxe res k Kont (.letE pr s w v b) := by
   intro bs exp x sh env venv he hr hfu
   unfold emit at he
-  rcases hev : emit cxe bs none v with _ | ⟨xv, sv⟩ <;> rw [hev] at he <;> simp only [bind, Option.bind] at he
+  simp only at he
+  generalize (!pr && cxe.nat s && natE cxe.nat bs v) = n at he
+  split at he
+  · cases he
+  rcases hev : emit cxe bs (if n = true then some .nt else none) v with _ | ⟨xv, sv⟩ <;> rw [hev] at he <;>
+    simp only [bind, Option.bind] at he
   · cases he
   rcases sv with _ | vsh <;> simp only at he
   · cases he
   split at he
   · cases he
-  rename_i hck; obtain ⟨hw, hfr⟩ := Decidable.not_not.mp hck
+  rename_i hck; obtain ⟨hw, hfr, -⟩ := Decidable.not_not.mp hck
   -- Sem's value, written at slot s
   have val : ∀ q, ev cx (Na.erase (.letE pr s w v b)) env = .ok q →
       ∃ a xs env', Ev P venv xv a ∧ R vsh a xs ∧ setSlots env s xs = .ok env' ∧ ev cx b.erase env' = .ok q := by
@@ -1005,10 +1025,10 @@ def DefsHyp (P : Prog) (cx : Ctx) (ds : List DefI) : Prop :=
     ∀ ws r vs, f ws = .ok r → ArgsR cx.inp d.params vs ws → ∃ v, EvCall P (nameS d.name) vs v ∧ R d.res v r
 
 /-- a fuel loop: at fuel m, from any slot environment whose parameter slots hold the states -/
-theorem fuelLoop_ok {P : Prog} {cx : Ctx} {ds : List DefI} {di : DefI} {sps : List Ps} {z s : Na} {zx sx : X} {zs ss : Option Sh}
+theorem fuelLoop_ok {P : Prog} {cx : Ctx} {ds : List DefI} {nat : Nat → Bool} {di : DefI} {sps : List Ps} {z s : Na} {zx sx : X} {zs ss : Option Sh}
     (hin : cx.inp.length < 2 ^ 64) (hdefs : DefsHyp P cx ds) (hps : di.params = .fuel :: sps)
-    (hz : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) z = some (zx, zs))
-    (hs : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s = some (sx, ss))
+    (hz : emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ (binders 0 di.params []) (some di.res) z = some (zx, zs))
+    (hs : emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s = some (sx, ss))
     (hzs : agree di.res zs = true) (hss : agree di.res ss = true)
     (hl : P.lookup (nameS di.name) = some (lamX di.params (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res),
       .bv ((binders 0 di.params []).length - 1), zx, .lam (.c "Nat" []) sx]))) :
@@ -1021,7 +1041,7 @@ theorem fuelLoop_ok {P : Prog} {cx : Ctx} {ds : List DefI} {di : DefI} {sps : Li
     intro svs m h; rw [binders_len, hps]; simp [List.getElem?_append_right, h]
   have hdefs' : ∀ k Kont, (∀ st r vs, Kont st = .ok r → ArgsR cx.inp (di.params.drop 1) vs st →
       ∃ v, EvCall P (nameS di.name) (.n k :: vs) v ∧ R di.res v r) →
-      Hyp P cx ⟨ds, (nameS di.name, di.params.drop 1)⟩ di.res k Kont :=
+      Hyp P cx ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ di.res k Kont :=
     fun k Kont hk => ⟨hin, hdefs, hk⟩
   intro m
   induction m with
@@ -1081,8 +1101,8 @@ theorem defMean_ok {inp κ ms d ws r} (h : defMean inp κ ms d ws = .ok r) :
 
 /-- **a def's meaning**: Sem's meaning of a def = the meaning of its emitted Expr, called on related arguments -/
 theorem def_ok {P : Prog} {inp : List UInt8} {κ : Nat} {ms : List (List W → Except Stop (List W))} {ds : List DefI}
-    {di : DefI} {da : DefA} {b : Na} {t val : X} (hin : inp.length < 2 ^ 64) (hdefs : DefsHyp P ⟨inp, κ, ms⟩ ds)
-    (hb : b.erase = da.body) (he : emitDef ds di b = some (t, val)) (hl : P.lookup (nameS di.name) = some val) :
+    {di : DefI} {da : DefA} {b : Na} {t val : X} {nat : Nat → Bool} (hin : inp.length < 2 ^ 64) (hdefs : DefsHyp P ⟨inp, κ, ms⟩ ds)
+    (hb : b.erase = da.body) (he : emitDef ds nat di b = some (t, val)) (hl : P.lookup (nameS di.name) = some val) :
     ∀ ws r vs, defMean inp κ ms da ws = .ok r → ArgsR inp di.params vs ws →
       ∃ v, EvCall P (nameS di.name) vs v ∧ R di.res v r := by
   intro ws r vs hm hA
@@ -1098,10 +1118,10 @@ theorem def_ok {P : Prog} {inp : List UInt8} {κ : Nat} {ms : List (List W → E
     split at he
     · cases he
     rename_i hhd
-    rcases hz : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) z with _ | ⟨zx, zs⟩ <;>
+    rcases hz : emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ (binders 0 di.params []) (some di.res) z with _ | ⟨zx, zs⟩ <;>
       rw [hz] at he <;> simp only [bind, Option.bind] at he
     · cases he
-    rcases hs : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s with _ | ⟨sx, ss⟩ <;>
+    rcases hs : emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ ((0, .fuel) :: binders 0 di.params []) (some di.res) s with _ | ⟨sx, ss⟩ <;>
       rw [hs] at he <;> simp only [bind, Option.bind] at he
     · cases he
     split at he
@@ -1130,18 +1150,18 @@ theorem def_ok {P : Prog} {inp : List UInt8} {κ : Nat} {ms : List (List W → E
       exact ⟨v, ⟨_, _, hl, hstr, by rw [← hu]; simpa using hv⟩, hR⟩
     · cases he
   · have he' : (do
-        let (bx, bsh) ← emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) b
+        let (bx, bsh) ← emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ (binders 0 di.params []) (some di.res) b
         if bsh = some di.res then some (piX di.params (shTy di.res), lamX di.params bx) else none) = some (t, val) := by
       cases b with
       | loop z s => exact absurd ⟨z, s, rfl⟩ hlp
       | _ => unfold emitDef at he; exact he
-    rcases heb : emit ⟨ds, (nameS di.name, di.params.drop 1)⟩ (binders 0 di.params []) (some di.res) b with _ | ⟨bx, bsh⟩ <;>
+    rcases heb : emit ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ (binders 0 di.params []) (some di.res) b with _ | ⟨bx, bsh⟩ <;>
       rw [heb] at he' <;> simp only [bind, Option.bind] at he'
     · cases he'
     split at he'
     · rename_i hbs; simp at he'; obtain ⟨-, rfl⟩ := he'
       obtain ⟨k, hk⟩ := fuel_exists henv
-      have H : Hyp P ⟨inp, κ, ms⟩ ⟨ds, (nameS di.name, di.params.drop 1)⟩ di.res k (fun _ => .error .stuck) :=
+      have H : Hyp P ⟨inp, κ, ms⟩ ⟨ds, (nameS di.name, di.params.drop 1), nat⟩ di.res k (fun _ => .error .stuck) :=
         ⟨hin, hdefs, fun _ _ _ h => by cases h⟩
       obtain ⟨v, s', hs', hv, hR⟩ := (node_ok H b _ _ _ _ _ _ heb henv hk).1 _ hev
       rw [hbs] at hs'; cases hs'
@@ -1166,9 +1186,9 @@ theorem lookup_of_mem {o : List (String × X × X)} (hnd : (o.map (·.1)).Nodup)
         simp only [beq_eq_false_iff_ne]; intro he; apply hnd.1; rw [← he]; exact List.mem_map.2 ⟨_, h, rfl⟩
       rw [hne]; exact ih hnd.2 h
 
-theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} (hin : inp.length < 2 ^ 64) :
+theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} {ks ws : List Nat} (hin : inp.length < 2 ^ 64) :
     ∀ (as : List DefA) (j : Nat) (ms : List (List W → Except Stop (List W))) (st : Sd) (o' : List (String × X × X)),
-      emitAll ds j as st = some o' → (∀ n t v, (n, t, v) ∈ o' → P.lookup n = some v) → ms.length = j →
+      emitAll ds ks ws j as st = some o' → (∀ n t v, (n, t, v) ∈ o' → P.lookup n = some v) → ms.length = j →
       DefsHyp P ⟨inp, κ, ms⟩ ds →
       (means inp κ ms as).length = j + as.length ∧ DefsHyp P ⟨inp, κ, means inp κ ms as⟩ ds
   | [], j, ms, st, o', _, _, hl, hd => by simpa [means] using ⟨hl, hd⟩
@@ -1181,9 +1201,9 @@ theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} (hin 
     · cases he
     rcases hdi : ds[j]? with _ | di <;> rw [hdi] at he <;> simp only at he
     · cases he
-    rcases hed : emitDef ds di b with _ | ⟨t, v⟩ <;> rw [hed] at he <;> simp only at he
+    rcases hed : emitDef ds (natOf ks ws da) di b with _ | ⟨t, v⟩ <;> rw [hed] at he <;> simp only at he
     · cases he
-    rcases hrest : emitAll ds (j + 1) as st1 with _ | o2 <;> rw [hrest] at he <;> simp only at he
+    rcases hrest : emitAll ds ks ws (j + 1) as st1 with _ | o2 <;> rw [hrest] at he <;> simp only at he
     · cases he
     simp at he; subst he
     have hthis := def_ok (P := P) (κ := κ) (ms := ms) hin hd (annot_erase _ _ _ _ ha) hed (hlk _ t _ (by simp))
@@ -1205,9 +1225,9 @@ theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} (hin 
 /-- **eval_emit**: for a program whose Exprs `emitAll` produces (distinct names; the last def is `m (x : List UInt8)
 : List UInt8`), every output Sem computes on an input is the meaning `Ev` of the emitted Expr of `m` applied to the
 input -/
-theorem eval_emit {ds : List DefI} {p : List DefA} {st : Sd} {o : List (String × X × X)} {inp : List UInt8} {κ : Nat}
+theorem eval_emit {ds : List DefI} {ks ws : List Nat} {p : List DefA} {st : Sd} {o : List (String × X × X)} {inp : List UInt8} {κ : Nat}
     {out : List UInt8} {dm : DefI}
-    (he : emitAll ds 0 p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
+    (he : emitAll ds ks ws 0 p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
     (hm : ds[p.length - 1]? = some dm) (hmn : dm.name = [109]) (hmp : dm.params = [.inp]) (hmr : dm.res = .ls)
     (hs : Sem κ p inp = .ok out) : Ev (progOf o) [.l inp] (.app (.c "m" []) (.bv 0)) (.l out) := by
   have hP : ∀ n t v, (n, t, v) ∈ o → (progOf o).lookup n = some v := fun n t v h => lookup_of_mem hnd h

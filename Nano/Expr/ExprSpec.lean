@@ -3,6 +3,7 @@ S format, `emitProg` = for each def of `pDefs`'s output, the Expr its AST means.
 needs; they come from the token stream in source order (= the IR's pre-order): `let x` vs `let (a, b)`, `[]` vs `bnew`,
 and the def names / parameter shapes (`DefI`). -/
 import Nano.Parser.ParSpec
+import Nano.Parser.NumSpec
 namespace ExprSpec
 open ParSpec
 
@@ -75,14 +76,16 @@ def X.dropHead : X → X
 
 /-- for `<`, Lean's `UInt64.decLt` instance takes the operands with their LEADING unused `have`s dropped (observed on fuzz
 programs with `let` inside a condition); for `==` the `instDecidableEqBool` instance keeps them as they are -/
-def iteX (r : Sh) (cmp : Nat) (a b t e : X) : X :=
+def iteX (r : Sh) (n : Bool) (cmp : Nat) (a b t e : X) : X :=
+  let T := if n then X.c "Nat" [] else U
   if cmp = 1 then
-    let q := apps (.c "BEq.beq" [0]) [U, apps (.c "instBEqOfDecidableEq" [0]) [U, .c "instDecidableEqUInt64" []], a, b]
+    let q := apps (.c "BEq.beq" [0]) [T, apps (.c "instBEqOfDecidableEq" [0])
+      [T, .c (if n then "instDecidableEqNat" else "instDecidableEqUInt64") []], a, b]
     apps (.c "ite" [1]) [shTy r, apps (.c "Eq" [1]) [.c "Bool" [], q, .c "Bool.true" []],
       apps (.c "instDecidableEqBool" []) [q, .c "Bool.true" []], t, e]
   else
-    apps (.c "ite" [1]) [shTy r, apps (.c "LT.lt" [0]) [U, .c "instLTUInt64" [], a, b],
-      apps (.c "UInt64.decLt" []) [a.dropHead, b.dropHead], t, e]
+    apps (.c "ite" [1]) [shTy r, apps (.c "LT.lt" [0]) [T, .c (if n then "instLTNat" else "instLTUInt64") [], a, b],
+      apps (.c (if n then "Nat.decLt" else "UInt64.decLt") []) [a.dropHead, b.dropHead], t, e]
 
 /-- prim ids 1..9 (ParSpec.primSig): name, parameter kinds incl. the input, result -/
 def primInfo : Nat → String × List Ps × Sh
@@ -175,6 +178,21 @@ def expSplit : Option Sh → Option Sh × Option Sh
 structure Cx where
   defs : List DefI
   self : String × List Ps   -- the loop's name and state kinds (CONTINUE)
+  nat : Nat → Bool          -- slot has numeral class Nat (NumSpec.slotNat)
+
+/-- a literal-only term of numeral class Nat: literals and Nat-bound slots under `if` branches and `let`s (a `let` of
+a Nat slot `s` to such a value binds a Nat) -/
+def natE (nat : Nat → Bool) (bs : Bs) : Na → Bool
+  | .const _ => true
+  | .loc s w => w == 1 && (match findSlot s bs with | some (_, .nt) => true | _ => false)
+  | .ite _ _ _ t e => natE nat bs t && natE nat bs e
+  | .letE pr s _ v b => natE nat (if !pr && nat s && natE nat bs v then (s, .sh .nt) :: bs else bs) b
+  | _ => false
+
+/-- a tuple value with a Nat-class literal field (`let p := (1, ..)`): Lean types the field Nat; not supported -/
+def natPair (nat : Nat → Bool) (bs : Bs) (s : Nat) : Na → Bool
+  | .pair cs => cs.zipIdx.any fun (c, i) => nat (s + i) && natE nat bs c
+  | _ => false
 
 def nameS (n : List Nat) : String := String.ofList (n.map Char.ofNat)
 
@@ -203,17 +221,21 @@ def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Na → Option (X × Option Sh)
     let (y, sb) ← emit cx bs (some .uw) b
     if sa = some .uw ∧ sb = some .uw ∧ 1 ≤ op ∧ op ≤ 7 then some (binX op x y, some .uw) else none
   | .ite cmp a b t e => do
-    let (x, sa) ← emit cx bs (some .uw) a
-    let (y, sb) ← emit cx bs (some .uw) b
+    let n := natE cx.nat bs a && natE cx.nat bs b
+    let o := if n then Sh.nt else .uw
+    let (x, sa) ← emit cx bs (some o) a
+    let (y, sb) ← emit cx bs (some o) b
     let (tx, ts) ← emit cx bs exp t
     let (ex, es) ← emit cx bs exp e
     let r ← exp <|> ts <|> es
-    if sa = some .uw ∧ sb = some .uw ∧ (cmp = 1 ∨ cmp = 2) ∧ agree r ts ∧ agree r es then
-      some (iteX r cmp x y tx ex, some r) else none
+    if sa = some o ∧ sb = some o ∧ (cmp = 1 ∨ cmp = 2) ∧ agree r ts ∧ agree r es then
+      some (iteX r n cmp x y tx ex, some r) else none
   | .letE pr s w v b => do
-    let (vx, vs) ← emit cx bs none v
+    let n := !pr && cx.nat s && natE cx.nat bs v
+    if natPair cx.nat bs s v then none else
+    let (vx, vs) ← emit cx bs (if n then some .nt else none) v
     let vsh ← vs
-    if ¬ (vsh.width = w ∧ fresh s bs) then none else
+    if ¬ (vsh.width = w ∧ fresh s bs ∧ (n → vsh = .nt)) then none else
     if pr then
       match vsh with
       | .p l r => do
@@ -282,9 +304,9 @@ def piX (ps : List Ps) (r : X) : X := ps.foldr (fun p a => .pi (shTy (psSh p)) a
 def lamX (ps : List Ps) (b : X) : X := ps.foldr (fun p a => .lam (shTy (psSh p)) a) b
 
 /-- one def: (type, value); the body's shape must be the result shape -/
-def emitDef (defs : List DefI) (di : DefI) (b : Na) : Option (X × X) := do
+def emitDef (defs : List DefI) (nat : Nat → Bool) (di : DefI) (b : Na) : Option (X × X) := do
   let ty := piX di.params (shTy di.res)
-  let cx : Cx := { defs, self := (nameS di.name, di.params.drop 1) }
+  let cx : Cx := { defs, self := (nameS di.name, di.params.drop 1), nat }
   let bs := binders 0 di.params []
   match b with
   | .loop z s =>
@@ -298,21 +320,28 @@ def emitDef (defs : List DefI) (di : DefI) (b : Na) : Option (X × X) := do
     let (bx, bsh) ← emit cx bs (some di.res) b
     if bsh = some di.res then some (ty, lamX di.params bx) else none
 
+/-- `NumSpec.slotNat ks ws da` with the def's groups computed once -/
+def natOf (ks ws : List Nat) (da : DefA) : Nat → Bool :=
+  let gs := (NumSpec.colD ks ws da).1
+  let u := NumSpec.markD 1 gs da
+  fun s => gs.any (·.vs.contains s) && !u.contains s
+theorem natOf_eq (ks ws : List Nat) (da : DefA) (s : Nat) : natOf ks ws da s = NumSpec.slotNat ks ws da s := rfl
+
 /-- names a program may not use for its defs: the fragment's fixed constants -/
 def reserved (n : String) : Bool :=
   n.any (· == '.') || n ∈ ["ite", "rd", "len", "len'", "put", "bnew", "bsize", "bget", "bset", "bpush"]
 
 /-- the Exprs of a parsed program (defs `ds`, bodies `as` from position `i`, side flags `st`): (name, type, value)
 per def; def `i` must have id `i` -/
-def emitAll (ds : List DefI) (i : Nat) : List DefA → Sd → Option (List (String × X × X))
+def emitAll (ds : List DefI) (ks ws : List Nat) (i : Nat) : List DefA → Sd → Option (List (String × X × X))
   | [], ([], []) => some []
   | [], _ => none
   | (da :: as), st => do
     if da.id ≠ i then none else
     let (b, st) ← annot da.body st
     let di ← ds[i]?
-    let (t, v) ← emitDef ds di b
-    let rest ← emitAll ds (i + 1) as st
+    let (t, v) ← emitDef ds (natOf ks ws da) di b
+    let rest ← emitAll ds ks ws (i + 1) as st
     some ((nameS di.name, t, v) :: rest)
 
 /-- the Exprs of a program text -/
@@ -320,7 +349,8 @@ def emitXs (src : List UInt8) : Except String (List (String × X × X)) := do
   let some ws := lexAll (src.length + 1) src | throw "lex"
   let some toks := tokens ws | throw "tokens"
   let some (ds, as) := pDefs (8 * toks.length + 8) (toks.length + 1) [] toks | throw "parse"
-  let some o := emitAll ds 0 as (sideLets toks, sideNils toks) | throw "emit"
+  if !NumSpec.numOkP as then throw "num"
+  let some o := emitAll ds (as.map (·.kind)) (as.map (·.nres)) 0 as (sideLets toks, sideNils toks) | throw "emit"
   let ns := o.map (·.1)
   if ns.eraseDups.length ≠ ns.length ∨ ns.any reserved then throw "names" else pure o
 

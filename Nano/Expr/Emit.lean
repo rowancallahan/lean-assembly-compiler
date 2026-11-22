@@ -8,6 +8,7 @@ Parameter codes: 2 * shape + 1 for the input. Work items (4 words): 1 phrase, 2 
 4 bvar, 5 nat literal, 6 node with leading unused `have`s dropped, 7 identifier at a token position. -/
 import Nano.Lexer.Lex2
 import Nano.Parser.Par1
+import Nano.Parser.NumC
 import Nano.Expr.EmitStr
 set_option linter.unusedVariables false
 namespace C
@@ -52,7 +53,7 @@ def e7 : Nat → List UInt8 → List UInt8 → Buf → UInt64 → List UInt8
 
 /-- phrases written as ` !<id>` (S-compact, Testing/nano/expr/expand.py; the output stays under the 2^19-byte capacity) -/
 def e56 (i : UInt64) : UInt64 :=
-  if i == 9 then 1 else if i == 11 then 1 else if i == 41 then 1 else if 11 < i then (if i < 32 then 1 else 0) else 0
+  if 47 < i then 1 else if i == 9 then 1 else if i == 11 then 1 else if i == 41 then 1 else if 11 < i then (if i < 32 then 1 else 0) else 0
 
 def e57 (x : List UInt8) (o : List UInt8) (i : UInt64) : List UInt8 :=
   if e56 i == 1 then e6 x (e2 4 x o 47 0) i else e2 32 x o i 0
@@ -264,19 +265,90 @@ def e35 (r f a l h : Buf) (q p : UInt64) : Buf × (Buf × Buf) :=
       (let k2 := bget a1 (3 * (q + 2));
        let (h1, k) := e15 h (bget a1 (3 * (q + 2) + 1)) (bget a1 (3 * k2 + 1));
        (bset a1 (3 * q + 1) k, (l, h1)))
-     else (a1, (l, h)))
+     else (bset a1 (3 * q + 1) 0, (l, h)))
   else if bget r q == 8 then (bset a1 (3 * q + 1) (bget f (4 * (bget r (q + 1)) + 3)), (l, h))
   else if bget r q == 9 then (bset a1 (3 * q + 1) (e33 (bget r (q + 1)) (bget a1 (3 * q + 2))), (l, h))
-  else if bget r q == 10 then (a1, (l, h))
-  else if bget r q == 11 then (a1, (l, h))
+  else if bget r q == 10 then (bset a1 (3 * q + 1) 0, (l, h))
+  else if bget r q == 11 then (bset a1 (3 * q + 1) 0, (l, h))
   else (bset a1 (3 * q + 1) 1, (l, h))
 
 /-- the slot shapes of the `let` at u once its value v is complete -/
 def e36 (r a l h : Buf) (u v : UInt64) : Buf :=
-  if bget a (3 * u + 2) == 1 then
+  if (bget a (3 * u + 2) &&& 1) == 1 then
     bset (bset l (8 + 3 * (bget r (u + 1))) (e13 h (bget a (3 * v + 1))))
       (8 + 3 * ((bget r (u + 1)) + (e12 h (e13 h (bget a (3 * v + 1)))))) (e14 h (bget a (3 * v + 1)))
   else bset l (8 + 3 * (bget r (u + 1))) (bget a (3 * v + 1))
+
+/-! ## numeral classes (NumSpec.slotNat): run A of pass 1 sets literal-only flags (a[3p+2] bit 4) and the per-slot
+literal env; pass B assigns modes (0 none, 1 + d demand d, 4 a tuple `let` value, 8 + g in literal group g) and
+records (slot, group) pairs; the closure marks UInt64 groups (a[3(g+1)]) and slots; run 2 sets the natE flags (bit 8),
+Nat comparisons (ite bit 1) and Nat lets (let bit 2, slot shape 4). l[3]: base of the per-slot words (env, in a group,
+marked), l[4]: the run (0: A). -/
+def e73 (a : Buf) (x : UInt64) : UInt64 := ((bget a (3 * x + 2)) >>> 2) &&& 1
+def e74 (a : Buf) (x : UInt64) : UInt64 := ((bget a (3 * x + 2)) >>> 3) &&& 1
+
+/-- literal-only flag of the completed node q (run A) -/
+def e75 (r a l : Buf) (q : UInt64) : UInt64 :=
+  if bget r q == 1 then 1
+  else if bget r q == 2 then (if bget r (q + 2) == 1 then bget l (bget l 3 + 4 * (bget r (q + 1))) else 0)
+  else if bget r q == 3 then
+    (if bget r (q + 1) == 6 then 0 else if bget r (q + 1) == 7 then 0 else e73 a (q + 2) &&& e73 a (bget a (3 * (q + 2))))
+  else if bget r q == 4 then
+    (let k2 := bget a (3 * (q + 2));
+     let k3 := bget a (3 * k2);
+     e73 a k3 &&& e73 a (bget a (3 * k3)))
+  else if bget r q == 5 then e73 a (bget a (3 * (q + 3)))
+  else 0
+
+/-- the flag word of the completed node q in run 2: natE (8), Nat comparison (ite: 1), side flags kept -/
+def e76 (r a l : Buf) (q : UInt64) : UInt64 :=
+  if bget r q == 1 then 8
+  else if bget r q == 2 then (if bget r (q + 2) == 1 then (if bget l (8 + 3 * (bget r (q + 1))) == 4 then 8 else 0) else 0)
+  else if bget r q == 4 then
+    (let k2 := bget a (3 * (q + 2));
+     let k3 := bget a (3 * k2);
+     let k4 := bget a (3 * k3);
+     (if e74 a k3 == 1 then (if e74 a k4 == 1 then 8 else 0) else 0) ||| (if e74 a (q + 2) == 1 then (if e74 a k2 == 1 then 1 else 0) else 0))
+  else if bget r q == 5 then ((bget a (3 * q + 2)) &&& 3) ||| (if e74 a (bget a (3 * (q + 3))) == 1 then 8 else 0)
+  else bget a (3 * q + 2)
+
+def e60 (r a l : Buf) (q : UInt64) : Buf :=
+  if bget l 4 == 0 then (if e75 r a l q == 1 then bset a (3 * q + 2) ((bget a (3 * q + 2)) ||| 4) else a)
+  else bset a (3 * q + 2) (e76 r a l q)
+
+/-- c env words from slot i to slot j (zr = 1: zeros) -/
+def e63 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → Buf
+  | 0, l, b, i, j, c, zr => l
+  | n + 1, l, b, i, j, c, zr =>
+    if c == 0 then l else e63 n (bset l (b + 4 * j) (if zr == 1 then 0 else bget l (b + 4 * i))) b (i + 1) (j + 1) (c - 1) zr
+
+/-- the env words of the value from p (end z) into slots from j: tuples descend, slots copy, others their flag -/
+def e62 : Nat → Buf → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf
+  | 0, r, a, l, h, p, z, j => l
+  | n + 1, r, a, l, h, p, z, j =>
+    if p < z then
+      (if bget r p == 6 then e62 n r a l h (p + 2) z j
+       else if bget r p == 2 then
+         e62 n r a (e63 16777216 l (bget l 3) (bget r (p + 1)) j (bget r (p + 2)) 0) h (bget a (3 * p)) z (j + bget r (p + 2))
+       else
+         (let w := e12 h (bget a (3 * p + 1));
+          e62 n r a (if w == 1 then bset l (bget l 3 + 4 * j) (e73 a p) else e63 16777216 l (bget l 3) 0 j w 1) h (bget a (3 * p)) z (j + w)))
+    else l
+
+/-- the `let` at u with value v is a Nat let (run 2): single, slot of class Nat, value natE -/
+def e72 (r a l : Buf) (u v : UInt64) : UInt64 :=
+  if (bget a (3 * u + 2) &&& 1) == 0 then
+    (let b := bget l 3 + 4 * (bget r (u + 1));
+     if bget l (b + 1) == 1 then (if bget l (b + 2) == 0 then e74 a v else 0) else 0)
+  else 0
+
+/-- after the slot shapes of the `let` at u (value v): run A the env, run 2 the Nat slot shape -/
+def e70 (r a l h : Buf) (u v : UInt64) : Buf :=
+  if bget l 4 == 0 then e62 1073741824 r a l h v (bget a (3 * v)) (bget r (u + 1))
+  else if e72 r a l u v == 1 then bset l (8 + 3 * (bget r (u + 1))) 4 else l
+
+def e71 (r a l : Buf) (u v : UInt64) : Buf :=
+  if bget l 4 == 1 then (if e72 r a l u v == 1 then bset a (3 * u + 2) ((bget a (3 * u + 2)) ||| 2) else a) else a
 
 /-- open the node at p: (s, (a, (c, n))) -/
 def e38 (r t s a : Buf) (p q c n : UInt64) : Buf × (Buf × (UInt64 × UInt64)) :=
@@ -288,13 +360,15 @@ def e37 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → Buf → 
   | 0, r, t, f, p, s, q, a, l, h, c, n => (s, (a, (l, (h, (c, n)))))
   | k + 1, r, t, f, p, s, q, a, l, h, c, n =>
     if bget s (q - 1) == 0 then
-      (let (a1, z) := e35 r f a l h (bget s (q - 2)) p;
+      (let (a0, z) := e35 r f a l h (bget s (q - 2)) p;
        let (l1, h1) := z;
+       let a1 := e60 r a0 l1 (bget s (q - 2));
        if q == 2 then (s, (a1, (l1, (h1, (c, n))))) else
        let w := bget s (q - 3) - 1;
        let u := bget s (q - 4);
-       let l2 := (if bget r u == 5 then (if w == 1 then e36 r a1 l1 h1 u (bget s (q - 2)) else l1) else l1);
-       e37 k r t f p (bset s (q - 3) w) (q - 2) a1 l2 h1 c n)
+       let l2 := (if bget r u == 5 then (if w == 1 then e70 r a1 (e36 r a1 l1 h1 u (bget s (q - 2))) h1 u (bget s (q - 2)) else l1) else l1);
+       let a2 := (if bget r u == 5 then (if w == 1 then e71 r a1 l2 u (bget s (q - 2)) else a1) else a1);
+       e37 k r t f p (bset s (q - 3) w) (q - 2) a2 l2 h1 c n)
     else
       (let (s1, z) := e38 r t s a p q c n;
        let (a1, z1) := z;
@@ -354,19 +428,22 @@ def e48 (r f g a h : Buf) (s : Buf) (q : UInt64) (l : Buf) (p e d : UInt64) : Bu
      let k3 := bget a (3 * k2);
      let k4 := bget a (3 * k3);
      let w := (if e == 0 then bget a (3 * p + 1) else e);
+     let nc := (bget a (3 * p + 2)) &&& 1;
+     let o := (if nc == 1 then 4 else 1);
      if bget r (p + 1) == 1 then
-       (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 s q 1 22 0 0) (q + 4) 2 w 0 0) (q + 8) 1 23 0 0)
-         (q + 12) 3 (p + 2) 1 d) (q + 16) 3 k2 1 d) (q + 20) 1 24 0 0) (q + 24) 3 (p + 2) 1 d) (q + 28) 3 k2 1 d)
+       (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 s q 1 22 0 0) (q + 4) 2 w 0 0) (q + 8) 1 (if nc == 1 then 48 else 23) 0 0)
+         (q + 12) 3 (p + 2) o d) (q + 16) 3 k2 o d) (q + 20) 1 (if nc == 1 then 49 else 24) 0 0) (q + 24) 3 (p + 2) o d) (q + 28) 3 k2 o d)
          (q + 32) 1 25 0 0) (q + 36) 3 k3 e d) (q + 40) 3 k4 e d, (q + 44, l))
      else
-       (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 s q 1 22 0 0) (q + 4) 2 w 0 0) (q + 8) 1 26 0 0)
-         (q + 12) 3 (p + 2) 1 d) (q + 16) 3 k2 1 d) (q + 20) 1 27 0 0) (q + 24) 6 (p + 2) 1 d) (q + 28) 6 k2 1 d)
+       (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 (e41 s q 1 22 0 0) (q + 4) 2 w 0 0) (q + 8) 1 (if nc == 1 then 50 else 26) 0 0)
+         (q + 12) 3 (p + 2) o d) (q + 16) 3 k2 o d) (q + 20) 1 (if nc == 1 then 51 else 27) 0 0) (q + 24) 6 (p + 2) o d) (q + 28) 6 k2 o d)
          (q + 32) 3 k3 e d) (q + 36) 3 k4 e d, (q + 40, l)))
   else if bget r p == 5 then
     (let b := bget a (3 * (p + 3));
      let v := bget a (3 * (p + 3) + 1);
-     if bget a (3 * p + 2) == 0 then
-       (e41 (e41 (e41 (e41 s q 1 4 0 0) (q + 4) 2 v 0 0) (q + 8) 3 (p + 3) 0 d) (q + 12) 3 b e (d + 1),
+     if ((bget a (3 * p + 2)) &&& 1) == 0 then
+       (let nl := ((bget a (3 * p + 2)) >>> 1) &&& 1;
+        e41 (e41 (e41 (e41 s q 1 4 0 0) (q + 4) 2 (if nl == 1 then 4 else v) 0 0) (q + 8) 3 (p + 3) (if nl == 1 then 4 else 0) d) (q + 12) 3 b e (d + 1),
         (q + 16, bset l (10 + 3 * (bget r (p + 1))) (d + 1)))
      else
        (let w := (if e == 0 then bget a (3 * p + 1) else e);
@@ -410,7 +487,7 @@ def e49 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → Buf
   | n + 1, r, f, g, a, h, s, q, l, p, e, d, m =>
     if m == 6 then
       (if bget r p == 5 then
-        (if bget a (3 * p + 2) == 0 then
+        (if ((bget a (3 * p + 2)) &&& 1) == 0 then
           (if bget l (9 + 3 * (bget r (p + 1))) == 0 then e49 n r f g a h s q l (bget a (3 * (p + 3))) e d m
            else e48 r f g a h s q l p e d)
          else e48 r f g a h s q l p e d)
@@ -469,14 +546,121 @@ def e54 (r f g a : Buf) (s : Buf) (i p : UInt64) : Buf × UInt64 :=
       (q2 + 24) 1 5 0 0, q2 + 28)
   else (e41 (e41 s2 q2 3 (p + 6) (bget f (4 * i + 3)) m) (q2 + 4) 1 5 0 0, q2 + 8)
 
+/-! ## pass B: modes and (slot, group) records; the closure -/
+/-- c children from x get mode m -/
+def e66 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
+  | 0, a, x, c, m => a
+  | n + 1, a, x, c, m => if c == 0 then a else (let y := bget a (3 * x); e66 n (bset a (3 * x + 1) m) y (c - 1) m)
+
+/-- the fields from x of a tuple `let` value (records from header word hp) -/
+def e67 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
+  | 0, a, x, c, hp => a
+  | n + 1, a, x, c, hp =>
+    if c == 0 then a else
+    let y := bget a (3 * x);
+    e67 n (if e73 a x == 1 then bset (bset a (3 * x + 1) (8 + x)) (3 * hp + 1) (8 + x) else bset a (3 * x + 1) 1) y (c - 1) (hp + 1)
+
+/-- the children modes of node p in mode m -/
+def e65 (r f g a : Buf) (p m : UInt64) : Buf :=
+  let cm := (if 0 < m then (if m < 4 then 1 else 0) else 0);
+  let dm := (if 7 < m then m else if cm == 1 then 2 else 0);
+  if bget r p == 3 then e66 2 a (p + 2) 2 dm
+  else if bget r p == 4 then
+    (let k2 := bget a (3 * (p + 2));
+     let a1 := e66 2 a (bget a (3 * k2)) 2 dm;
+     if m == 0 then e66 2 a1 (p + 2) 2 0
+     else if e73 a1 (p + 2) == 1 then
+       (if e73 a1 k2 == 1 then bset (bset a1 (3 * (p + 2) + 1) (10 + p)) (3 * k2 + 1) (10 + p) else e66 2 a1 (p + 2) 2 2)
+     else e66 2 a1 (p + 2) 2 2)
+  else if bget r p == 5 then
+    (let a1 := bset (bset (bset a (3 * (bget a (3 * (p + 3))) + 1) m) (3 * (p + 1) + 1) 0) (3 * (p + 2) + 1) 0;
+     if m == 0 then bset a1 (3 * (p + 3) + 1) 0
+     else if bget r (p + 3) == 6 then bset a1 (3 * (p + 3) + 1) 4
+     else if e73 a1 (p + 3) == 1 then bset (bset a1 (3 * (p + 3) + 1) (11 + p)) (3 * (p + 1) + 1) (11 + p)
+     else bset a1 (3 * (p + 3) + 1) 1)
+  else if bget r p == 6 then
+    (if m == 4 then e67 4 a (p + 2) (bget r (p + 1)) (p - 2) else e66 1048576 a (p + 2) (bget r (p + 1)) dm)
+  else if bget r p == 8 then
+    (if cm == 1 then
+      (if 0 < bget r (p + 2) then
+        (let y := bget a (3 * (p + 3));
+         e66 1048576 (bset a (3 * (p + 3) + 1) (if bget g (bget f (4 * (bget r (p + 1)) + 1)) == 8 then 3 else 2)) y ((bget r (p + 2)) - 1) 2)
+       else a)
+     else e66 1048576 a (p + 3) (bget r (p + 2)) 0)
+  else if bget r p == 9 then e66 8 a (p + 2) (e31 (bget r (p + 1))) dm
+  else if bget r p == 10 then e66 2 a (p + 1) 2 dm
+  else if bget r p == 11 then e66 1 a (p + 1) 1 dm
+  else a
+
+/-- pass B over the nodes from p (body end z): a node in a demand mode that is literal-only starts its group -/
+def e64 : Nat → Buf → Buf → Buf → Buf → UInt64 → UInt64 → Buf
+  | 0, r, f, g, a, p, z => a
+  | n + 1, r, f, g, a, p, z =>
+    if p < z then
+      (let m0 := bget a (3 * p + 1);
+       let c := (if 0 < m0 then (if m0 < 4 then e73 a p else 0) else 0);
+       let m := (if c == 1 then 8 + p else m0);
+       let a1 := (if c == 1 then (if m0 == 2 then bset a (3 * (p + 1)) 1 else a) else a);
+       e64 n r f g (e65 r f g (bset a1 (3 * p + 1) m) p m) (p + e30 r p) z)
+    else a
+
+/-- one (slot s, group g) record: s is in a group; a marked group marks s and back (ch = 1: a change) -/
+def e68 (a l : Buf) (s g ch : UInt64) : Buf × (Buf × UInt64) :=
+  let b := bget l 3 + 4 * s;
+  let l1 := bset l (b + 1) 1;
+  let u := bget a (3 * (g + 1));
+  let mk := bget l1 (b + 2);
+  if (u ||| mk) == 1 then
+    (if (u &&& mk) == 1 then (a, (l1, ch)) else (bset a (3 * (g + 1)) 1, (bset l1 (b + 2) 1, 1)))
+  else (a, (l1, ch))
+
+/-- one sweep over the records of the nodes from p -/
+def e69 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf × (Buf × UInt64)
+  | 0, r, a, l, p, z, ch => (a, (l, ch))
+  | n + 1, r, a, l, p, z, ch =>
+    if p < z then
+      (if bget r p == 2 then
+        (if 7 < bget a (3 * p + 1) then
+          (let (a1, y) := e68 a l (bget r (p + 1)) ((bget a (3 * p + 1)) - 8) ch;
+           let (l1, ch1) := y;
+           e69 n r a1 l1 (p + 3) z ch1)
+         else e69 n r a l (p + 3) z ch)
+       else if bget r p == 5 then
+        (let (a1, y) := (if 7 < bget a (3 * (p + 1) + 1) then e68 a l (bget r (p + 1)) ((bget a (3 * (p + 1) + 1)) - 8) ch else (a, (l, ch)));
+         let (l1, ch1) := y;
+         let (a2, y1) := (if 7 < bget a1 (3 * (p + 2) + 1) then e68 a1 l1 ((bget r (p + 1)) + 1) ((bget a1 (3 * (p + 2) + 1)) - 8) ch1 else (a1, (l1, ch1)));
+         let (l2, ch2) := y1;
+         e69 n r a2 l2 (p + 3) z ch2)
+       else e69 n r a l (p + e30 r p) z ch)
+    else (a, (l, ch))
+
+/-- sweeps until nothing changes -/
+def e77 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → Buf × Buf
+  | 0, r, a, l, p, z => (a, l)
+  | n + 1, r, a, l, p, z =>
+    let (a1, y) := e69 1073741824 r a l p z 0;
+    let (l1, ch) := y;
+    if ch == 0 then (a1, l1) else e77 n r a1 l1 p z
+
 /-- def i at IR position p (tag 20): (h, (s, (a, (l, (c, (n, (next p, o))))))) -/
 def e58 (x : List UInt8) (r t f g h s a l : Buf) (i p c n : UInt64) (o : List UInt8) : Buf × (Buf × (Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × List UInt8)))))) :=
   let m := bget f (4 * i + 2);
-  let l1 := e52 1048576 g h (bset (bset (bset (e51 1073741824 l 0 (8 + 3 * bget r (p + 3))) 1 (m + 1)) 2 i) 0 0) (bget f (4 * i + 1)) 0 m 0;
-  let (s0, y) := e38 r t s a (p + 6) 0 c n;
+  let ns := bget r (p + 3);
+  let l1 := e52 1048576 g h (bset (bset (bset (bset (bset (e51 1073741824 l 0 (8 + 7 * (ns + 1))) 1 (m + 1)) 2 i) 0 0) 3 (8 + 3 * (ns + 1))) 4 0) (bget f (4 * i + 1)) 0 m 0;
+  let (sA, yA) := e38 r t s a (p + 6) 0 c n;
+  let (aA, yA1) := yA;
+  let (cA, nA) := yA1;
+  let (sB, zA) := e37 1073741824 r t f (p + 6 + e30 r (p + 6)) sA 2 aA l1 h cA nA;
+  let (aB, zA1) := zA;
+  let (lB, zA2) := zA1;
+  let (hB, zA3) := zA2;
+  let zb := bget aB (3 * (p + 6));
+  let aC := e64 1073741824 r f g (bset aB (3 * (p + 6) + 1) 2) (p + 6) zb;
+  let (aD, lD) := e77 1048576 r aC lB (p + 6) zb;
+  let (s0, y) := e38 r t sB aD (p + 6) 0 c n;
   let (a0, y1) := y;
   let (c0, n0) := y1;
-  let (s1, z) := e37 1073741824 r t f (p + 6 + e30 r (p + 6)) s0 2 a0 l1 h c0 n0;
+  let (s1, z) := e37 1073741824 r t f (p + 6 + e30 r (p + 6)) s0 2 a0 (bset lD 4 1) hB c0 n0;
   let (a1, z1) := z;
   let (l2, z2) := z1;
   let (h1, z3) := z2;
@@ -503,7 +687,7 @@ def e55 : Nat → List UInt8 → Buf → Buf → Buf → Buf → Buf → Buf →
     else o
 
 def e99 (x : List UInt8) : List UInt8 :=
-  let r := y16 (s10 x);
+  let r := u10 (y16 (s10 x));
   if bsize r == 0 then e2 4 x [] 46 0 else
   let t := s10 x;
   let (f, z) := e27 16777216 t 0 bnew bnew (bpush bnew 0) (bpush bnew 2000);
