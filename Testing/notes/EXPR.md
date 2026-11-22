@@ -282,3 +282,6 @@ rejected until bignum lands. This REPLACES the "reject literal-only" rules of SY
   `natList_eq`). C's slot lists are data (`ExprC.natC`), checked against `natList` in CNat (`natC_ok`; the class
   analysis needs ~8.5 GB in the kernel, so it has its own module), so `emitC_spec : emitAll … = some oC`.
   `C_expr` uses `eval_emitL`. check_E: byte-equal on C (338), E (281), examples (19), fuzz seeds 1–3 (300 + 2×1000).
+* **ENDPOINT, SYNTAX-EXP cd63793c** (341 defs; u40/u61/u76 split): Lean side via `eq_def` for every def: **341/341**
+  match; `C_lean_all`, `natC_ok`/`emitC_spec`, `C_expr` build locally (standard axioms); check_E: E.bin (284 defs,
+  sha256 f7b79e79…) = emitSpec on C (341), E (284), examples (19), fuzz seed 1 (300).
