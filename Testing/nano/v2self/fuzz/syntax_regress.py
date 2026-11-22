@@ -76,6 +76,24 @@ CASES += [
     ('N fuel literal reused as UInt64', F + 'def m (x : List UInt8) : List UInt8 := let k := 3; put [] (f k x k)\n', False),
     ('N literal shift operand', 'def g (n : UInt64) : UInt64 := n + (1 <<< 3)\n' + M, False),
 ]
+T = 'def g (n : UInt64) : UInt64 := n\ndef t (x : List UInt8) (c : UInt64) : UInt64 := '
+CASES += [(n, T + s + '\n' + M, ok) for n, s, ok in [  # GAP1: literal then-branch, "post" else-branch, untyped position
+    ('G1 if literal/shift as a let value', 'let q := (if c == 0 then 97 else (c >>> 2)); q', False),
+    ('G1 if literal/shift as a tuple field', 'let (p, q) := (1, if c == 0 then 97 else (c >>> 2)); q', False),
+    ('G1 if literal/shift-tree as a let value', 'let q := (if c == 0 then 97 else ((c >>> 2) + c)); q', False),
+    ('G1 if literal/nested-if shift', 'let q := (if c == 0 then 97 else (if c == 1 then c >>> 2 else c)); q', False),
+    ('G1 if literal/let-shift', 'let q := (if c == 0 then 97 else (let w := c; w >>> 2)); q', False),
+    ('G1 if literal/shift as an operand', 'let q := (if c == 0 then 97 else (c >>> 2)) + c; q', False),
+    ('G1 if shift/literal as a let value', 'let q := (if c == 0 then (c >>> 2) else 97); q', True),
+    ('G1 if literal/plain as a let value', 'let q := (if c == 0 then 97 else c + 1); q', True),
+    ('G1 if literal/nested-if plain then', 'let q := (if c == 0 then 97 else (if c == 1 then c else c >>> 2)); q', True),
+]] + [(n, T + s + '\n' + M, ok) for n, s, ok in [  # GAP2: a slot typed late is the left operand of a shift
+    ('G2 let with a spine let, left of a shift', 'let v := (let (p, q) := (c, c); p ||| 5); v >>> 2', False),
+    ('G2 tuple field with a spine let, left of a shift', 'let (a, b) := ((let (p, q) := (c, c); p ||| 5), 1); a >>> 2', False),
+    ('G2 let with a spine let, shift inside a sum', 'let v := (let (p, q) := (c, c); p ||| 5); (v >>> 2) + 1', False),
+    ('G2 let with a spine let, plain use', 'let v := (let (p, q) := (c, c); p ||| 5); v + 1', True),
+    ('G2 let with a spine let, compared', 'let v := (let (p, q) := (c, c); p ||| 5); if v == 1 then 2 else 3', True),
+]]
 REJ_NANO_ONLY += [  # Lean computes these in Nat (3 - 4 = 0, bignum arithmetic): nano rejects Nat arithmetic
     ('M1 literal arithmetic in a comparison', 'def g (n : UInt64) : UInt64 := if 3 - 4 == 0 then 1 else 2\n' + M),
     ('N Nat arithmetic on literals', F + 'def m (x : List UInt8) : List UInt8 := put [] (f (2 + 1) x 0)\n'),

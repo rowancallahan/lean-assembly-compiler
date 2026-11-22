@@ -182,11 +182,16 @@ def lateOk (f : Nat) (e : Nd) : Bool :=
     | .bin op (.loc s _) _ => !(isShift op && ((nodes f e).flatMap (late f)).contains s)
     | _ => true
 
+/-- a def's slot groups and shape verdict (`ks`, `ws`: each def's kind and result width) -/
+def colD (ks ws : List Nat) (df : DefA) : List G × Bool := col (2 ^ 24) ks ws [] 1 df.body
+/-- the slots of a def's groups forced to numeral class `d` (1: UInt64, 2: Nat) -/
+def markD (d : Nat) (gs : List G) (df : DefA) : List Nat := marked d gs (df.nslots + 1) []
+
 /-- **one def's numerals mean what Lean's mean** (`ks`, `ws`: each def's kind and result width) -/
 def numOkD (ks ws : List Nat) (df : DefA) : Bool :=
-  let (gs, shape) := col (2 ^ 24) ks ws [] 1 df.body
-  let u := marked 1 gs (df.nslots + 1) []
-  let n := marked 2 gs (df.nslots + 1) []
+  let (gs, shape) := colD ks ws df
+  let u := markD 1 gs df
+  let n := markD 2 gs df
   shape && lateOk (2 ^ 24) df.body && gs.all fun g =>
     let isU := g.d == 1 || g.vs.any u.contains
     let isN := g.d == 2 || g.vs.any n.contains
@@ -194,5 +199,15 @@ def numOkD (ks ws : List Nat) (df : DefA) : Bool :=
 
 /-- **the program's numerals mean what Lean's mean** -/
 def numOkP (p : List DefA) : Bool := p.all (numOkD (p.map (·.kind)) (p.map (·.nres)))
+
+/-- slot `s` of a def has numeral class Nat: it is in a group, and no UInt64 evidence reaches it -/
+def slotNat (ks ws : List Nat) (df : DefA) (s : Nat) : Bool :=
+  let gs := (colD ks ws df).1
+  gs.any (·.vs.contains s) && !(markD 1 gs df).contains s
+/-- `slotNat` for slot `s` of def `i` of program `p` -/
+def slotNatP (p : List DefA) (i s : Nat) : Bool :=
+  match p[i]? with
+  | some df => slotNat (p.map (·.kind)) (p.map (·.nres)) df s
+  | none => false
 
 end NumSpec

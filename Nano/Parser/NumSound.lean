@@ -115,7 +115,60 @@ theorem u61_ok {x d : Buf} {ks ws : List Nat} (hK : LK x d ks ws) : ∀ (n : Nat
     generalize u57 16777216 y2 0 (u df.nslots) = Z at h z0
     obtain ⟨f0, k0⟩ := Z
     dsimp only at h z0
-    all_goals sorry
+    by_cases hk0 : k0 = 1
+    rotate_left
+    · rw [if_neg (by simpa using hk0)] at h; exact absurd h (by decide)
+    subst hk0
+    rw [if_pos (keq rfl)] at h
+    obtain ⟨-, hf0, -⟩ := z0 rfl
+    have hf0' : f0.length < 2 ^ 62 := by have := hB.sc.2.2; omega
+    have hbody : df.body.ser.length ≤ 2 ^ 24 := by simp [DefA.ser] at hcl; omega
+    have hlate := late_ok (np := df.npw) hxl hx6 hnbd hbody (by omega) hB.sc.2.1 hf0'
+    have hm73 := u73_ok (np := df.npw) hxl (2 ^ 24) 16777216 [df.body] ([21] ++ q.flatMap DefA.ser) (i + 6) f0 y1
+      (by simpa [serL] using hx6) (by simpa using ⟨hnbd, hbody⟩) (by omega) hB.sc.2.1 hf0'
+    have hmono := u73_mono (x := x) 16777216 f0 y1 (u (i + 6)) 1
+    rw [e6] at h
+    generalize u73 16777216 x f0 y1 (u (i + 6)) 1 = M at h hlate hm73 hmono
+    obtain ⟨f1, w1, k1⟩ := M
+    dsimp only at h hlate hm73 hmono
+    by_cases hk1 : k1 = 1
+    rotate_left
+    · rw [if_neg (by simpa using hk1)] at h; exact absurd h (by decide)
+    subst hk1
+    rw [if_pos (keq rfl)] at h
+    have hm1 := (hm73 rfl).2
+    simp only at hm1
+    by_cases h74 : u74 16777216 x f1 (u (i + 6)) 1 = 1
+    rotate_left
+    · rw [if_neg (by simpa using h74)] at h; exact absurd h (by decide)
+    rw [if_pos (by rw [h74]; rfl)] at h
+    have hL := hlate rfl h74
+    have hB' : BI b t g s y w1 f1 := ⟨hB.lb, hB.lt, hB.lg, hB.ls, ⟨hB.sc.1, hm1, by rw [hmono.1]; exact hf0'⟩⟩
+    have hd := def_ok hK (hdb df (by simp)) hx1 hi hB' hgA
+    rw [hx3, e6] at hd
+    generalize u48 x d (u (i + 6)) (u df.nslots) b t g s y w1 f1 = W at h hd
+    obtain ⟨e, g1, b1, t1, s1, y5, ok, f2, h2⟩ := W
+    iota_only at h
+    by_cases hok : ok = 1
+    · subst hok
+      obtain ⟨he, hnum, A', hg1, hB1⟩ := hd rfl
+      simp only at he hg1 hB1
+      subst he
+      rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at h
+      by_cases h21 : (bget x (u (i + 6 + df.body.ser.length)) == 21) = true
+      · rw [if_pos h21] at h
+        have e1 : u (i + 6 + df.body.ser.length) + 1 = u (i + df.ser.length) := by
+          rw [u1, uadd, ser_def_len]; congr 1; omega
+        rw [e1] at h
+        have ih := u61_ok hK n q _ b1 t1 g1 s1 f2 h2 y5 A' hx2 (fun d hd => hdb d (by simp [hd])) (by omega) hB1 hg1 h
+        intro df' hdf'
+        simp at hdf'; rcases hdf' with rfl | hdf'
+        · rw [numOkD_eq]; rw [numC] at hnum
+          simp only [Bool.and_eq_true] at hnum ⊢
+          exact ⟨⟨hnum.1, hL⟩, hnum.2⟩
+        · exact ih df' hdf'
+      · rw [if_neg h21] at h; exact absurd h (by decide)
+    · rw [if_neg (by simpa using hok)] at h; exact absurd h (by decide)
 
 theorem len_le_ser : ∀ p : List DefA, p.length ≤ (p.flatMap DefA.ser).length
   | [] => by simp

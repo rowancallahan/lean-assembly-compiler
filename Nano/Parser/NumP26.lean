@@ -16,7 +16,7 @@ theorem numOkD_eq (ks ws : List Nat) (df : DefA) : NumSpec.numOkD ks ws df =
       (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1.all
         (gspec (NumSpec.marked 1 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) [])
           (NumSpec.marked 2 (NumSpec.col (2 ^ 24) ks ws [] 1 df.body).1 (df.nslots + 1) []))) := by
-  unfold NumSpec.numOkD
+  unfold NumSpec.numOkD NumSpec.colD NumSpec.markD
   generalize NumSpec.col (2 ^ 24) ks ws [] 1 df.body = R
   obtain ⟨gs, sh⟩ := R
   rfl

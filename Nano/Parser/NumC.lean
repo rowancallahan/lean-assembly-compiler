@@ -714,28 +714,32 @@ def u74 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
           else u74 n x f i1 k1)
        else u74 n x f i1 k1)
 
+-- the late-slot check of the def at i (1): clear y2's slot marks, mark the late slots, check the shifts
+def u79 (x y1 y2 : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
+  let (f0, k0) := u57 16777216 y2 0 (bget x (i + 3));
+  if k0 == 1 then
+    (let (f1, z0) := u73 16777216 x f0 y1 (i + 6) 1;
+     let (w1, k1) := z0;
+     if k1 == 1 then (let k := u74 16777216 x f1 (i + 6) 1; (f1, (w1, k))) else (f1, (w1, 0)))
+  else (f0, (y1, 0))
+
 -- every def from i (b, t, g, s, y, y1, y2: the buffers, allocated once)
 def u61 : Nat → Buf → Buf → UInt64 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64
   | 0, x, d, i, b, t, g, s, y, y1, y2 => 0
   | n + 1, x, d, i, b, t, g, s, y, y1, y2 =>
     if i < bsize x then
-      (let (f0, k0) := u57 16777216 y2 0 (bget x (i + 3));
-       let (f1, z0) := u73 16777216 x f0 y1 (i + 6) 1;
+      (let (f1, z0) := u79 x y1 y2 i;
        let (w1, k1) := z0;
-       if k0 == 1 then
-         (if k1 == 1 then
-           (if u74 16777216 x f1 (i + 6) 1 == 1 then
-             (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y w1 f1;
-              let (g1, z1) := z;
-              let (b1, z2) := z1;
-              let (t1, z3) := z2;
-              let (s1, z4) := z3;
-              let (y5, z5) := z4;
-              let (ok, z6) := z5;
-              let (y3, y4) := z6;
-              if ok == 1 then (if bget x e == 21 then u61 n x d (e + 1) b1 t1 g1 s1 y3 y4 y5 else 0) else 0)
-            else 0)
-          else 0)
+       if k1 == 1 then
+         (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y w1 f1;
+          let (g1, z1) := z;
+          let (b1, z2) := z1;
+          let (t1, z3) := z2;
+          let (s1, z4) := z3;
+          let (y5, z5) := z4;
+          let (ok, z6) := z5;
+          let (y3, y4) := z6;
+          if ok == 1 then (if bget x e == 21 then u61 n x d (e + 1) b1 t1 g1 s1 y3 y4 y5 else 0) else 0)
        else 0)
     else 1
 
