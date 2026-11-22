@@ -2,7 +2,7 @@
 # check_E.sh [SEED] [N] : the self-hosted Expr emitter. Builds E's text (build_E.py), compiles it with the committed
 # self-compiled C (B2.bin on qemu-riscv64 + shim_rv), runs E.bin on C's source, E's own text, the examples and N fuzz
 # programs (nanogen.py SEED), and checks expand.py(E.bin's output) = the reference emitSpec (emit_ref.lean), byte for
-# byte (rejections included). Then the spot check (run_check.py) on E's own text. Exit 1 on any difference.
+# byte (rejections included). Then (unless SPOT=0) the spot check (run_check.py) on E's own text. Exit 1 on any difference.
 set -euo pipefail
 D=$(cd "$(dirname "$0")" && pwd); R=$(cd "$D/../../.." && pwd); V=$R/Testing/nano/v2self; W=$(mktemp -d); cd "$R"
 QRV=$(command -v qemu-riscv64-static || command -v qemu-riscv64)
@@ -33,4 +33,5 @@ cmpset C $V/self_S_input.txt
 cmpset E $W/E.src
 cmpset examples $W/set/ex/*.src
 cmpset fuzz $W/set/fz/*.src
+[ "${SPOT:-1}" = 0 ] && exit 0  # SPOT=0: byte equality only
 echo "spot check of E's own text:"; $D/run_check.py $W/E.src | tail -3

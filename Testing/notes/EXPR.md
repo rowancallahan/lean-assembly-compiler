@@ -255,3 +255,24 @@ rejected until bignum lands. This REPLACES the "reject literal-only" rules of SY
   only (a separate SYNTAX-EXP item).
 * `check_E.sh`: E.bin = emitSpec byte for byte on C, E, examples, fuzz. `eval_emit`/`C_expr` build with
   standard axioms. `selfhost_gate.sh` PASS. `regress_fuzz.py`: no regression except programs Lean rejects.
+
+## 8. Nat classes, implemented (round 1 endpoint; on SYNTAX-EXP's NumSpec)
+* **emitSpec** (`ExprSpec.lean`): `Cx.nat s` = `NumSpec.slotNat ks ws da s` (`natOf`, `natOf_eq : … := rfl`).
+  `natE`: literal-only term of class Nat (literals; slots whose binder is `.nt`; `if` branches; `let` bodies).
+  A single `let` of a Nat slot whose value is `natE` binds a Nat: value at expected `.nt`, binder `.nt`.
+  A comparison whose operands are both `natE` is a Nat comparison (`BEq Nat` / `instDecidableEqNat`, `instLTNat` /
+  `Nat.decLt`, the same leading-`have` drop as `UInt64.decLt`). Rejected (`none`): a tuple value with a Nat-class
+  literal field. `emitXs` checks `NumSpec.numOkP` (`num`), as the compiler's meaning (`pOf`) does.
+* **Proof**: `EvB.eqN` / `EvB.ltN` (Lean's `==` / `<` on Nat values); `cond_ev` covers both operand kinds through
+  `nv n x`. `ite_ok` and `let_ok` were re-proved; `eval_emit` takes `ks ws` and has no new hypotheses.
+* **E** (`Emit.lean`, plain bootstrap-subset code, no proof of E = emitSpec in general: ROADMAP). Per def:
+  run A of pass 1 computes the literal-only flags (a[3p+2] bit 4) and the per-slot literal env (tuple words, slot
+  copies). Pass B is one pre-order sweep with modes (none, demand d, tuple-`let` value, in literal group g). It
+  records (slot, group) pairs on `loc` nodes and on `let` header words, and marks demand-UInt64 groups. The closure
+  repeats sweeps until marks stop changing. Run 2 of pass 1 sets natE (bit 8), Nat comparison (ite bit 1) and Nat
+  `let` (bit 2, slot shape 4); pass 2 reads them (4 new phrases 48–51). E's driver adds `u10` (NumC, with Gen's `g33`).
+  The algorithm was first prototyped over `Nd` (`Testing/nano/expr/natslots.lean`): it equals `slotNat` on every
+  slot of C, the examples and 3300 fuzz programs (seeds 1–4).
+* **Validation**: `check_E.sh`: E.bin = emitSpec byte for byte on C (335 defs), E (279), examples (19) and fuzz.
+  `spot_check.sh` on SYNTAX-EXP's C (u40/u61 via PREDEFS until their split): C 335/335, examples 19/19, fuzz
+  seed 1: 833 match, 13 literal-typing (NumSpec vs Lean), 83 lean-rejects, 0 other.
