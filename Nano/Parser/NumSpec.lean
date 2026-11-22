@@ -13,8 +13,9 @@ numeral the same meaning:
   larger numerals), where the word values agree with Lean's Nat.
 * ELABORATION ORDER (shape rules, Testing/notes/SYNTAX_EXP.md "B"): Lean postpones `match`, which after desugaring is
   a let; so no let on the result spine (if branches, let bodies) of an operator, comparison or shift-left operand
-  (LEAN_DIFF M15, M16); no literal operand left of a shift in an operator tree or comparison (M12); and where no type is
-  expected, no `if` with a literal branch and a let branch. -/
+  (LEAN_DIFF M15, M16); no literal operand left of a shift in an operator tree or comparison (M12); where no type is
+  expected (a let value or tuple field, an operand), no `if` with a literal branch and a branch that waits (`mixIte`);
+  and no slot bound to a value with a let on its result spine left of a shift (`lateOk`). -/
 import Nano.Parser.ParSpec
 namespace NumSpec
 open ParSpec
@@ -47,6 +48,20 @@ def spineLet : Nat → Nd → Bool
   | f + 1, .ite _ _ _ t e => spineLet f t || spineLet f e
   | _ + 1, _ => false
 
+/-- a shift, or what Lean elaborates after one: an operator tree with such a leaf, an `if` with such a then-branch, a
+let with such a body -/
+def post : Nat → Nd → Bool
+  | f + 1, .bin op a b => isShift op || post f a || post f b
+  | f + 1, .ite _ _ _ t _ => post f t
+  | f + 1, .letE _ _ _ b => post f b
+  | _, _ => false
+
+/-- an `if` Lean cannot type where no type is expected: one branch literal-only, the other waits (a let on its
+result spine; for the else-branch also `post`) -/
+def mixIte (f : Nat) (ws : List Nat) (env : List Bool) : Nd → Bool
+  | .ite _ _ _ t e => (isL f ws env t && (spineLet f e || post f e)) || (isL f ws env e && spineLet f t)
+  | _ => false
+
 /-- the operands of the operator tree at `e` (non-shift operators are inner nodes) -/
 def leaves : Nat → Nd → List Nd
   | f + 1, .bin op a b => if isShift op then [.bin op a b] else leaves f a ++ leaves f b
@@ -54,7 +69,7 @@ def leaves : Nat → Nd → List Nd
 
 /-- the order and spine rules for the operands `ls` of one operator tree or comparison -/
 def shapeOk (f : Nat) (ws : List Nat) (env : List Bool) (ls : List Nd) : Bool :=
-  !ls.any (spineLet f) &&
+  !ls.any (spineLet f) && !ls.any (mixIte f ws env) &&
   !(List.range ls.length).any fun j =>
     (match ls.getD j (.const 0) with | .bin op _ _ => isShift op | _ => false) &&
     (ls.take j).any (isL f ws env)
@@ -97,13 +112,15 @@ def col : Nat → List Nat → List Nat → List Bool → Nat → Nd → R
       (⟨i.1, d, i.2⟩ :: r.1, r.2)
     else match e with
     | .bin op a b =>
-      if isShift op then R.app ([], !isL f ws env a && !spineLet f a) ((col f ks ws env 1 a).app (col f ks ws env 1 b))
+      if isShift op then
+        R.app ([], !isL f ws env a && !spineLet f a && !mixIte f ws env a && !mixIte f ws env b)
+          ((col f ks ws env 1 a).app (col f ks ws env 1 b))
       else
         let ls := leaves f e
         R.app ([], shapeOk f ws env ls) (ls.attach.foldr (fun ⟨l, _⟩ r => (col f ks ws env 1 l).app r) R.ok)
-    | .ite _ a b t e =>
-      let r5 := !(d == 0 && ((isL f ws env t && spineLet f e) || (isL f ws env e && spineLet f t)))
-      R.app ([], r5) ((cmpG f ks ws env a b).app ((col f ks ws env 1 t).app (col f ks ws env 1 e)))
+    | .ite c a b t el =>
+      R.app ([], !(d == 0 && mixIte f ws env (.ite c a b t el)))
+        ((cmpG f ks ws env a b).app ((col f ks ws env 1 t).app (col f ks ws env 1 el)))
     | .letE s w v b => (letG f ks ws env s w v).app (col f ks ws (setW env s (lw f ws env v)) d b)
     | .pair cs => cs.attach.foldr (fun ⟨c, _⟩ r => (col f ks ws env 1 c).app r) R.ok
     | .call id as => as.zipIdx.attach.foldr (fun ⟨(a, i), _⟩ r =>
@@ -132,7 +149,7 @@ def letG : Nat → List Nat → List Nat → List Bool → Nat → Nat → Nd �
         (if isL f ws env c then
           let (ic, rc) := litG f ks ws env c
           (⟨(s + i) :: ic.1, 0, ic.2⟩ :: rc.1, rc.2)
-        else col f ks ws env 1 c).app r) R.ok
+        else col f ks ws env 0 c).app r) R.ok
     | _ =>
       if isL f ws env v then
         let (iv, rv) := litG f ks ws env v
@@ -146,12 +163,31 @@ def marked (d : Nat) (gs : List G) : Nat → List Nat → List Nat
   | 0, m => m
   | n + 1, m => marked d gs n (m ++ (gs.filter fun g => g.d == d || g.vs.any m.contains).flatMap (·.vs))
 
+/-- the nodes of `e`, pre-order -/
+def nodes : Nat → Nd → List Nd
+  | 0, _ => []
+  | f + 1, e => e :: (match e with
+    | .bin _ a b => [a, b] | .ite _ a b t e => [a, b, t, e] | .letE _ _ v b => [v, b] | .pair cs => cs
+    | .call _ as => as | .prim _ as => as | .loop z s => [z, s] | .cont e => [e] | _ => []).flatMap (nodes f)
+
+/-- the slots a let binds to a value (per tuple field) with a let on its result spine: Lean types them late -/
+def late (f : Nat) : Nd → List Nat
+  | .letE s _ (.pair cs) _ => (cs.zipIdx.filter fun (c, _) => spineLet f c).map fun (_, i) => s + i
+  | .letE s w v _ => if spineLet f v then (List.range w).map (s + ·) else []
+  | _ => []
+
+/-- no late slot is the left operand of a shift -/
+def lateOk (f : Nat) (e : Nd) : Bool :=
+  (nodes f e).all fun
+    | .bin op (.loc s _) _ => !(isShift op && ((nodes f e).flatMap (late f)).contains s)
+    | _ => true
+
 /-- **one def's numerals mean what Lean's mean** (`ks`, `ws`: each def's kind and result width) -/
 def numOkD (ks ws : List Nat) (df : DefA) : Bool :=
   let (gs, shape) := col (2 ^ 24) ks ws [] 1 df.body
   let u := marked 1 gs (df.nslots + 1) []
   let n := marked 2 gs (df.nslots + 1) []
-  shape && gs.all fun g =>
+  shape && lateOk (2 ^ 24) df.body && gs.all fun g =>
     let isU := g.d == 1 || g.vs.any u.contains
     let isN := g.d == 2 || g.vs.any n.contains
     !(isU && isN) && !(g.ar && !isU)

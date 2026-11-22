@@ -326,6 +326,288 @@ theorem u17_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) {e : Nd} {f q : Na
     rw [show (1 : UInt64) = u ([(e, f, q)] : List (Nd × Nat × Nat)).length from rfl]; simpa using this
   · simp only [hs, if_false]; refine ⟨hw, ?_⟩; simp
 
+theorem u15_zero' (x : Buf) : u15 x 0 = 0 := by
+  unfold u15; rw [if_pos (by decide)]
+
+/-- `u71`'s result word -/
+def U71 : Nat → Buf → Buf → UInt64 → UInt64
+  | 0, x, w, t => 2
+  | n + 1, x, w, t =>
+    if t == 0 then 0
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 3 then
+        (if u34 x q == 1 then 1
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then 2 else U71 n x (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1)))
+      else if g == 4 then
+        (let p := u15 x (u15 x (q + 2));
+         if p == 0 then 2 else U71 n x (u20 w (t - 1) p) t)
+      else if g == 5 then
+        (let p := u15 x (q + 3);
+         if p == 0 then 2 else U71 n x (u20 w (t - 1) p) t)
+      else U71 n x w (t - 1)
+
+theorem u71_snd (x : Buf) : ∀ (n : Nat) (w : Buf) (t : UInt64), (u71 n x w t).2 = U71 n x w t
+  | 0, w, t => rfl
+  | n + 1, w, t => by
+    unfold u71 U71
+    dsimp only
+    split
+    · rfl
+    · split
+      · split
+        · rfl
+        · split
+          · rfl
+          · exact u71_snd x n _ _
+      · split
+        · split
+          · rfl
+          · exact u71_snd x n _ _
+        · split
+          · split
+            · rfl
+            · exact u71_snd x n _ _
+          · exact u71_snd x n _ _
+
+theorem u71_len (x : Buf) : ∀ (n : Nat) (w : Buf) (t : UInt64), (u71 n x w t).1.length ≤ w.length + 2 * n
+  | 0, w, t => by simp [u71]
+  | n + 1, w, t => by
+    unfold u71
+    dsimp only
+    split
+    · simp
+    · split
+      · split
+        · simp
+        · split
+          · simp
+          · have h1 := u71_len x n (u20 (u20 w (t - 1) (u15 x (bget w (t - 1) + 2))) t (bget w (t - 1) + 2)) (t + 1)
+            have h2 := u20_len (u20 w (t - 1) (u15 x (bget w (t - 1) + 2))) t (bget w (t - 1) + 2)
+            have h3 := u20_len w (t - 1) (u15 x (bget w (t - 1) + 2))
+            omega
+      · split
+        · split
+          · simp
+          · have h1 := u71_len x n (u20 w (t - 1) (u15 x (u15 x (bget w (t - 1) + 2)))) t
+            have h2 := u20_len w (t - 1) (u15 x (u15 x (bget w (t - 1) + 2)))
+            omega
+        · split
+          · split
+            · simp
+            · have h1 := u71_len x n (u20 w (t - 1) (u15 x (bget w (t - 1) + 3))) t
+              have h2 := u20_len w (t - 1) (u15 x (bget w (t - 1) + 3))
+              omega
+          · have := u71_len x n w (t - 1); omega
+
+theorem U71_succ (n : Nat) (x w : Buf) (t : UInt64) : U71 (n + 1) x w t =
+    if t == 0 then 0
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 3 then
+        (if u34 x q == 1 then 1
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then 2 else U71 n x (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1)))
+      else if g == 4 then
+        (let p := u15 x (u15 x (q + 2));
+         if p == 0 then 2 else U71 n x (u20 w (t - 1) p) t)
+      else if g == 5 then
+        (let p := u15 x (q + 3);
+         if p == 0 then 2 else U71 n x (u20 w (t - 1) p) t)
+      else U71 n x w (t - 1) := rfl
+
+/-- `U71`: post of the nodes on the work stack (any) -/
+theorem U71_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) : ∀ (n : Nat) (ps : List (Nd × Nat × Nat)) (w : Buf),
+    ps.map (fun p => u p.2.2) <+: w → w.length + n < 2 ^ 40 → (∀ p ∈ ps, SP x np p) →
+    U71 n x w (u ps.length) = 2 ∨ U71 n x w (u ps.length) = w2 (ps.any fun p => NumSpec.post p.2.1 p.1)
+  | 0, _, _, _, _, _ => Or.inl rfl
+  | n + 1, ps, w, hw, hwl, hps => by
+    rcases List.eq_nil_or_concat ps with h0 | ⟨ps0, p, h0⟩
+    · subst h0; right; rw [U71_succ]; rfl
+    · rw [List.concat_eq_append] at h0; subst h0
+      have hl2 := hw.length_le; simp at hl2
+      obtain ⟨⟨r, hx⟩, hf, hnb, hc⟩ := hps p (by simp)
+      have hps0 : ∀ q ∈ ps0, SP x np q := fun q hq => hps q (by simp [hq])
+      have hcl := drop_len hx (ser_pos _)
+      have ht0 : (u (ps0 ++ [p]).length == 0) = false := by rw [u0, ueq (by simp; omega) (by omega)]; simp
+      have hp0 : ps0.map (fun p => u p.2.2) <+: w :=
+        (by simp : ps0.map (fun p => u p.2.2) <+: (ps0 ++ [p]).map (fun p => u p.2.2)).trans hw
+      rw [U71_succ, ht0]
+      simp only [Bool.false_eq_true, if_false]
+      rw [pop_rd hw (by omega), tag_rd hx (by omega)]
+      rw [List.length_append, List.length_singleton, upred _ (by omega)]
+      obtain ⟨e, f, q⟩ := p
+      simp only at hx hf hnb hc hcl ⊢
+      obtain ⟨f', rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by have := ser_pos e; omega⟩
+      -- the top replaced by one node (an if's then-branch, a let's body)
+      have hrep : ∀ (c : Nd) (pc : Nat) (rc : Buf), x.drop pc = c.ser ++ rc → c.ser.length ≤ f' → NB np c → 0 < pc →
+          NumSpec.post (f' + 1) e = NumSpec.post f' c →
+          U71 n x (u20 w (u ps0.length) (u pc)) (u (ps0.length + 1)) = 2 ∨
+          U71 n x (u20 w (u ps0.length) (u pc)) (u (ps0.length + 1)) =
+            w2 ((ps0 ++ [(e, f' + 1, q)]).any fun p => NumSpec.post p.2.1 p.1) := by
+        intro c pc rc hxc hfc hnc hpc he
+        obtain ⟨p1, l1⟩ := u20_push hp0 (by omega) (u pc)
+        simp only [List.length_map] at p1 l1
+        have e1 : u (ps0.length + 1) = u (ps0 ++ [(c, f', pc)]).length := by simp
+        have := U71_ok hxl n (ps0 ++ [(c, f', pc)]) _ (by simpa using p1) (by omega) (by
+          intro p hp
+          simp only [List.mem_append, List.mem_cons, List.mem_nil_iff, or_false] at hp
+          rcases hp with hp | rfl
+          · exact hps0 p hp
+          · exact ⟨⟨rc, hxc⟩, hfc, hnc, hpc⟩)
+        rcases this with h | h
+        · exact Or.inl h
+        · right; rw [h]; simp [List.any_append, he]
+      have hpop : ((hdr e).getD 0 0 == 3) = false → ((hdr e).getD 0 0 == 4) = false → ((hdr e).getD 0 0 == 5) = false →
+          NumSpec.post (f' + 1) e = false →
+          (if (hdr e).getD 0 0 == 3 then
+            (if u34 x (u q) == 1 then 1
+             else
+               (let e2 := u15 x (u q + 2);
+                if e2 == 0 then 2 else U71 n x (u20 (u20 w (u ps0.length) e2) (u (ps0.length + 1)) (u q + 2))
+                  (u (ps0.length + 1) + 1)))
+          else if (hdr e).getD 0 0 == 4 then
+            (let p := u15 x (u15 x (u q + 2));
+             if p == 0 then 2 else U71 n x (u20 w (u ps0.length) p) (u (ps0.length + 1)))
+          else if (hdr e).getD 0 0 == 5 then
+            (let p := u15 x (u q + 3);
+             if p == 0 then 2 else U71 n x (u20 w (u ps0.length) p) (u (ps0.length + 1)))
+          else U71 n x w (u ps0.length)) = 2 ∨
+          (if (hdr e).getD 0 0 == 3 then
+            (if u34 x (u q) == 1 then 1
+             else
+               (let e2 := u15 x (u q + 2);
+                if e2 == 0 then 2 else U71 n x (u20 (u20 w (u ps0.length) e2) (u (ps0.length + 1)) (u q + 2))
+                  (u (ps0.length + 1) + 1)))
+          else if (hdr e).getD 0 0 == 4 then
+            (let p := u15 x (u15 x (u q + 2));
+             if p == 0 then 2 else U71 n x (u20 w (u ps0.length) p) (u (ps0.length + 1)))
+          else if (hdr e).getD 0 0 == 5 then
+            (let p := u15 x (u q + 3);
+             if p == 0 then 2 else U71 n x (u20 w (u ps0.length) p) (u (ps0.length + 1)))
+          else U71 n x w (u ps0.length)) = w2 ((ps0 ++ [(e, f' + 1, q)]).any fun p => NumSpec.post p.2.1 p.1) := by
+        intro h3 h4 h5 hpo
+        simp only [h3, h4, h5, Bool.false_eq_true, if_false]
+        have := U71_ok hxl n ps0 w hp0 (by omega) hps0
+        simpa [List.any_append, hpo] using this
+      cases e with
+      | bin op a b =>
+        simp only [hdr, List.getD_cons_zero, show ((3 : UInt64) == 3) = true from rfl, if_true]
+        rw [u34_ok hx (by omega) hnb]
+        by_cases hsh : NumSpec.isShift op
+        · right; simp only [shN, hsh, w2, if_true, show ((1 : UInt64) == 1) = true from rfl]
+          simp [List.any_append, NumSpec.post, hsh]
+        · simp only [shN, hsh, w2, show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
+          simp only [NB] at hnb
+          obtain ⟨-, hna, hnb1⟩ := hnb
+          have hx2 : x.drop (q + 2) = a.ser ++ (b.ser ++ r) := by
+            have h0 : x.drop q = [3, u op] ++ (a.ser ++ (b.ser ++ r)) := by rw [hx]; simp [Nd.ser, toU]
+            simpa using drop_shift h0
+          have hx3 := drop_shift hx2
+          have hf' : a.ser.length ≤ f' ∧ b.ser.length ≤ f' := by simp [Nd.ser] at hf; omega
+          have hsl : (Nd.bin op a b).ser.length = 2 + a.ser.length + b.ser.length := by simp [Nd.ser]; omega
+          rw [show u q + 2 = u (q + 2) by rw [u2, uadd]]
+          rcases u15_ok (by omega) hx2 hna with h0 | ⟨h1, -⟩
+          · left; rw [h0]; rfl
+          rw [h1]
+          have hne0 : (u (q + 2 + a.ser.length) == 0) = false := by
+            rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
+          simp only [hne0, Bool.false_eq_true, if_false]
+          obtain ⟨p1, l1⟩ := u20_push hp0 (by omega) (u (q + 2 + a.ser.length))
+          simp only [List.length_map] at p1 l1
+          obtain ⟨p2, l2⟩ := u20_push (vs := (ps0 ++ [(b, f', q + 2 + a.ser.length)]).map (fun p => u p.2.2))
+            (by simpa using p1) (by omega) (u (q + 2))
+          simp only [List.length_map, List.length_append, List.length_singleton] at p2 l2
+          have e2 : u (ps0.length + 1) + 1 = u (ps0 ++ [(b, f', q + 2 + a.ser.length), (a, f', q + 2)]).length := by
+            simp [u1, uadd]
+          have e1 : u ps0.length + 1 = u (ps0.length + 1) := by rw [u1, uadd]
+          rw [e2]
+          have ih := U71_ok hxl n (ps0 ++ [(b, f', q + 2 + a.ser.length), (a, f', q + 2)]) _ (by simpa [e1] using p2)
+            (by omega) (by
+            intro p hp
+            simp only [List.mem_append, List.mem_cons, List.mem_nil_iff, or_false] at hp
+            rcases hp with hp | rfl | rfl
+            · exact hps0 p hp
+            · exact ⟨⟨r, hx3⟩, hf'.2, hnb1, by simp only; omega⟩
+            · exact ⟨⟨_, hx2⟩, hf'.1, hna, by simp only; omega⟩)
+          rcases ih with h | h
+          · exact Or.inl h
+          · right; rw [h]; simp [List.any_append, NumSpec.post, hsh, Bool.or_comm, Bool.or_left_comm]
+      | ite cc a b t el =>
+        simp only [NB] at hnb
+        obtain ⟨-, hna, hnb1, hnt, hne⟩ := hnb
+        have hx2 : x.drop (q + 2) = a.ser ++ (b.ser ++ (t.ser ++ (el.ser ++ r))) := by
+          have h0 : x.drop q = [4, u cc] ++ (a.ser ++ (b.ser ++ (t.ser ++ (el.ser ++ r)))) := by rw [hx]; simp [Nd.ser, toU]
+          simpa using drop_shift h0
+        have hx3 := drop_shift hx2
+        have hx4 := drop_shift hx3
+        have hf' : t.ser.length ≤ f' := by simp [Nd.ser] at hf; omega
+        have hsl : (Nd.ite cc a b t el).ser.length = 2 + a.ser.length + b.ser.length + t.ser.length + el.ser.length := by
+          simp [Nd.ser]; omega
+        simp only [hdr, List.getD_cons_zero, show ((4 : UInt64) == 3) = false from rfl,
+          show ((4 : UInt64) == 4) = true from rfl, Bool.false_eq_true, if_false, if_true]
+        rw [show u q + 2 = u (q + 2) by rw [u2, uadd]]
+        rcases u15_ok (by omega) hx2 hna with h0 | ⟨h1, -⟩
+        · left; rw [h0, u15_zero']; rfl
+        rw [h1]
+        rcases u15_ok (by omega) hx3 hnb1 with h0 | ⟨h1', -⟩
+        · left; rw [h0]; rfl
+        rw [h1']
+        have hne0 : (u (q + 2 + a.ser.length + b.ser.length) == 0) = false := by
+          rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
+        simp only [hne0, Bool.false_eq_true, if_false]
+        exact hrep t _ _ hx4 hf' hnt (by omega) (by simp [NumSpec.post])
+      | letE s w0 v bd =>
+        simp only [NB] at hnb
+        obtain ⟨-, -, hnv, hnbd⟩ := hnb
+        have hx2 : x.drop (q + 3) = v.ser ++ (bd.ser ++ r) := by
+          have h0 : x.drop q = [5, u s, u w0] ++ (v.ser ++ (bd.ser ++ r)) := by rw [hx]; simp [Nd.ser, toU]
+          simpa using drop_shift h0
+        have hx3 := drop_shift hx2
+        have hf' : bd.ser.length ≤ f' := by simp [Nd.ser] at hf; omega
+        have hsl : (Nd.letE s w0 v bd).ser.length = 3 + v.ser.length + bd.ser.length := by simp [Nd.ser]; omega
+        simp only [hdr, List.getD_cons_zero, show ((5 : UInt64) == 3) = false from rfl,
+          show ((5 : UInt64) == 4) = false from rfl, show ((5 : UInt64) == 5) = true from rfl, Bool.false_eq_true,
+          if_false, if_true]
+        rw [show u q + 3 = u (q + 3) by rw [u3, uadd]]
+        rcases u15_ok (by omega) hx2 hnv with h0 | ⟨h1, -⟩
+        · left; rw [h0]; rfl
+        rw [h1]
+        have hne0 : (u (q + 3 + v.ser.length) == 0) = false := by
+          rw [u0, ueq (by omega) (by omega)]; exact decide_eq_false (by omega)
+        simp only [hne0, Bool.false_eq_true, if_false]
+        exact hrep bd _ _ hx3 hf' hnbd (by omega) (by simp [NumSpec.post])
+      | const _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | loc _ _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | pair _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | call _ _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | prim _ _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | loop _ _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+      | cont _ => exact hpop (by simp [hdr]) (by simp [hdr]) (by simp [hdr]) (by simp [NumSpec.post])
+
+theorem u72_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) {e : Nd} {f q : Nat} {r : Buf}
+    (hx : x.drop q = e.ser ++ r) (hf : e.ser.length ≤ f) (hnb : NB np e) (hq : 0 < q) {w : Buf} (hw : w.length < 2 ^ 62) :
+    (u72 x w (u q)).1.length < 2 ^ 62 ∧ ((u72 x w (u q)).2 = 2 ∨ (u72 x w (u q)).2 = w2 (NumSpec.post f e)) := by
+  unfold u72
+  have e39 : (549755813888 : UInt64) = u (2 ^ 39) := rfl
+  simp only [bsize_u, e39, ult (show w.length < 2 ^ 64 by omega) (show 2 ^ 39 < 2 ^ 64 by omega)]
+  by_cases hs : w.length < 2 ^ 39
+  · rw [if_pos hs]
+    have hp := u20_push (vs := []) (v := w) List.nil_prefix (by omega) (u q)
+    have h1 : [u q] <+: u20 w 0 (u q) := by have := hp.1; simp only [List.nil_append, List.length_nil] at this; exact this
+    have hl : (u20 w 0 (u q)).length ≤ w.length + 1 := u20_len _ _ _
+    refine ⟨by have := u71_len x 16777216 (u20 w 0 (u q)) 1; omega, ?_⟩
+    rw [u71_snd]
+    have := U71_ok hxl 16777216 [(e, f, q)] (u20 w 0 (u q)) (by simpa using h1) (by omega)
+      (by intro p hp; simp at hp; subst hp; exact ⟨⟨r, hx⟩, hf, hnb, hq⟩)
+    rw [show (1 : UInt64) = u ([(e, f, q)] : List (Nd × Nat × Nat)).length from rfl]; simpa using this
+  · simp only [hs, if_false]; refine ⟨hw, ?_⟩; simp
+
 /-- the leaves with their positions -/
 def lvP : Nat → Nd → Nat → List (Nd × Nat)
   | f + 1, .bin op a b, pos =>
