@@ -94,6 +94,24 @@ CASES += [(n, T + s + '\n' + M, ok) for n, s, ok in [  # GAP1: literal then-bran
     ('G2 let with a spine let, plain use', 'let v := (let (p, q) := (c, c); p ||| 5); v + 1', True),
     ('G2 let with a spine let, compared', 'let v := (let (p, q) := (c, c); p ||| 5); if v == 1 then 2 else 3', True),
 ]]
+LV = 'let v := (let (p, q) := (c, c); p ||| 5); '
+CASES += [(n, T + s + '\n' + M, ok) for n, s, ok in [  # GAP2: lateness propagates (an operand tree or if that waits)
+    ('G2 copy of a late slot, left of a shift', LV + 'let w := v; w >>> 2', False),
+    ('G2 late slot plus a literal, bound', LV + 'let w := v + 0; w >>> 2', False),
+    ('G2 late slot as a tuple field', LV + 'let (w, z) := (v, 1); w >>> 2', False),
+    ('G2 late slot plus a literal, left of a shift', LV + '(v + 0) >>> 2', False),
+    ('G2 if late/literal, left of a shift', LV + '(if c == 0 then v else 5) >>> 2', False),
+    ('G2 if late/literal, bound', LV + 'let w := (if c == 0 then v else 5); w >>> 2', False),
+    ('G2 if literal/late, bound', LV + 'let w := (if c == 0 then 5 else v); w >>> 2', False),
+    ('G2 two copies of a late slot', LV + 'let w := v; let u := w; u >>> 2', False),
+    ('G2 late slot plus a typed operand', LV + 'let w := v + c; w >>> 2', True),
+    ('G2 late slot or a typed operand', LV + '(v ||| c) >>> 2', True),
+    ('G2 if late/typed', LV + '(if c == 0 then v else c) >>> 2', True),
+    ('G2 copy of a late slot, no shift', LV + 'let w := v; w + 1', True),
+    ('G2 late slot compared', LV + 'if v == 3 then 1 else 2', True),
+    ('G2 if match/call, bound', 'let w := (if c == 0 then (let (p, q) := (c, c); p) else g c); w >>> 2', True),
+    ('G2 if match/literal, bound', 'let w := (if c == 0 then (let (p, q) := (c, c); p) else 5); w >>> 2', False),
+]]
 REJ_NANO_ONLY += [  # Lean computes these in Nat (3 - 4 = 0, bignum arithmetic): nano rejects Nat arithmetic
     ('M1 literal arithmetic in a comparison', 'def g (n : UInt64) : UInt64 := if 3 - 4 == 0 then 1 else 2\n' + M),
     ('N Nat arithmetic on literals', F + 'def m (x : List UInt8) : List UInt8 := put [] (f (2 + 1) x 0)\n'),

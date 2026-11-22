@@ -47,16 +47,29 @@ import Nano.SelfHost.SrcLink.Data44
 import Nano.SelfHost.SrcLink.Data45
 import Nano.SelfHost.SrcLink.Data46
 import Nano.SelfHost.SrcLink.Data47
+import Nano.SelfHost.SrcLink.Data48
 namespace SrcGen
 open ParSpec SrcLink
 
-def F : Nat := 391192
-def T338 : List Tok := []
-def X337 : List UInt8 := x337
-def W337 : List UInt64 := w337
-def Ls338 : List DefA := []
+def F : Nat := 394400
+def T341 : List Tok := []
+def X340 : List UInt8 := x340
+def W340 : List UInt64 := w340
+def Ls341 : List DefA := []
+def T340 : List Tok := S340 ++ T341
+def Ls340 : List DefA := d340 :: Ls341
+def T339 : List Tok := S339 ++ T340
+def Ls339 : List DefA := d339 :: Ls340
+def X339 : List UInt8 := x339 ++ X340
+def W339 : List UInt64 := w339 ++ W340
+def T338 : List Tok := S338 ++ T339
+def Ls338 : List DefA := d338 :: Ls339
+def X338 : List UInt8 := x338 ++ X339
+def W338 : List UInt64 := w338 ++ W339
 def T337 : List Tok := S337 ++ T338
 def Ls337 : List DefA := d337 :: Ls338
+def X337 : List UInt8 := x337 ++ X338
+def W337 : List UInt64 := w337 ++ W338
 def T336 : List Tok := S336 ++ T337
 def Ls336 : List DefA := d336 :: Ls337
 def X336 : List UInt8 := x336 ++ X337
@@ -1744,5 +1757,8 @@ def D335 : List DefI := D334 ++ [di334]
 def D336 : List DefI := D335 ++ [di335]
 def D337 : List DefI := D336 ++ [di336]
 def D338 : List DefI := D337 ++ [di337]
+def D339 : List DefI := D338 ++ [di338]
+def D340 : List DefI := D339 ++ [di339]
+def D341 : List DefI := D340 ++ [di340]
 
 end SrcGen

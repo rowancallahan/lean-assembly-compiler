@@ -676,67 +676,94 @@ def u77 (x : Buf) (i k : UInt64) : UInt64 × UInt64 :=
   else if t == 11 then (i + 1, k)
   else (i, 0)
 
--- mark f[s + j .. s + k): (f, ok), ok 0 past the end of f
-def u78 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf × UInt64
-  | 0, f, s, j, k => (f, 0)
-  | n + 1, f, s, j, k =>
-    if j < k then (if s + j < bsize f then u78 n (bset f (s + j) 1) s (j + 1) k else (f, 0)) else (f, 1)
+-- the leaves of the operand trees on the work stack (f: the slot marks, 1 late, 2 literal-only): (w, r); r is b (1:
+-- some leaf waits) ||| c (2: every leaf is literal-only) if every leaf waits or is literal-only, else 0; 4 error
+def u82 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, x, f, w, t, b, c => (w, 4)
+  | n + 1, x, f, w, t, b, c =>
+    if t == 0 then (w, b ||| c)
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 3 then
+        (if u34 x q == 1 then (w, 0)
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then (w, 4) else u82 n x f (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1) b c))
+      else if g == 4 then
+        (let p := u15 x (u15 x (q + 2));
+         let p2 := u15 x p;
+         if p == 0 then (w, 4) else if p2 == 0 then (w, 4) else u82 n x f (u20 (u20 w (t - 1) p2) t p) (t + 1) b c)
+      else if g == 5 then u82 n x f w (t - 1) 1 0
+      else if g == 1 then u82 n x f w (t - 1) b c
+      else if g == 2 then
+        (let m := bget f (bget x (q + 1));
+         let lw := m &&& 1;
+         let ll := (if bget x (q + 2) == 1 then m &&& 2 else 0);
+         if lw ||| ll == 0 then (w, 0) else u82 n x f w (t - 1) (b ||| lw) (c &&& ll))
+      else (w, 0)
 
--- mark slot s + j of each tuple field (from q, fields j .. k) with a let on its result spine: (f, (w, ok))
+-- the mark of the value at q: 1 waits ||| 2 literal-only (4 error)
+def u83 (x f w : Buf) (q : UInt64) : Buf × UInt64 :=
+  if bsize w < 549755813888 then u82 16777216 x f (u20 w 0 q) 1 0 2 else (w, 4)
+
+-- f[s + j .. s + k) := v: (f, ok), ok 0 past the end of f
+def u78 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, f, s, j, k, v => (f, 0)
+  | n + 1, f, s, j, k, v =>
+    if j < k then (if s + j < bsize f then u78 n (bset f (s + j) v) s (j + 1) k v else (f, 0)) else (f, 1)
+
+-- mark slot s + j with the tuple field at q: (f, (w, (the next field, ok)))
+def u85 (x f w : Buf) (q s j : UInt64) : Buf × (Buf × (UInt64 × UInt64)) :=
+  let (w1, r) := u83 x f w q;
+  let e := u15 x q;
+  if r == 4 then (f, (w1, (e, 0)))
+  else if e == 0 then (f, (w1, (e, 0)))
+  else (let (f1, ok) := u78 16777216 f s j (j + 1) r; (f1, (w1, (e, ok))))
+
+-- mark slot s + j with tuple field j (from q, fields j .. k), field by field: (f, (w, ok))
 def u76 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × (Buf × UInt64)
   | 0, x, f, w, q, s, j, k => (f, (w, 0))
   | n + 1, x, f, w, q, s, j, k =>
     if j < k then
-      (let (w1, h) := u17 x w q;
-       let e := u15 x q;
-       if h == 2 then (f, (w1, 0))
-       else if e == 0 then (f, (w1, 0))
-       else if h == 1 then
-         (let (f1, ok) := u78 16777216 f s j (j + 1);
-          if ok == 1 then u76 n x f1 w1 e s (j + 1) k else (f1, (w1, 0)))
-       else u76 n x f w1 e s (j + 1) k)
+      (let (f1, z) := u85 x f w q s j;
+       let (w1, z1) := z;
+       let (e, ok) := z1;
+       if ok == 1 then u76 n x f1 w1 e s (j + 1) k else (f1, (w1, 0)))
     else (f, (w, 1))
 
--- mark the late slots of `let s (width wd) := the value at q`: (f, (w, ok))
+-- mark the slots of `let s (width wd) := the value at q`: (f, (w, ok))
 def u75 (x f w : Buf) (q s wd : UInt64) : Buf × (Buf × UInt64) :=
   if bget x q == 6 then u76 16777216 x f w (q + 2) s 0 (bget x (q + 1))
   else
-    (let (w1, h) := u17 x w q;
-     if h == 2 then (f, (w1, 0))
-     else if h == 1 then (let (f1, ok) := u78 16777216 f s 0 wd; (f1, (w1, ok)))
-     else (f, (w1, 1)))
+    (let (w1, r) := u83 x f w q;
+     if r == 4 then (f, (w1, 0))
+     else (let (f1, ok) := u78 16777216 f s 0 wd r; (f1, (w1, ok))))
 
--- mark the late slots of the lets among the k nodes from i: (f, (w, ok))
+-- the node at i: a let marks its slots, a shift's left operand must not wait: (f, (w, ok))
+def u84 (x f w : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
+  if bget x i == 5 then u75 x f w (i + 3) (bget x (i + 1)) (bget x (i + 2))
+  else if u34 x i == 1 then
+    (let (w1, r) := u83 x f w (i + 2);
+     if r == 4 then (f, (w1, 0)) else if r &&& 1 == 1 then (f, (w1, 0)) else (f, (w1, 1)))
+  else (f, (w, 1))
+
+-- the k nodes from i, in pre-order: (f, (w, ok))
 def u73 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → Buf × (Buf × UInt64)
   | 0, x, f, w, i, k => (f, (w, 0))
   | n + 1, x, f, w, i, k =>
     if k == 0 then (f, (w, 1))
     else
-      (let (f1, z) := (if bget x i == 5 then u75 x f w (i + 3) (bget x (i + 1)) (bget x (i + 2)) else (f, (w, 1)));
+      (let (f1, z) := u84 x f w i;
        let (w1, ok) := z;
        let (i1, k1) := u77 x i k;
        if ok == 1 then u73 n x f1 w1 i1 k1 else (f1, (w1, 0)))
 
--- no shift among the k nodes from i has a marked slot as its left operand (1)
-def u74 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
-  | 0, x, f, i, k => 0
-  | n + 1, x, f, i, k =>
-    if k == 0 then 1
-    else
-      (let (i1, k1) := u77 x i k;
-       if u34 x i == 1 then
-         (if bget x (i + 2) == 2 then (if bget f (bget x (i + 3)) == 0 then u74 n x f i1 k1 else 0)
-          else u74 n x f i1 k1)
-       else u74 n x f i1 k1)
-
--- the late-slot check of the def at i (1): clear y2's slot marks, mark the late slots, check the shifts
+-- the late-slot check of the def at i (1): clear y2's slot marks, then scan the body
 def u79 (x y1 y2 : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
-  let (f0, k0) := u57 16777216 y2 0 (bget x (i + 3));
-  if k0 == 1 then
-    (let (f1, z0) := u73 16777216 x f0 y1 (i + 6) 1;
-     let (w1, k1) := z0;
-     if k1 == 1 then (let k := u74 16777216 x f1 (i + 6) 1; (f1, (w1, k))) else (f1, (w1, 0)))
-  else (f0, (y1, 0))
+  let n := bget x (i + 3);
+  let (f0, k0) := u57 16777216 y2 0 (if n < bsize y2 then bsize y2 else n);
+  if k0 == 1 then u73 16777216 x f0 y1 (i + 6) 1 else (f0, (y1, 0))
 
 -- one def at i: (next: 1, stop: 0; the cursor and buffers for the next def)
 def u80 (x d : Buf) (i : UInt64) (b t g s y y1 y2 : Buf) :

@@ -15,7 +15,8 @@ numeral the same meaning:
   a let; so no let on the result spine (if branches, let bodies) of an operator, comparison or shift-left operand
   (LEAN_DIFF M15, M16); no literal operand left of a shift in an operator tree or comparison (M12); where no type is
   expected (a let value or tuple field, an operand), no `if` with a literal branch and a branch that waits (`mixIte`);
-  and no slot bound to a value with a let on its result spine left of a shift (`lateOk`). -/
+  and no shift whose left operand waits, i.e. has no type yet: a let, a slot bound to a waiting value, or an operator
+  tree or `if` whose operands all wait or are literals, some waiting (`lateOk`). -/
 import Nano.Parser.ParSpec
 namespace NumSpec
 open ParSpec
@@ -170,17 +171,41 @@ def nodes : Nat → Nd → List Nd
     | .bin _ a b => [a, b] | .ite _ a b t e => [a, b, t, e] | .letE _ _ v b => [v, b] | .pair cs => cs
     | .call _ as => as | .prim _ as => as | .loop z s => [z, s] | .cont e => [e] | _ => []).flatMap (nodes f)
 
-/-- the slots a let binds to a value (per tuple field) with a let on its result spine: Lean types them late -/
-def late (f : Nat) : Nd → List Nat
-  | .letE s _ (.pair cs) _ => (cs.zipIdx.filter fun (c, _) => spineLet f c).map fun (_, i) => s + i
-  | .letE s w v _ => if spineLet f v then (List.range w).map (s + ·) else []
-  | _ => []
-
-/-- no late slot is the left operand of a shift -/
-def lateOk (f : Nat) (e : Nd) : Bool :=
-  (nodes f e).all fun
-    | .bin op (.loc s _) _ => !(isShift op && ((nodes f e).flatMap (late f)).contains s)
-    | _ => true
+/-- the leaves of the operand tree at `e`: through non-shift operators and `if` branches -/
+def opl : Nat → Nd → List Nd
+  | f + 1, .bin op a b => if isShift op then [.bin op a b] else opl f a ++ opl f b
+  | f + 1, .ite _ _ _ t e => opl f t ++ opl f e
+  | _, e => [e]
+/-- a leaf Lean has no type for yet (`lv`: the late slots): a let (possibly a desugared `match`), a late slot -/
+def leafW (lv : List Bool) : Nd → Bool
+  | .letE .. => true
+  | .loc s _ => lv.getD s false
+  | _ => false
+/-- a literal-only leaf (`le`: the literal-only slots) -/
+def leafL (le : List Bool) : Nd → Bool
+  | .const _ => true
+  | .loc s w => w == 1 && le.getD s false
+  | _ => false
+/-- `e` waits: every leaf waits or is literal-only, and some leaf waits -/
+def wt (f : Nat) (le lv : List Bool) (e : Nd) : Bool :=
+  (opl f e).all (fun l => leafW lv l || leafL le l) && (opl f e).any (leafW lv)
+/-- `e` is literal-only -/
+def litE (f : Nat) (le : List Bool) (e : Nd) : Bool := (opl f e).all (leafL le)
+/-- bind the `w` slots from `s` to `v`: late if `v` waits, literal-only if `v` is -/
+def bind1 (f : Nat) (le lv : List Bool) (s w : Nat) (v : Nd) : List Bool × List Bool :=
+  (setW le s (List.replicate w (litE f le v)), setW lv s (List.replicate w (wt f le lv v)))
+/-- bind slot `s + j` to tuple field `j`, field by field -/
+def bindF (f : Nat) : List Bool × List Bool → Nat → List Nd → List Bool × List Bool
+  | st, _, [] => st
+  | (le, lv), s, c :: cs => bindF f (bind1 f le lv s 1 c) (s + 1) cs
+/-- one node, in pre-order: a let binds its slots; a shift's left operand must not wait -/
+def lateStep (f : Nat) : List Bool × List Bool × Bool → Nd → List Bool × List Bool × Bool
+  | (le, lv, ok), .letE s _ (.pair cs) _ => let (le', lv') := bindF f (le, lv) s cs; (le', lv', ok)
+  | (le, lv, ok), .letE s w v _ => let (le', lv') := bind1 f le lv s w v; (le', lv', ok)
+  | (le, lv, ok), .bin op a _ => (le, lv, ok && !(isShift op && wt f le lv a))
+  | st, _ => st
+/-- no shift's left operand waits -/
+def lateOk (f : Nat) (e : Nd) : Bool := ((nodes f e).foldl (lateStep f) ([], [], true)).2.2
 
 /-- a def's slot groups and shape verdict (`ks`, `ws`: each def's kind and result width) -/
 def colD (ks ws : List Nat) (df : DefA) : List G × Bool := col (2 ^ 24) ks ws [] 1 df.body
