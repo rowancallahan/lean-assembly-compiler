@@ -37,6 +37,8 @@ Status (keep_round1_expr; EXPR.md is the detailed report):
   Big-number Nat is deferred.
 - Proved: eval_emit (Ev of emitted Expr = nano's Sem, all programs); C_expr (mC = Ev of C's Expr);
   self_expr_C (C's RISC-V code writes that value). The fixpoint B2 = B3 is checked.
+- NEXT (owner, 2026-11-22): prove the SELF-HOSTED emitter E itself. Restate the chain over E's own definitions
+  (a SrcLink-style cert for E), or prove E = emitSpec. Until then, E is checked byte-equal to emitSpec.
 - In progress: make "emitted Expr = Lean's Expr" kernel-checked (generated literal + decide/rfl), not a script check.
 Trusted: Lean kernel + propext/Choice/Quot.sound; the ISA models (Sail RV, Sail ARM, DeepMind ARM) and
 hardware = model; Spec/ (loader, encodings); the Expr generator reading the environment; Ev's faithfulness
