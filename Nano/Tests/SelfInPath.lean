@@ -1,5 +1,5 @@
 /- Nano/Tests/SelfInPath: step C towards `Nonempty SelfIn`: on the EMPTY input the meaning of C's source
-does not report `cap`.  The 169 push-free defs are exact by `SelfInQuiet.quiet` + the certificate; the 13 defs on the
+does not report `cap`.  The 169 push-free defs are exact by `SelfInQuiet.quiet` + the certificate; the 15 defs on the
 empty-input path that contain or reach a push are evaluated by hand below (`X<i>`). -/
 import Nano.Tests.SelfInQuiet
 import Nano.SelfHost.Cert.All
@@ -315,28 +315,41 @@ theorem g122 (ms : List Fn) (G120 : Fn) (h120 : ms[161]? = some G120) (e120 : G1
   simp [PC.b163, ev, evL, NanoMain.val, h120, e120, bind, Except.bind, pure, Except.pure]
 theorem X122 : F [] 163 PC.d163 [.b []] = .ok [.b []] := g122 _ _ (cal 161 163 PC.d161 rfl) X120
 
-theorem g233 (ms : List Fn) (G14 G28 G122 G160 G232 : Fn) (h14 : ms[30]? = some G14) (h28 : ms[53]? = some G28)
+/-! ### the numeral check on the empty AST (`u11`: the tag test fails; `u10`: the empty Buf back) -/
+theorem X338 : F [] 338 PC.d338 [.b []] = .ok [.w 0] := by
+  simp only [F, defMean, PC.d338]
+  simp [PC.b338, ev, evL, NanoMain.val, prim, bind, Except.bind, pure, Except.pure]
+
+theorem g339 (ms : List Fn) (G338 : Fn) (h338 : ms[338]? = some G338) (e338 : G338 [.b []] = .ok [.w 0]) :
+    defMean [] κC ms PC.d339 [.b []] = .ok [.b []] := by
+  simp only [defMean, PC.d339]
+  simp [PC.b339, ev, evL, NanoMain.val, prim, h338, e338, bind, Except.bind, pure, Except.pure]
+theorem X339 : F [] 339 PC.d339 [.b []] = .ok [.b []] := g339 _ _ (cal 338 339 PC.d338 rfl) X338
+
+theorem g233 (ms : List Fn) (G14 G28 G122 G160 G232 G339 : Fn) (h14 : ms[30]? = some G14) (h28 : ms[53]? = some G28)
     (h122 : ms[163]? = some G122)
-    (h160 : ms[201]? = some G160) (h232 : ms[273]? = some G232) (e14 : G14 [] = .ok [.b []]) (e28 : G28 [.b []] = .ok [.b []])
-    (e122 : G122 [.b []] = .ok [.b []]) (e160 : G160 [.b []] = .ok [.b []]) (e232 : G232 [.b []] = .ok [.b []]) :
-    defMean [] κC ms PC.d274 [] = .ok [.b []] := by
-  refine defMean_plain_ok (e := PC.b274) rfl rfl (by decide) rfl ?_
-  simp [PC.b274, ev, evL, NanoMain.val, h14, h28, h122, h160, h232, e14, e28, e122, e160, e232, bind, Except.bind, pure,
-    Except.pure]
-theorem X233 : F [] 274 PC.d274 [] = .ok [.b []] :=
-  g233 _ _ _ _ _ _ (cal 30 274 PC.d30 rfl) (cal 53 274 PC.d53 rfl) (cal 163 274 PC.d163 rfl) (cal 201 274 PC.d201 rfl)
-    (cal 273 274 PC.d273 rfl) X14 X28 X122 X160 X232
+    (h160 : ms[201]? = some G160) (h232 : ms[273]? = some G232) (h339 : ms[339]? = some G339)
+    (e14 : G14 [] = .ok [.b []]) (e28 : G28 [.b []] = .ok [.b []])
+    (e122 : G122 [.b []] = .ok [.b []]) (e160 : G160 [.b []] = .ok [.b []]) (e232 : G232 [.b []] = .ok [.b []])
+    (e339 : G339 [.b []] = .ok [.b []]) :
+    defMean [] κC ms PC.d340 [] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b340) rfl rfl (by decide) rfl ?_
+  simp [PC.b340, ev, evL, NanoMain.val, h14, h28, h122, h160, h232, h339, e14, e28, e122, e160, e232, e339, bind,
+    Except.bind, pure, Except.pure]
+theorem X233 : F [] 340 PC.d340 [] = .ok [.b []] :=
+  g233 _ _ _ _ _ _ _ (cal 30 340 PC.d30 rfl) (cal 53 340 PC.d53 rfl) (cal 163 340 PC.d163 rfl) (cal 201 340 PC.d201 rfl)
+    (cal 273 340 PC.d273 rfl) (cal 339 340 PC.d339 rfl) X14 X28 X122 X160 X232 X339
 
 theorem sem_last {κ : Nat} {p : List DefA} {inp : List UInt8} {f : Fn} {l : List UInt64}
     (h : (means inp κ [] p).getLast? = some f) (hf : f [] = .ok [.b l]) : Sem κ p inp = .ok (l.map UInt64.toUInt8) := by
   unfold Sem; rw [h]; simp only [hf]
 
-theorem pre_all : Pre [] 275 = means [] κC [] PC.all := by
+theorem pre_all : Pre [] 341 = means [] κC [] PC.all := by
   unfold Pre; rw [List.take_of_length_le (by decide)]
 
-theorem last_all : (means [] κC [] PC.all).getLast? = some (F [] 274 PC.d274) := by
-  have h := cal 274 275 PC.d274 rfl
-  have hn := pre_length [] 275 (by decide)
+theorem last_all : (means [] κC [] PC.all).getLast? = some (F [] 340 PC.d340) := by
+  have h := cal 340 341 PC.d340 rfl
+  have hn := pre_length [] 341 (by decide)
   rw [pre_all] at h hn
   rw [List.getLast?_eq_getElem?, hn]; exact h
 

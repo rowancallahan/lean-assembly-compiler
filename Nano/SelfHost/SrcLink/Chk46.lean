@@ -25,9 +25,5 @@ theorem lex329 : lexAll (x329.length + 1) x329 = some w329 := by decide +kernel
 theorem tok329 : tokens w329 = some S329 := by decide +kernel
 theorem nl329 : x329.getLast? = some 10 := by decide +kernel
 theorem chk329 : chkDef (pDef F D329 T329) di329 d329 T330 = true := by decide +kernel
-theorem lex330 : lexAll (x330.length + 1) x330 = some w330 := by decide +kernel
-theorem tok330 : tokens w330 = some S330 := by decide +kernel
-theorem nl330 : x330.getLast? = some 10 := by decide +kernel
-theorem chk330 : chkDef (pDef F D330 T330) di330 d330 T331 = true := by decide +kernel
 
 end SrcGen
