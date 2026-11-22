@@ -76,6 +76,8 @@ def classify(r):
     pos = lambda es: [e.split(".lean:", 1)[1].split(" error")[0] for e in es]
     return "LAYOUT" if pos(perr) == pos(st) else "PARSE"
 
+def key(r): return r["i"] + (1000000 if r["kind"] != "valid" else 0)   # valid i and mutant i overlap
+
 HDR = "import Nano.Main.Prelude\nset_option maxRecDepth 10000\nset_option maxErrors 100000\n\n"
 
 def batch(items, tag):
@@ -85,7 +87,7 @@ def batch(items, tag):
         n = r["src"].count("\n") + 1; rng.append((ln, ln + n, r)); ln += n; parts.append(r["src"])
     for r in items:
         for k, (inp, st, out) in enumerate(r["outs"]):
-            parts.append(f"#eval ({r['i']}, {k}, {r['ns']}.m {inp})")
+            parts.append(f"#eval ({key(r)}, {k}, {r['ns']}.m {inp})")
     open(fn, "w").write("\n".join(parts) + "\n")
     out = lean(fn)
     errl = set()
@@ -102,7 +104,7 @@ def batch(items, tag):
         c = classify(r) if id(r) in flagged else None
         if c: res.append((c, r["kind"], r["i"])); continue
         for k, (inp, st, o) in enumerate(r["outs"]):
-            if okstat(st) and got.get((r["i"], k)) != o: res.append(("VALUE", r["kind"], r["i"], k, got.get((r["i"], k)), o)); break
+            if okstat(st) and got.get((key(r), k)) != o: res.append(("VALUE", r["kind"], r["i"], k, got.get((key(r), k)), o)); break
     return res
 
 if __name__ == "__main__":
