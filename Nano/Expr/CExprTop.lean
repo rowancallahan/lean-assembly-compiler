@@ -1,7 +1,7 @@
 /- Nano/Expr/CExprTop: **C's machine code computes the meaning of C's emitted Expr.** For every input in `SelfIn`
 (shorter than 2^64 bytes, not hitting the 2^19-word capacity), the RISC-V code C emits for its own text writes
 `mC a` (`self_correct_C`), and `mC a` is the big-step meaning of the Expr nano emits for C's `m` (`C_expr`).
-That Expr equals Lean's elaborated Expr of C on 234/236 defs (the spot check, Testing/notes/EXPR.md §0). -/
+That Expr equals Lean's elaborated Expr of C on every def (`C_lean_all`, Nano/Expr/CLean.lean, kernel-checked). -/
 import Nano.Main.SelfC
 import Nano.Expr.CExpr
 namespace NanoMain

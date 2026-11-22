@@ -1186,14 +1186,15 @@ theorem lookup_of_mem {o : List (String × X × X)} (hnd : (o.map (·.1)).Nodup)
         simp only [beq_eq_false_iff_ne]; intro he; apply hnd.1; rw [← he]; exact List.mem_map.2 ⟨_, h, rfl⟩
       rw [hne]; exact ih hnd.2 h
 
-theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} {ks ws : List Nat} (hin : inp.length < 2 ^ 64) :
-    ∀ (as : List DefA) (j : Nat) (ms : List (List W → Except Stop (List W))) (st : Sd) (o' : List (String × X × X)),
-      emitAll ds ks ws j as st = some o' → (∀ n t v, (n, t, v) ∈ o' → P.lookup n = some v) → ms.length = j →
+theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} (hin : inp.length < 2 ^ 64) :
+    ∀ (as : List DefA) (ns : List (List Nat)) (j : Nat) (ms : List (List W → Except Stop (List W))) (st : Sd)
+      (o' : List (String × X × X)), emitAllL ds j ns as st = some o' → (∀ n t v, (n, t, v) ∈ o' → P.lookup n = some v) → ms.length = j →
       DefsHyp P ⟨inp, κ, ms⟩ ds →
       (means inp κ ms as).length = j + as.length ∧ DefsHyp P ⟨inp, κ, means inp κ ms as⟩ ds
-  | [], j, ms, st, o', _, _, hl, hd => by simpa [means] using ⟨hl, hd⟩
-  | da :: as, j, ms, st, o', he, hlk, hl, hd => by
-    unfold emitAll at he
+  | [], _, j, ms, st, o', _, _, hl, hd => by simpa [means] using ⟨hl, hd⟩
+  | _ :: _, [], _, _, _, _, he, _, _, _ => by simp [emitAllL] at he
+  | da :: as, n :: ns, j, ms, st, o', he, hlk, hl, hd => by
+    unfold emitAllL at he
     split at he
     · cases he
     rename_i hid
@@ -1201,9 +1202,9 @@ theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} {ks w
     · cases he
     rcases hdi : ds[j]? with _ | di <;> rw [hdi] at he <;> simp only at he
     · cases he
-    rcases hed : emitDef ds (natOf ks ws da) di b with _ | ⟨t, v⟩ <;> rw [hed] at he <;> simp only at he
+    rcases hed : emitDef ds (fun s => n.contains s) di b with _ | ⟨t, v⟩ <;> rw [hed] at he <;> simp only at he
     · cases he
-    rcases hrest : emitAll ds ks ws (j + 1) as st1 with _ | o2 <;> rw [hrest] at he <;> simp only at he
+    rcases hrest : emitAllL ds (j + 1) ns as st1 with _ | o2 <;> rw [hrest] at he <;> simp only at he
     · cases he
     simp at he; subst he
     have hthis := def_ok (P := P) (κ := κ) (ms := ms) hin hd (annot_erase _ _ _ _ ha) hed (hlk _ t _ (by simp))
@@ -1218,20 +1219,20 @@ theorem prog_inv {P : Prog} {inp : List UInt8} {κ : Nat} {ds : List DefI} {ks w
         rw [List.getElem?_append_right (by omega)] at hf; simp at hf; subst hf
         rw [hl, hdi] at hdd; cases hdd
         exact hthis ws r vs hfr hA
-    obtain ⟨h1, h2⟩ := prog_inv hin as (j + 1) _ st1 o2 hrest (fun n t v h => hlk n t v (by simp [h])) (by simp [hl]) hd'
+    obtain ⟨h1, h2⟩ := prog_inv hin as ns (j + 1) _ st1 o2 hrest (fun n t v h => hlk n t v (by simp [h])) (by simp [hl]) hd'
     simp only [means]
     exact ⟨by rw [h1]; simp; omega, h2⟩
 
 /-- **eval_emit**: for a program whose Exprs `emitAll` produces (distinct names; the last def is `m (x : List UInt8)
 : List UInt8`), every output Sem computes on an input is the meaning `Ev` of the emitted Expr of `m` applied to the
 input -/
-theorem eval_emit {ds : List DefI} {ks ws : List Nat} {p : List DefA} {st : Sd} {o : List (String × X × X)} {inp : List UInt8} {κ : Nat}
+theorem eval_emitL {ds : List DefI} {ns : List (List Nat)} {p : List DefA} {st : Sd} {o : List (String × X × X)} {inp : List UInt8} {κ : Nat}
     {out : List UInt8} {dm : DefI}
-    (he : emitAll ds ks ws 0 p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
+    (he : emitAllL ds 0 ns p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
     (hm : ds[p.length - 1]? = some dm) (hmn : dm.name = [109]) (hmp : dm.params = [.inp]) (hmr : dm.res = .ls)
     (hs : Sem κ p inp = .ok out) : Ev (progOf o) [.l inp] (.app (.c "m" []) (.bv 0)) (.l out) := by
   have hP : ∀ n t v, (n, t, v) ∈ o → (progOf o).lookup n = some v := fun n t v h => lookup_of_mem hnd h
-  obtain ⟨hlen, hdefs⟩ := prog_inv (P := progOf o) (κ := κ) hin p 0 [] st o he hP rfl
+  obtain ⟨hlen, hdefs⟩ := prog_inv (P := progOf o) (κ := κ) hin p ns 0 [] st o he hP rfl
     (fun i f d h => by simp at h)
   simp only [Sem] at hs
   rcases hlast : (means inp κ [] p).getLast? with _ | f <;> rw [hlast] at hs <;> simp only at hs
@@ -1250,5 +1251,13 @@ theorem eval_emit {ds : List DefI} {ks ws : List Nat} {p : List DefA} {st : Sd} 
   rw [this] at hl
   rw [← hs, ho]
   exact Ev.call (as := [.bv 0]) (.cons (.bv rfl) .nil) hl hst hev
+
+/-- **eval_emit**: the same for `emitAll` (each def's Nat slots from `NumSpec.slotNat`) -/
+theorem eval_emit {ds : List DefI} {ks ws : List Nat} {p : List DefA} {st : Sd} {o : List (String × X × X)}
+    {inp : List UInt8} {κ : Nat} {out : List UInt8} {dm : DefI}
+    (he : emitAll ds ks ws 0 p st = some o) (hnd : (o.map (·.1)).Nodup) (hin : inp.length < 2 ^ 64)
+    (hm : ds[p.length - 1]? = some dm) (hmn : dm.name = [109]) (hmp : dm.params = [.inp]) (hmr : dm.res = .ls)
+    (hs : Sem κ p inp = .ok out) : Ev (progOf o) [.l inp] (.app (.c "m" []) (.bv 0)) (.l out) :=
+  eval_emitL he hnd hin hm hmn hmp hmr hs
 
 end ExprSpec

@@ -276,3 +276,9 @@ rejected until bignum lands. This REPLACES the "reject literal-only" rules of SY
 * **Validation**: `check_E.sh`: E.bin = emitSpec byte for byte on C (335 defs), E (279), examples (19) and fuzz.
   `spot_check.sh` on SYNTAX-EXP's C (u40/u61 via PREDEFS until their split): C 335/335, examples 19/19, fuzz
   seed 1: 833 match, 13 literal-typing (NumSpec vs Lean), 83 lean-rejects, 0 other.
+* **On SYNTAX-EXP's 44eb2e46** (338 defs; u40/u61 split into u80/u81): Lean side read through `eq_def` for EVERY
+  def (no pre-definitions): **338/338** match. `C_lean_all` (CLean, kernel, 5 chunks of 85 defs): `oC =
+  ExprLeanC.defs`. `emitAll` = `emitAllL` over each def's Nat slots `natList` (slotNat on slots 0..nslots,
+  `natList_eq`). C's slot lists are data (`ExprC.natC`), checked against `natList` in CNat (`natC_ok`; the class
+  analysis needs ~8.5 GB in the kernel, so it has its own module), so `emitC_spec : emitAll … = some oC`.
+  `C_expr` uses `eval_emitL`. check_E: byte-equal on C (338), E (281), examples (19), fuzz seeds 1–3 (300 + 2×1000).

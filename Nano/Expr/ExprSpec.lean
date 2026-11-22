@@ -320,12 +320,17 @@ def emitDef (defs : List DefI) (nat : Nat → Bool) (di : DefI) (b : Na) : Optio
     let (bx, bsh) ← emit cx bs (some di.res) b
     if bsh = some di.res then some (ty, lamX di.params bx) else none
 
-/-- `NumSpec.slotNat ks ws da` with the def's groups computed once -/
-def natOf (ks ws : List Nat) (da : DefA) : Nat → Bool :=
+/-- the def's slots of numeral class Nat: `NumSpec.slotNat ks ws da` on slots 0..nslots, the groups computed once -/
+def natList (ks ws : List Nat) (da : DefA) : List Nat :=
   let gs := (NumSpec.colD ks ws da).1
   let u := NumSpec.markD 1 gs da
-  fun s => gs.any (·.vs.contains s) && !u.contains s
-theorem natOf_eq (ks ws : List Nat) (da : DefA) (s : Nat) : natOf ks ws da s = NumSpec.slotNat ks ws da s := rfl
+  (List.range (da.nslots + 1)).filter fun s => gs.any (·.vs.contains s) && !u.contains s
+theorem natList_eq (ks ws : List Nat) (da : DefA) (s : Nat) (hs : s ≤ da.nslots) :
+    (natList ks ws da).contains s = NumSpec.slotNat ks ws da s := by
+  have hr : s ∈ List.range (da.nslots + 1) := List.mem_range.2 (by omega)
+  simp only [natList, NumSpec.slotNat]
+  rw [Bool.eq_iff_iff, List.contains_iff_mem, List.mem_filter]
+  simp [hr]
 
 /-- names a program may not use for its defs: the fragment's fixed constants -/
 def reserved (n : String) : Bool :=
@@ -333,16 +338,21 @@ def reserved (n : String) : Bool :=
 
 /-- the Exprs of a parsed program (defs `ds`, bodies `as` from position `i`, side flags `st`): (name, type, value)
 per def; def `i` must have id `i` -/
-def emitAll (ds : List DefI) (ks ws : List Nat) (i : Nat) : List DefA → Sd → Option (List (String × X × X))
-  | [], ([], []) => some []
-  | [], _ => none
-  | (da :: as), st => do
+def emitAllL (ds : List DefI) (i : Nat) : List (List Nat) → List DefA → Sd → Option (List (String × X × X))
+  | _, [], ([], []) => some []
+  | _, [], _ => none
+  | n :: ns, (da :: as), st => do
     if da.id ≠ i then none else
     let (b, st) ← annot da.body st
     let di ← ds[i]?
-    let (t, v) ← emitDef ds (natOf ks ws da) di b
-    let rest ← emitAll ds ks ws (i + 1) as st
+    let (t, v) ← emitDef ds (fun s => n.contains s) di b
+    let rest ← emitAllL ds (i + 1) ns as st
     some ((nameS di.name, t, v) :: rest)
+  | [], _ :: _, _ => none
+
+/-- with each def's Nat slots (`natList`, i.e. `NumSpec.slotNat`) -/
+def emitAll (ds : List DefI) (ks ws : List Nat) (i : Nat) (as : List DefA) (st : Sd) : Option (List (String × X × X)) :=
+  emitAllL ds i (as.map (natList ks ws)) as st
 
 /-- the Exprs of a program text -/
 def emitXs (src : List UInt8) : Except String (List (String × X × X)) := do

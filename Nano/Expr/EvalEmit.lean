@@ -50,12 +50,12 @@ theorem loc_case (cx : Ctx) (env : List W) (P : Prog) (f : Nat) (venv : List V) 
 /-- the ite cases: the emitted condition decides as Sem's comparison (`==` cmp 1, `<` cmp 2) -/
 theorem ite_eq_case (P : Prog) (f : Nat) (venv : List V) (r : Sh) (a b t e : X) (x y : UInt64)
     (ha : evalX P f venv a = some (.w x)) (hb : evalX P f venv b = some (.w y)) :
-    evalX P (f + 2) venv (iteX r 1 a b t e) = if x = y then evalX P (f + 1) venv t else evalX P (f + 1) venv e := by
+    evalX P (f + 2) venv (iteX r false 1 a b t e) = if x = y then evalX P (f + 1) venv t else evalX P (f + 1) venv e := by
   by_cases h : x = y <;> simp_all [iteX, apps, U, evalX, evalB, spine]
 
 theorem ite_lt_case (P : Prog) (f : Nat) (venv : List V) (r : Sh) (a b t e : X) (x y : UInt64)
     (ha : evalX P f venv a = some (.w x)) (hb : evalX P f venv b = some (.w y)) :
-    evalX P (f + 2) venv (iteX r 2 a b t e) = if x < y then evalX P (f + 1) venv t else evalX P (f + 1) venv e := by
+    evalX P (f + 2) venv (iteX r false 2 a b t e) = if x < y then evalX P (f + 1) venv t else evalX P (f + 1) venv e := by
   by_cases h : x < y <;> simp_all [iteX, apps, U, evalX, evalB, spine]
 
 /-- the pair case -/
