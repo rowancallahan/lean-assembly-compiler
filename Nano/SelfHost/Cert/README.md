@@ -3,7 +3,7 @@
 Proves that the **source text of the compiler** (`Testing/nano/v2self/self_S_input.txt`, parsed once into the data
 `PC.all : List DefA`) *means* the Lean function that the rest of the proof reasons about: `Cert.sem_C`
 (a REVIEW theorem) says `Ref (Sem κC PC.all inp) (Sh.mLean inp)` for every `inp` shorter than 2^64 bytes, i.e. the
-word-level meaning `Sem` (buffer capacity `κC = 524288`) of the parsed defs either hits the buffer capacity or equals
+word-level meaning `Sem` (buffer capacity `κC = 2097152`) of the parsed defs either hits the buffer capacity or equals
 `Sh.mLean inp` (= `C.g41 …`, the Lean compiler). It is the link between "the self-hosted source text" and "the Lean
 functions `C.*` that Gen/Machine/Main prove correct".
 

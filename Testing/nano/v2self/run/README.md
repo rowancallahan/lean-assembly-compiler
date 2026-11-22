@@ -58,7 +58,7 @@ bgeu jal jalr`.
 
 ## Validation (`validate.py`, run from the repository root)
 
-- self-compile: `nanorun B2.bin self_S_input.txt` gives `B2.bin` byte for byte (sha256 `24759aa0…`; before the hashed def table: `bb5558a5…`);
+- self-compile: `nanorun B2.bin self_S_input.txt` gives `B2.bin` byte for byte (sha256 `395f0b9d…` since exp-syntax; `24759aa0…` with the hashed def table; before it: `bb5558a5…`);
 - the four programs of `boot/qemu_regress.py`, compiled with `nanorun B2.bin` and run on five inputs each: outputs equal
   the Python model of the Lean semantics, and (with `QEMU=1`) the outputs of `qemu-system-riscv64`;
 - with 1 MiB of work memory the self-compile returns −1 (out of memory) instead of crashing.
@@ -68,6 +68,7 @@ Measured on the Linux build box (x86-64, `cc -O2`), 2026-11-19:
 | run | time | instructions |
 |---|---|---|
 | self-compile (87,286-byte source → 340,296 bytes of code; branch perf-names, 2026-11-20) | 7.2 s | 641,996,759 |
+| self-compile (exp-syntax: lexer trivia; → 348,904 bytes of code, 2026-11-20) | — | 664,861,123 |
 | self-compile before the hashed def table (86,725 B → 337,856 B) | 13.5 s | 1,454,349,112 |
 | compiling a 4-line program | 0.07 s | 6.5 million |
 | running a compiled 4-line program on 5 bytes | < 0.01 s | 441 |

@@ -17,7 +17,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
     (s0 : St) (inp : Nat → UInt64) (hinp : ∀ i, i < (s0.x 11).toNat → lbm s0.m ((s0.x 10).toNat + i) = inp i) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       (
-        let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) inp T
+        let P := pcOf 2097152 ((s0.x 12).toNat + 16) (s0.x 11) inp T
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ (11 + D.length)) ∧
@@ -54,7 +54,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   intro KL hpar E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
   have hE8 : E0 % 8 = 0 := by
     rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega
-  generalize hPd : pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) inp T = P at *
+  generalize hPd : pcOf 2097152 ((s0.x 12).toNat + 16) (s0.x 11) inp T = P at *
   have hPhb : P.hb = (s0.x 12).toNat + 16 := by rw [← hPd]; rfl
   have hPc : P.c29 = s0.x 11 := by rw [← hPd]; rfl
   have hPi : P.inp = inp := by rw [← hPd]; rfl
@@ -90,7 +90,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
     (fun s hs n off h => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb n off h)
     (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
     (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega)
-    (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega) (by rw [hDd]; exact AD)
+    (by rw [← hPd]; show 2097152 < 2 ^ 40; decide) (by rw [hPhb]; omega) (by rw [hDd]; exact AD)
     (fun j hj => hTp j hj)
     (fun k hk => by
       obtain ⟨a3, a4⟩ := hpar k hk

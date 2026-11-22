@@ -59,6 +59,13 @@ Reuse the earlier Expr-level work in Legacy/Riscv/Frontx (kernel-checked equatio
 | CRC-32 | own definition (~10 lines) | 32-bit masking, table |
 | SHA-256 (long-term showcase) | own definition, published vectors | word arrays, rotates, constant table, padding |
 
+* PACKED OUTPUT (owner, 2026-11-21; LATER, separate project): compiled output up to ~200 MB (cap 2^28 bytes).  Today
+  every buffer has one shared capacity κ and the output is one word per byte, so output ≤ κ and memory = 8(κ+2) per
+  bnew (SYNTAX_EXP.md "Design note: raising the buffer capacity κ").  Needs a byte-packed output buffer or output
+  written directly to the output region, and/or per-buffer capacities; the source bound 2^20 is Spec/Top.lean:76.
+  Lead / owner: per-buffer sizes (only the output buffer large) plus packed output are needed BEFORE con-leche
+  (estimated 3-10 MB of code).  κ = 2^21 (2 MiB output) is the interim step.
+
 ## On the path to a proof checker (con-leche)
 | Target | Lean reference | Needs |
 |---|---|---|

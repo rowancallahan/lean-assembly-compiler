@@ -71,8 +71,10 @@ def split_arrows(s):
 
 def read_defs():
     defs = []
-    for l in open(SRC).read().split("\n"):
+    ls = open(SRC).read().split("\n")
+    for i, l in enumerate(ls):
         if not l.startswith("def "): continue
+        while ":=" not in l and not ls[i + 1].lstrip().startswith("|"): i += 1; l += " " + ls[i].strip()   # a header continued on the next lines
         m = re.match(r"def (\w+)\s*(.*)$", l)
         name, rest = m.group(1), m.group(2)
         if rest.startswith(":") and "→" in rest.split(":=")[0]:

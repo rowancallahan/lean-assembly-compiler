@@ -1,5 +1,5 @@
 /- Nano/Tests/AuditSpace: audit gap A2 — a CONCRETE memory bound.  For ParSpec's `ex1` (MainWitness.x2) on
-input `[5]`, C's work bound `spaceC` (= `memoryNeeded` of `compileC`) is at most 4,194,416 bytes, far below RAM (2^31).
+input `[5]`, C's work bound `spaceC` (= `memoryNeeded` of `compileC`) is at most 16,777,328 bytes, far below RAM (2^31).
 The run of main with that much room is evaluated in the kernel at one position (2^31, empty output buffer); `shiftInv`
 moves it to every admissible position, `semAtF_pcT` to every output buffer. -/
 import Nano.SelfHost.Bridge.MainShift4
@@ -15,7 +15,7 @@ def p2 : List DefA := (refParse (C.s10 Witness.x2)).get hs2
 
 theorem hp2 : ParsesProgram (C.s10 Witness.x2) p2 := by unfold ParsesProgram p2; simp
 
-theorem pOf2 : pOf Witness.x2 = some p2 := pOf_eq Witness.w2.1 hp2
+theorem pOf2 : pOf Witness.x2 = some p2 := pOf_eq Witness.w2.1 hp2 (by decide +kernel)
 
 theorem lin2 : LinearK p2 := by
   obtain ⟨p, hp, -, hL, -⟩ := Witness.w2.2.1
@@ -114,31 +114,31 @@ def notRoom : Except Fail (List UInt64 × Hp) → Bool
   | .error .room => false
   | _ => true
 
-/-- kernel run: with 4,194,400 usable bytes at position 2^31, main on `[5]` does not run out of room -/
-theorem run2 : notRoom (RS p2 [5] [] (2 ^ 31) 4194400) = true := by
+/-- kernel run: with 16,777,312 usable bytes at position 2^31, main on `[5]` does not run out of room -/
+theorem run2 : notRoom (RS p2 [5] [] (2 ^ 31) 16777312) = true := by
   unfold RS; rw [← tab_eq _ _ (p2.length - 1 + 1) _ (Nat.lt_succ_self _)]; decide +kernel
 
-theorem good2 : GoodU p2 [5] 4194400 := by
+theorem good2 : GoodU p2 [5] 16777312 := by
   intro T hb h8 h31 h32 hr
-  have hr' : RS p2 [5] [] hb 4194400 = .error .room := by
+  have hr' : RS p2 [5] [] hb 16777312 = .error .room := by
     unfold RS at hr ⊢; rw [SimW.semAtF_pcT κC hb _ _ [] T p2]; exact hr
-  have := (shiftInv _ p2 hp2 (by decide +kernel) lin2 [5] (by decide) [] hb (2 ^ 31) 4194400 h8 (by decide) h31
+  have := (shiftInv _ p2 hp2 (by decide +kernel) lin2 [5] (by decide) [] hb (2 ^ 31) 16777312 h8 (by decide) h31
     (Nat.le_refl _) h32 (by decide)).1 hr'
   have r := run2; rw [this] at r; cases r
 
-/-- kernel run: with 4,194,399 usable bytes main on `[5]` DOES run out of room -/
-theorem run2' : notRoom (RS p2 [5] [] (2 ^ 31) 4194399) = false := by
+/-- kernel run: with 16,777,311 usable bytes main on `[5]` DOES run out of room -/
+theorem run2' : notRoom (RS p2 [5] [] (2 ^ 31) 16777311) = false := by
   unfold RS; rw [← tab_eq _ _ (p2.length - 1 + 1) _ (Nat.lt_succ_self _)]; decide +kernel
 
-/-- **audit A2, exact**: `memoryNeeded` for ex1 on input `[5]` is exactly 4,194,416 bytes (4 MiB for one BNEW buffer of
-capacity κC = 524,288 words, plus headers, frames and the 16-byte reserve) -/
-theorem spaceC_ex1_eq : spaceC Witness.x2 [5] = 4194416 := by
-  have hr : RS p2 [5] [] (2 ^ 31) 4194399 = .error .room := by
-    have := run2'; revert this; cases RS p2 [5] [] (2 ^ 31) 4194399 with
+/-- **audit A2, exact**: `memoryNeeded` for ex1 on input `[5]` is exactly 16,777,328 bytes (16 MiB for one BNEW buffer of
+capacity κC = 2,097,152 words, plus headers, frames and the 16-byte reserve) -/
+theorem spaceC_ex1_eq : spaceC Witness.x2 [5] = 16777328 := by
+  have hr : RS p2 [5] [] (2 ^ 31) 16777311 = .error .room := by
+    have := run2'; revert this; cases RS p2 [5] [] (2 ^ 31) 16777311 with
     | error f => cases f <;> simp [notRoom]
     | ok _ => simp [notRoom]
   have hlt := room_lt (by decide) (Nat.le_refl _) (by decide) hr
-  have h := lfind_le (GoodU p2 [5]) (2 ^ 32) 0 4194400 (Nat.zero_le _) (by decide) good2
+  have h := lfind_le (GoodU p2 [5]) (2 ^ 32) 0 16777312 (Nat.zero_le _) (by decide) good2
   unfold spaceC; rw [pOf2]; simp only; unfold Msp; unfold thr at *; omega
 
 end NanoMain.AuditSpace

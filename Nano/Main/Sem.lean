@@ -4,18 +4,20 @@ the driver `mC`, the meaning `Sem` of a resolved program (word level, buffer cap
 contract (`Outcome`, `ImplementsCW`, `GenStage`, `compiler_correct`) stays in Main.lean.-/
 import Nano.Lexer.Lex2Sound
 import Nano.Parser.Par1
+import Nano.Lexer.Dsg
 import Nano.Codegen.Gen
 import Nano.Ownership.Own
 import Nano.Ownership.OwnSpec
 import Nano.Parser.ParInv
 import Nano.Lexer.MainTokWF
 import Nano.Parser.ParSerLen
+import Nano.Parser.NumC
 
 namespace NanoMain
 open ParSpec
 
 /-- C's driver, verbatim from `Testing/nano/v2self/build_self_S.py` (not in `C/Main.lean`, which holds the old chain) -/
-def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.s10 x)))
+def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.u10 (C.y16 (C.t10 (C.s10 x)))))
 
 /-! ## the meaning of a resolved program -/
 
@@ -133,7 +135,7 @@ def Sem (κ : Nat) (p : List DefA) (inp : List UInt8) : Except Stop (List UInt8)
   | none => .error .stuck
 
 /-- Gen's buffer capacity (`C.g_999`) -/
-def κC : Nat := 524288
+def κC : Nat := 2097152
 
 /-! ## the stage hypotheses -/
 
@@ -166,6 +168,13 @@ theorem o41_ne (x : Buf) (h : C.o41 x ≠ []) : C.o41 x = x := by
     · rw [if_neg hc] at hr; exact absurd rfl hr
   exact key _ h
 
+/-- `u10` returns its input or nothing -/
+theorem u10_ne (x : Buf) (h : C.u10 x ≠ []) : C.u10 x = x := by
+  unfold C.u10 at *
+  by_cases hc : (C.u11 x == 1) = true
+  · rw [if_pos hc]
+  · rw [if_neg hc] at h; exact absurd rfl h
+
 theorem g41_nil (c : List UInt8) : C.g41 c [] = [] := by
   simp [C.g41, C.g42, bget]
 
@@ -180,35 +189,134 @@ theorem isD_isW (c : UInt8) (h : LexSpec.isD c = true) : LexSpec.isW c = true :=
 theorem sum2 (L : List UInt8) : (L.map (fun _ => (2 : Nat))).sum = 2 * L.length := by
   induction L <;> simp_all; omega
 
+theorem blockEnd_len : ∀ (d : Nat) (l t : List UInt8), LexSpec.blockEnd d l = some t → t.length ≤ l.length
+  | _, [], _, h => by simp [LexSpec.blockEnd] at h
+  | _, [_], _, h => by simp [LexSpec.blockEnd] at h
+  | d, c :: c' :: r, t, h => by
+    simp only [LexSpec.blockEnd] at h
+    split at h
+    · split at h
+      · cases h; simp; omega
+      · have := blockEnd_len _ r t h; simp; omega
+    · split at h
+      · have := blockEnd_len _ r t h; simp; omega
+      · have := blockEnd_len _ (c' :: r) t h; simp at this ⊢; omega
+
+theorem docWs_len : ∀ (f : Nat) (l t : List UInt8), LexSpec.docWs f l = some t → t.length ≤ l.length
+  | 0, _, _, h => by simp [LexSpec.docWs] at h
+  | _ + 1, [], t, h => by simp [LexSpec.docWs] at h; subst h; simp
+  | f + 1, c :: r, t, h => by
+    simp only [LexSpec.docWs] at h
+    split at h
+    · have := docWs_len f r t h; simp; omega
+    split at h
+    · cases h
+    split at h
+    · have := docWs_len f _ t h; have := (List.dropWhile_suffix (· != 10) (l := r)).length_le; simp; omega
+    split at h
+    · obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 h
+      have := docWs_len f u t hd; have := blockEnd_len 0 _ _ hu
+      have : r.tail.tail.length ≤ r.length := by simp only [List.length_tail]; omega
+      simp; omega
+    · cases h; simp
+
+theorem attrEnd_len : ∀ (l w : List UInt8) (d : Bool) (t : List UInt8), LexSpec.attrEnd l w d = some t → t.length < l.length
+  | [], _, _, _, h => by simp [LexSpec.attrEnd] at h
+  | b :: r, w, d, t, h => by
+    simp only [LexSpec.attrEnd] at h
+    split at h
+    · split at h
+      · cases h
+      · have := attrEnd_len r _ _ t h; simp; omega
+    · split at h
+      · cases h
+      · split at h
+        · have := attrEnd_len r _ _ t h; simp; omega
+        · split at h
+          · split at h
+            · have := attrEnd_len r _ _ t h; simp; omega
+            · cases h
+          · split at h
+            · split at h
+              · cases h; simp
+              · cases h
+            · cases h
+
+theorem dw_len {p : UInt8 → Bool} (l : List UInt8) : (l.dropWhile p).length ≤ l.length :=
+  (List.dropWhile_suffix p).length_le
+
+theorem scopeLine_len (k : Nat) (r n e : List UInt8) (h : LexSpec.scopeLine k r = some (n, e)) :
+    n.length + e.length ≤ r.length := by
+  unfold LexSpec.scopeLine at h
+  simp only [Option.ite_none_right_eq_some, Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨-, rfl, rfl⟩ := h
+  · have h1 := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := r.dropWhile (· == 32))
+    have h2 := congrArg List.length h1; simp only [List.length_append] at h2
+    have := dw_len (p := (· == 32)) r
+    have := dw_len (p := (· == 32)) ((r.dropWhile (· == 32)).dropWhile LexSpec.isW)
+    omega
+
 theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpec.step l = some (e, r)) :
     e.length + 9 * r.length ≤ 9 * l.length := by
   match l, h with
   | c :: rr, h =>
     simp only [LexSpec.step] at h
+    have htl : rr.tail.length ≤ rr.length := by cases rr <;> simp
     split at h
     · cases h; simp; omega
-    · split at h
-      · rename_i s k hf
-        cases h
-        have hm := List.mem_of_find?_eq_some hf
-        have h1 := op_ne _ hm
-        simp at h1 ⊢; omega
-      · have hw : ((c :: rr).takeWhile LexSpec.isW).length + ((c :: rr).dropWhile LexSpec.isW).length = rr.length + 1 := by
-          have := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := c :: rr)
-          have := congrArg List.length this; simp only [List.length_append] at this; simpa using this
-        have hc : ∀ hc : LexSpec.isW c = true, ((c :: rr).takeWhile LexSpec.isW).length ≥ 1 := by
-          intro hc; simp [hc]
-        split at h
-        · split at h
-          · cases h; have := hc (isD_isW c ‹_›); simp [LexSpec.le8]; omega
+    split at h
+    · cases h; have := dw_len (p := (· != 10)) rr.tail; simp; omega
+    split at h
+    · obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      have he' : e = [] ∧ r = t := by split at he <;> simp_all
+      obtain ⟨rfl, rfl⟩ := he'
+      have htt : rr.tail.tail.length ≤ rr.tail.length := by cases rr.tail <;> simp
+      split at hb
+      · obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 hb
+        have := docWs_len _ _ _ hu; have := blockEnd_len 0 _ _ hd; simp; omega
+      · have := blockEnd_len 0 _ _ hb; simp; omega
+    split at h
+    · obtain ⟨t, hb, he⟩ := Option.bind_eq_some_iff.1 h
+      have he' : e = [] ∧ r = t := by split at he <;> simp_all
+      obtain ⟨rfl, rfl⟩ := he'
+      have := attrEnd_len _ _ _ _ hb; simp; omega
+    split at h
+    · rename_i s k hf
+      cases h
+      have hm := List.mem_of_find?_eq_some hf
+      have h1 := op_ne _ hm
+      simp at h1 ⊢; omega
+    · have hw : ((c :: rr).takeWhile LexSpec.isW).length + ((c :: rr).dropWhile LexSpec.isW).length = rr.length + 1 := by
+        have := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := c :: rr)
+        have := congrArg List.length this; simp only [List.length_append] at this; simpa using this
+      have hc : ∀ hc : LexSpec.isW c = true, ((c :: rr).takeWhile LexSpec.isW).length ≥ 1 := by
+        intro hc; simp [hc]
+      split at h
+      · split at h
+        · cases h; have := hc (isD_isW c ‹_›); simp [LexSpec.le8]; omega
+        · cases h
+      · split at h
+        · have := hc ‹_›
+          split at h
           · cases h
-        · split at h
-          · cases h; have := hc ‹_›
-            split
-            · simp; omega
-            · simp only [List.length_cons, List.length_append, List.length_flatMap, List.length_nil]
-              simp [sum2]; omega
-          · cases h
+          split at h
+          · obtain ⟨⟨n, e'⟩, hs, he⟩ := Option.map_eq_some_iff.1 h
+            cases he
+            have := scopeLine_len _ _ _ _ hs
+            have : ∀ o, (LexSpec.scopeTok o n).length ≤ 2 * n.length + 3 := fun o => by
+              unfold LexSpec.scopeTok; split <;> simp [List.length_flatMap, sum2] <;> omega
+            refine Nat.le_trans (Nat.add_le_add_right (this _) _) ?_
+            simp only [List.length_cons]; omega
+          split at h
+          · split at h
+            · cases h; simp; omega
+            · cases h
+          cases h
+          split
+          · simp; omega
+          · simp only [List.length_cons, List.length_append, List.length_flatMap, List.length_nil]
+            simp [sum2]; omega
+        · cases h
 
 /-- the lexer's output is at most 9 words per input byte -/
 theorem lexes_len {x : List UInt8} {ts : List UInt64} (h : LexSpec.Lexes x ts) : ts.length ≤ 9 * x.length := by
