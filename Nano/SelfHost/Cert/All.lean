@@ -63,6 +63,9 @@ import Nano.SelfHost.Cert.Defs59
 import Nano.SelfHost.Cert.Defs60
 import Nano.SelfHost.Cert.Defs61
 import Nano.SelfHost.Cert.Defs62
+import Nano.SelfHost.Cert.Defs63
+import Nano.SelfHost.Cert.Defs64
+import Nano.SelfHost.Cert.Defs65
 set_option maxRecDepth 100000
 namespace Cert
 open NanoMain ParSpec
@@ -394,11 +397,23 @@ theorem all_ok (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Al
    fun ms G => ⟨_, rfl, ok_323 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_324 inp ms hin G⟩,
    fun ms G => ⟨_, rfl, ok_325 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_326 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_327 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_328 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_329 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_330 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_331 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_332 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_333 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_334 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_335 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_336 inp ms hin G⟩,
+   fun ms G => ⟨_, rfl, ok_337 inp ms hin G⟩,
    trivial⟩
 
 /-- **the meaning of C's source text** (ParSpec's parse `PC.all`, `Sem`) is the Lean function `mLean`, up to the buffer capacity -/
 theorem sem_C (inp : List UInt8) (hin : inp.length < 18446744073709551616) : Ref (Sem κC PC.all inp) (Sh.mLean inp) := by
   have G := means_all inp κC (specs inp) PC.all [] 0 ⟨rfl, by simp⟩ (all_ok inp hin)
-  have h := sem_of_good (n := 325) (S := Spec325 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
+  have h := sem_of_good (n := 337) (S := Spec337 inp) (out := Sh.m inp) G rfl (fun F hF => hF)
   rwa [Sh.m_map] at h
 end Cert

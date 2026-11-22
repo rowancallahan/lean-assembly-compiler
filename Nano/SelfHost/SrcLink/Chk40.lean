@@ -17,5 +17,9 @@ theorem lex300 : lexAll (x300.length + 1) x300 = some w300 := by decide +kernel
 theorem tok300 : tokens w300 = some S300 := by decide +kernel
 theorem nl300 : x300.getLast? = some 10 := by decide +kernel
 theorem chk300 : chkDef (pDef F D300 T300) di300 d300 T301 = true := by decide +kernel
+theorem lex301 : lexAll (x301.length + 1) x301 = some w301 := by decide +kernel
+theorem tok301 : tokens w301 = some S301 := by decide +kernel
+theorem nl301 : x301.getLast? = some 10 := by decide +kernel
+theorem chk301 : chkDef (pDef F D301 T301) di301 d301 T302 = true := by decide +kernel
 
 end SrcGen
