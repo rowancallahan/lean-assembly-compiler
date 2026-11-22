@@ -37,6 +37,12 @@ Status (keep_round1_expr; EXPR.md is the detailed report):
   Big-number Nat is deferred.
 - Proved: eval_emit (Ev of emitted Expr = nano's Sem, all programs); C_expr (mC = Ev of C's Expr);
   self_expr_C (C's RISC-V code writes that value). The fixpoint B2 = B3 is checked.
+- LONG-TERM (owner, 2026-11-22): Ev in general. (a) Define the standard meaning of the emitted Expr slice and prove
+  Ev = that meaning for every Expr. (b) Then prove Ev = con-leche's model meaning for every Expr in the slice.
+  Composed with the compiler theorems on RISC-V (Sail) and ARM (DeepMind + Sail), this gives: for every program
+  whose Expr matches Lean's, the machine code computes con-leche's meaning of Lean's Expr. Applied to C compiled
+  by itself, the B2 identity comes from the fixpoint / kernel evaluation. TODO soon: the ARM analogue of
+  self_expr_C, which only composes C_expr with C_correct_native_release.
 - NEXT (owner, 2026-11-22): prove the SELF-HOSTED emitter E itself. Restate the chain over E's own definitions
   (a SrcLink-style cert for E), or prove E = emitSpec. Until then, E is checked byte-equal to emitSpec.
 - In progress: make "emitted Expr = Lean's Expr" kernel-checked (generated literal + decide/rfl), not a script check.
