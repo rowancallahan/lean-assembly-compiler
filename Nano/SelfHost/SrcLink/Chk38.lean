@@ -5,6 +5,10 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
+theorem lex286 : lexAll (x286.length + 1) x286 = some w286 := by decide +kernel
+theorem tok286 : tokens w286 = some S286 := by decide +kernel
+theorem nl286 : x286.getLast? = some 10 := by decide +kernel
+theorem chk286 : chkDef (pDef F D286 T286) di286 d286 T287 = true := by decide +kernel
 theorem lex287 : lexAll (x287.length + 1) x287 = some w287 := by decide +kernel
 theorem tok287 : tokens w287 = some S287 := by decide +kernel
 theorem nl287 : x287.getLast? = some 10 := by decide +kernel
@@ -37,5 +41,9 @@ theorem lex294 : lexAll (x294.length + 1) x294 = some w294 := by decide +kernel
 theorem tok294 : tokens w294 = some S294 := by decide +kernel
 theorem nl294 : x294.getLast? = some 10 := by decide +kernel
 theorem chk294 : chkDef (pDef F D294 T294) di294 d294 T295 = true := by decide +kernel
+theorem lex295 : lexAll (x295.length + 1) x295 = some w295 := by decide +kernel
+theorem tok295 : tokens w295 = some S295 := by decide +kernel
+theorem nl295 : x295.getLast? = some 10 := by decide +kernel
+theorem chk295 : chkDef (pDef F D295 T295) di295 d295 T296 = true := by decide +kernel
 
 end SrcGen

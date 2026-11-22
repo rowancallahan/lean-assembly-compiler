@@ -45,16 +45,66 @@ import Nano.SelfHost.SrcLink.Data42
 import Nano.SelfHost.SrcLink.Data43
 import Nano.SelfHost.SrcLink.Data44
 import Nano.SelfHost.SrcLink.Data45
+import Nano.SelfHost.SrcLink.Data46
+import Nano.SelfHost.SrcLink.Data47
 namespace SrcGen
 open ParSpec SrcLink
 
-def F : Nat := 371088
-def T326 : List Tok := []
-def X325 : List UInt8 := x325
-def W325 : List UInt64 := w325
-def Ls326 : List DefA := []
+def F : Nat := 391192
+def T338 : List Tok := []
+def X337 : List UInt8 := x337
+def W337 : List UInt64 := w337
+def Ls338 : List DefA := []
+def T337 : List Tok := S337 ++ T338
+def Ls337 : List DefA := d337 :: Ls338
+def T336 : List Tok := S336 ++ T337
+def Ls336 : List DefA := d336 :: Ls337
+def X336 : List UInt8 := x336 ++ X337
+def W336 : List UInt64 := w336 ++ W337
+def T335 : List Tok := S335 ++ T336
+def Ls335 : List DefA := d335 :: Ls336
+def X335 : List UInt8 := x335 ++ X336
+def W335 : List UInt64 := w335 ++ W336
+def T334 : List Tok := S334 ++ T335
+def Ls334 : List DefA := d334 :: Ls335
+def X334 : List UInt8 := x334 ++ X335
+def W334 : List UInt64 := w334 ++ W335
+def T333 : List Tok := S333 ++ T334
+def Ls333 : List DefA := d333 :: Ls334
+def X333 : List UInt8 := x333 ++ X334
+def W333 : List UInt64 := w333 ++ W334
+def T332 : List Tok := S332 ++ T333
+def Ls332 : List DefA := d332 :: Ls333
+def X332 : List UInt8 := x332 ++ X333
+def W332 : List UInt64 := w332 ++ W333
+def T331 : List Tok := S331 ++ T332
+def Ls331 : List DefA := d331 :: Ls332
+def X331 : List UInt8 := x331 ++ X332
+def W331 : List UInt64 := w331 ++ W332
+def T330 : List Tok := S330 ++ T331
+def Ls330 : List DefA := d330 :: Ls331
+def X330 : List UInt8 := x330 ++ X331
+def W330 : List UInt64 := w330 ++ W331
+def T329 : List Tok := S329 ++ T330
+def Ls329 : List DefA := d329 :: Ls330
+def X329 : List UInt8 := x329 ++ X330
+def W329 : List UInt64 := w329 ++ W330
+def T328 : List Tok := S328 ++ T329
+def Ls328 : List DefA := d328 :: Ls329
+def X328 : List UInt8 := x328 ++ X329
+def W328 : List UInt64 := w328 ++ W329
+def T327 : List Tok := S327 ++ T328
+def Ls327 : List DefA := d327 :: Ls328
+def X327 : List UInt8 := x327 ++ X328
+def W327 : List UInt64 := w327 ++ W328
+def T326 : List Tok := S326 ++ T327
+def Ls326 : List DefA := d326 :: Ls327
+def X326 : List UInt8 := x326 ++ X327
+def W326 : List UInt64 := w326 ++ W327
 def T325 : List Tok := S325 ++ T326
 def Ls325 : List DefA := d325 :: Ls326
+def X325 : List UInt8 := x325 ++ X326
+def W325 : List UInt64 := w325 ++ W326
 def T324 : List Tok := S324 ++ T325
 def Ls324 : List DefA := d324 :: Ls325
 def X324 : List UInt8 := x324 ++ X325
@@ -1682,5 +1732,17 @@ def D323 : List DefI := D322 ++ [di322]
 def D324 : List DefI := D323 ++ [di323]
 def D325 : List DefI := D324 ++ [di324]
 def D326 : List DefI := D325 ++ [di325]
+def D327 : List DefI := D326 ++ [di326]
+def D328 : List DefI := D327 ++ [di327]
+def D329 : List DefI := D328 ++ [di328]
+def D330 : List DefI := D329 ++ [di329]
+def D331 : List DefI := D330 ++ [di330]
+def D332 : List DefI := D331 ++ [di331]
+def D333 : List DefI := D332 ++ [di332]
+def D334 : List DefI := D333 ++ [di333]
+def D335 : List DefI := D334 ++ [di334]
+def D336 : List DefI := D335 ++ [di335]
+def D337 : List DefI := D336 ++ [di336]
+def D338 : List DefI := D337 ++ [di337]
 
 end SrcGen

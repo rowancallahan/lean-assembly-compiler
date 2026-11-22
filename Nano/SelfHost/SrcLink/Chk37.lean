@@ -37,9 +37,5 @@ theorem lex285 : lexAll (x285.length + 1) x285 = some w285 := by decide +kernel
 theorem tok285 : tokens w285 = some S285 := by decide +kernel
 theorem nl285 : x285.getLast? = some 10 := by decide +kernel
 theorem chk285 : chkDef (pDef F D285 T285) di285 d285 T286 = true := by decide +kernel
-theorem lex286 : lexAll (x286.length + 1) x286 = some w286 := by decide +kernel
-theorem tok286 : tokens w286 = some S286 := by decide +kernel
-theorem nl286 : x286.getLast? = some 10 := by decide +kernel
-theorem chk286 : chkDef (pDef F D286 T286) di286 d286 T287 = true := by decide +kernel
 
 end SrcGen

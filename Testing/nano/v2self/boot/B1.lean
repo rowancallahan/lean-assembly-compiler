@@ -3138,7 +3138,9 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
           let (y8, y9) := z5;
           if h == 0 then
             (if ma == 0 then
-              (if mb == 0 then u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y8 y9 y2
+              (if mb == 0 then
+                (if u15 x (c + 2) == 0 then u64 b3 t s y8 y9 y2
+                 else u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y8 y9 y2)
                else u64 b3 t s y8 y9 y2)
              else u64 b3 t s y8 y9 y2)
           else u64 b3 t s y8 y9 y2)
@@ -3279,50 +3281,65 @@ def u47 : Nat → Buf → Buf → UInt64 → UInt64 → Buf × UInt64
   | 0, g, s, j, e => (g, 0)
   | n + 1, g, s, j, e => if j < e then u47 n (bpush g (bget s j)) s (j + 1) e else (g, 1)
 
+-- one step of the main machine: (next: 2, stop with ok 0/1; the state b, bt, t, tt, c, g, s, st, gb, y, y1, y2)
+def u81 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
+    UInt64 × (Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (Buf × (UInt64 × (UInt64 × (Buf × (Buf × Buf))))))))))) :=
+  if tt == 0 then (1, (b, (bt, (t, (tt, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+  else if u36 b t g s == 0 then (0, (b, (bt, (t, (tt, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+  else
+    let k := bget t (3 * tt - 3);
+    let a := bget t (3 * tt - 2);
+    let a2 := bget t (3 * tt - 1);
+    let u := tt - 1;
+    if k == 4 then
+      (let (g1, ok) := u47 16777216 (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
+       if ok == 1 then (2, (b, (bt, (t, (u, (c, (g1, (s, (gb, (a2, (y, (y1, y2)))))))))))) else (0, (b, (bt, (t, (tt, (c, (g1, (s, (st, (gb, (y, (y1, y2)))))))))))))
+    else if k == 5 then (2, (b, (a, (t, (u, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+    else if k == 6 then
+      (let (b1, z) := u31 x d b bt y y1 a2;
+       let (v, z1) := z;
+       let (vt, z2) := z1;
+       let (e, z3) := z2;
+       let (ok, y3) := z3;
+       if ok == 1 then
+         (let (b2, z4) := u26 b1 bt v 0 vt a;
+          let (bt1, ok1) := z4;
+          if ok1 == 1 then (2, (b2, (bt1, (t, (u, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))) else (0, (b2, (bt, (t, (tt, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))))
+       else (0, (b1, (bt, (t, (tt, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))))
+    else if k == 7 then (if a == 0 then (2, (b, (bt, (t, (u, (c, (g, (s, (st, (gb, (y, (y1, y2)))))))))))) else (2, (b, (bt, (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0, (tt + 1, (c, (g, (s, (st, (gb, (y, (y1, y2)))))))))))))
+    else if k == 8 then (2, (b, (bt, (u27 t u 0 1 0, (tt, (a, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+    else
+      (let (b1, z) := u49 x d b bt t u c s st gb k a a2 y y1 y2;
+       let (bt1, z1) := z;
+       let (t1, z2) := z1;
+       let (tt1, z3) := z2;
+       let (c1, z4) := z3;
+       let (s1, z5) := z4;
+       let (st1, z6) := z5;
+       let (gb1, z7) := z6;
+       let (ok, z8) := z7;
+       let (y3, z9) := z8;
+       let (y4, y5) := z9;
+       if ok == 1 then (2, (b1, (bt1, (t1, (tt1, (c1, (g, (s1, (st1, (gb1, (y3, (y4, y5)))))))))))) else (0, (b1, (bt1, (t1, (tt1, (c1, (g, (s1, (st1, (gb1, (y3, (y4, y5)))))))))))))
+
 -- the main machine: (groups, (cursor, (ok, (b, (t, (s, (y, (y1, y2))))))))
 def u40 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → UInt64 → Buf → Buf → UInt64 → UInt64 → Buf → Buf → Buf →
     Buf × (UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × Buf)))))))
   | 0, x, d, b, bt, t, tt, c, g, s, st, gb, y, y1, y2 => (g, (c, (0, (b, (t, (s, (y, (y1, y2))))))))
   | n + 1, x, d, b, bt, t, tt, c, g, s, st, gb, y, y1, y2 =>
-    if tt == 0 then (g, (c, (1, (b, (t, (s, (y, (y1, y2))))))))
-    else if u36 b t g s == 0 then (g, (c, (0, (b, (t, (s, (y, (y1, y2))))))))
-    else
-      let k := bget t (3 * tt - 3);
-      let a := bget t (3 * tt - 2);
-      let a2 := bget t (3 * tt - 1);
-      let u := tt - 1;
-      if k == 4 then
-        (let (g1, ok) := u47 16777216 (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
-         if ok == 1 then u40 n x d b bt t u c g1 s gb a2 y y1 y2 else (g1, (c, (0, (b, (t, (s, (y, (y1, y2)))))))))
-      else if k == 5 then u40 n x d b a t u c g s st gb y y1 y2
-      else if k == 6 then
-        (let (b1, z) := u31 x d b bt y y1 a2;
-         let (v, z1) := z;
-         let (vt, z2) := z1;
-         let (e, z3) := z2;
-         let (ok, y3) := z3;
-         if ok == 1 then
-           (let (b2, z4) := u26 b1 bt v 0 vt a;
-            let (bt1, ok1) := z4;
-            if ok1 == 1 then u40 n x d b2 bt1 t u c g s st gb v y3 y2 else (g, (c, (0, (b2, (t, (s, (v, (y3, y2)))))))))
-         else (g, (c, (0, (b1, (t, (s, (v, (y3, y2)))))))))
-      else if k == 7 then
-        (if a == 0 then u40 n x d b bt t u c g s st gb y y1 y2
-         else u40 n x d b bt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0) (tt + 1) c g s st gb y y1 y2)
-      else if k == 8 then u40 n x d b bt (u27 t u 0 1 0) tt a g s st gb y y1 y2
-      else
-        (let (b1, z) := u49 x d b bt t u c s st gb k a a2 y y1 y2;
-         let (bt1, z1) := z;
-         let (t1, z2) := z1;
-         let (tt1, z3) := z2;
-         let (c1, z4) := z3;
-         let (s1, z5) := z4;
-         let (st1, z6) := z5;
-         let (gb1, z7) := z6;
-         let (ok, z8) := z7;
-         let (y3, z9) := z8;
-         let (y4, y5) := z9;
-         if ok == 1 then u40 n x d b1 bt1 t1 tt1 c1 g s1 st1 gb1 y3 y4 y5 else (g, (c1, (0, (b1, (t1, (s1, (y3, (y4, y5)))))))))
+    let (k, z) := u81 x d b bt t tt c g s st gb y y1 y2;
+    let (b1, z1) := z;
+    let (bt1, z2) := z1;
+    let (t1, z3) := z2;
+    let (tt1, z4) := z3;
+    let (c1, z5) := z4;
+    let (g1, z6) := z5;
+    let (s1, z7) := z6;
+    let (st1, z8) := z7;
+    let (gb1, z9) := z8;
+    let (y3, z10) := z9;
+    let (y4, y5) := z10;
+    if k == 2 then u40 n x d b1 bt1 t1 tt1 c1 g1 s1 st1 gb1 y3 y4 y5 else (g1, (c1, (k, (b1, (t1, (s1, (y3, (y4, y5))))))))
 
 -- every slot g[j .. e) is below n
 def u52 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
@@ -3516,29 +3533,46 @@ def u74 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
           else u74 n x f i1 k1)
        else u74 n x f i1 k1)
 
+-- the late-slot check of the def at i (1): clear y2's slot marks, mark the late slots, check the shifts
+def u79 (x y1 y2 : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
+  let (f0, k0) := u57 16777216 y2 0 (bget x (i + 3));
+  if k0 == 1 then
+    (let (f1, z0) := u73 16777216 x f0 y1 (i + 6) 1;
+     let (w1, k1) := z0;
+     if k1 == 1 then (let k := u74 16777216 x f1 (i + 6) 1; (f1, (w1, k))) else (f1, (w1, 0)))
+  else (f0, (y1, 0))
+
+-- one def at i: (next: 1, stop: 0; the cursor and buffers for the next def)
+def u80 (x d : Buf) (i : UInt64) (b t g s y y1 y2 : Buf) :
+    UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × (Buf × Buf))))))) :=
+  let (f1, z0) := u79 x y1 y2 i;
+  let (w1, k1) := z0;
+  if k1 == 1 then
+    (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y w1 f1;
+     let (g1, z1) := z;
+     let (b1, z2) := z1;
+     let (t1, z3) := z2;
+     let (s1, z4) := z3;
+     let (y5, z5) := z4;
+     let (ok, z6) := z5;
+     let (y3, y4) := z6;
+     ((if ok == 1 then (if bget x e == 21 then 1 else 0) else 0), (e + 1, (b1, (t1, (g1, (s1, (y3, (y4, y5)))))))))
+  else (0, (i, (b, (t, (g, (s, (y, (w1, f1))))))))
+
 -- every def from i (b, t, g, s, y, y1, y2: the buffers, allocated once)
 def u61 : Nat → Buf → Buf → UInt64 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64
   | 0, x, d, i, b, t, g, s, y, y1, y2 => 0
   | n + 1, x, d, i, b, t, g, s, y, y1, y2 =>
     if i < bsize x then
-      (let (f0, k0) := u57 16777216 y2 0 (bget x (i + 3));
-       let (f1, z0) := u73 16777216 x f0 y1 (i + 6) 1;
-       let (w1, k1) := z0;
-       if k0 == 1 then
-         (if k1 == 1 then
-           (if u74 16777216 x f1 (i + 6) 1 == 1 then
-             (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y w1 f1;
-              let (g1, z1) := z;
-              let (b1, z2) := z1;
-              let (t1, z3) := z2;
-              let (s1, z4) := z3;
-              let (y5, z5) := z4;
-              let (ok, z6) := z5;
-              let (y3, y4) := z6;
-              if ok == 1 then (if bget x e == 21 then u61 n x d (e + 1) b1 t1 g1 s1 y3 y4 y5 else 0) else 0)
-            else 0)
-          else 0)
-       else 0)
+      (let (k, z) := u80 x d i b t g s y y1 y2;
+       let (i1, z1) := z;
+       let (b1, z2) := z1;
+       let (t1, z3) := z2;
+       let (g1, z4) := z3;
+       let (s1, z5) := z4;
+       let (y3, z6) := z5;
+       let (y4, y5) := z6;
+       if k == 1 then u61 n x d i1 b1 t1 g1 s1 y3 y4 y5 else 0)
     else 1
 
 -- 1: every def's numerals mean what Lean's mean

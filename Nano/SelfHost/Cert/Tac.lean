@@ -229,10 +229,18 @@ elab "den_step" : tactic => withMainContext <| noZU do
     else throwError "den: no rule for{indentExpr e}"
   else run `(tactic| first | assumption | decide | omega | den_bound)
 
+/-- `apply h` at a `DenK` goal on a `.cont` node only: elsewhere unifying `h`'s value (the loop call) with the goal's
+value would reduce the goal's `match`es on the step's tuple (minutes for a wide state) before the node fails -/
+elab "den_cont" h:term : tactic => withMainContext do
+  let tgt := (← instantiateMVars (← (← getMainGoal).getType)).cleanupAnnotations
+  unless tgt.getAppFn.constName? == some ``DenK do throwError "den_cont: not a DenK goal"
+  unless (← whnf tgt.getAppArgs[2]!).isAppOf ``ParSpec.Nd.cont do throwError "den_cont: not a cont node"
+  evalTactic (← `(tactic| apply $h))
+
 /-- `den`: value position; `den [h]`: tail position of a step arm, `h` = the CONTINUE rule from the induction hypothesis -/
 syntax "den" ("[" term "]")? : tactic
 macro_rules
   | `(tactic| den) => `(tactic| repeat' den_step)
-  | `(tactic| den [$h]) => `(tactic| repeat' (first | apply $h | den_step))
+  | `(tactic| den [$h]) => `(tactic| repeat' (first | den_cont $h | den_step))
 
 end Cert

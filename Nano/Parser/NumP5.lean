@@ -54,8 +54,57 @@ theorem u40_unf (n : Nat) (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) 
     u40 (n + 1) x d b bt t tt c g s st gb y y1 y2 =
       if tt == 0 then (g, (c, (1, (b, (t, (s, (y, (y1, y2))))))))
       else if u36 b t g s == 0 then (g, (c, (0, (b, (t, (s, (y, (y1, y2))))))))
-      else M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) y y1 y2 :=
-  rfl
+      else M40 16777216 n x d b bt t tt c g s st gb (bget t (3 * tt - 3)) (bget t (3 * tt - 2)) (bget t (3 * tt - 1)) y y1 y2 := by
+  rw [u40]; unfold u81 M40
+  by_cases h0 : (tt == 0) = true
+  · rw [if_pos h0, if_pos h0]; rfl
+  rw [if_neg h0, if_neg h0]
+  by_cases h1 : (u36 b t g s == 0) = true
+  · rw [if_pos h1, if_pos h1]; rfl
+  rw [if_neg h1, if_neg h1]
+  dsimp (config := {iota := false, proj := false, etaStruct := .none, beta := false, eta := false}) only
+  by_cases h4 : (bget t (3 * tt - 3) == 4) = true
+  · rw [if_pos h4, if_pos h4]
+    generalize u47 16777216 _ s (gb + 1) st = R
+    obtain ⟨g1, ok⟩ := R
+    dsimp (config := {zeta := false, proj := false, etaStruct := .none, eta := false}) only
+    by_cases h : (ok == 1) = true
+    · rw [if_pos h, if_pos h]; rfl
+    · rw [if_neg h, if_neg h]; rfl
+  rw [if_neg h4, if_neg h4]
+  by_cases h5 : (bget t (3 * tt - 3) == 5) = true
+  · rw [if_pos h5, if_pos h5]; rfl
+  rw [if_neg h5, if_neg h5]
+  by_cases h6 : (bget t (3 * tt - 3) == 6) = true
+  · rw [if_pos h6, if_pos h6]
+    generalize u31 x d b bt y y1 (bget t (3 * tt - 1)) = R
+    obtain ⟨b1, v, vt, e, ok, y3⟩ := R
+    dsimp (config := {zeta := false, proj := false, etaStruct := .none, eta := false}) only
+    by_cases h : (ok == 1) = true
+    · rw [if_pos h, if_pos h]
+      generalize u26 b1 bt v 0 vt (bget t (3 * tt - 2)) = R
+      obtain ⟨b2, bt1, ok1⟩ := R
+      dsimp (config := {zeta := false, proj := false, etaStruct := .none, eta := false}) only
+      by_cases h' : (ok1 == 1) = true
+      · rw [if_pos h', if_pos h']; rfl
+      · rw [if_neg h', if_neg h']; rfl
+    · rw [if_neg h, if_neg h]; rfl
+  rw [if_neg h6, if_neg h6]
+  by_cases h7 : (bget t (3 * tt - 3) == 7) = true
+  · rw [if_pos h7, if_pos h7]
+    by_cases h : (bget t (3 * tt - 2) == 0) = true
+    · rw [if_pos h, if_pos h]; rfl
+    · rw [if_neg h, if_neg h]; rfl
+  rw [if_neg h7, if_neg h7]
+  by_cases h8 : (bget t (3 * tt - 3) == 8) = true
+  · rw [if_pos h8, if_pos h8]; rfl
+  rw [if_neg h8, if_neg h8]
+  generalize u49 x d b bt t (tt - 1) c s st gb _ _ _ y y1 y2 = R
+  obtain ⟨b1, bt1, t1, tt1, c1, s1, st1, gb1, ok, y3, y4, y5⟩ := R
+  dsimp (config := {zeta := false, proj := false, etaStruct := .none, eta := false}) only
+  by_cases h : (ok == 1) = true
+  · rw [if_pos h, if_pos h]; rfl
+  · rw [if_neg h, if_neg h]; rfl
 
 theorem u40_zero (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
     u40 0 x d b bt t tt c g s st gb y y1 y2 = (g, (c, (0, (b, (t, (s, (y, (y1, y2)))))))) := rfl
