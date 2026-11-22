@@ -61,15 +61,24 @@ REJ_NANO_ONLY = [  # Lean accepts, nano rejects (stricter, allowed): the frame r
     ('A noncomputable def', 'noncomputable ' + M),
     ('A opaque', 'opaque g : UInt64\n' + M),
 ]
-# class B (literal typing): Lean rejects or computes in Nat, nano accepts until the B check lands; reported, not counted (move to CASES then)
-PENDING_B = [
-    ('M1 literal arithmetic in a comparison', 'def g (n : UInt64) : UInt64 := if 3 - 4 == 0 then 1 else 2\n' + M),
+# class B (literal typing, Nat step 1: NumSpec.numOkP), checked with Lean
+F = 'def f : Nat → List UInt8 → UInt64 → UInt64\n  | 0, x, a => a\n  | n + 1, x, a => f n x (a + 1)\n'
+CASES += [
     ('M15 tuple-let as a comparison operand in a recursive call', 'def f : Nat → List UInt8 → UInt64 → UInt64 → UInt64\n'
      '  | 0, x, i, a => a\n  | n + 1, x, i, a => f n x (i + 1) (if 5 == (let (a1, b1) := (rd x 5, rd x 2); a1) then 1 else 2)\n'
-     'def m (x : List UInt8) : List UInt8 := put [] (f 3 x 0 0)\n'),
+     'def m (x : List UInt8) : List UInt8 := put [] (f 3 x 0 0)\n', False),
     ('M15 tuple-let in an if-branch of a comparison operand', 'def m (x : List UInt8) : List UInt8 := put [] (if 0 == '
-     '(if 318 &&& rd x 5 < rd x 4 then rd x 2 else (let (a0, b0) := (127, 2); a0)) then 1 else 2)\n'),
-    ('M12 numeral left of a shift', 'def g (a : UInt64) : UInt64 := 7 + (a >>> 2)\n' + M),
+     '(if 318 &&& rd x 5 < rd x 4 then rd x 2 else (let (a0, b0) := (127, 2); a0)) then 1 else 2)\n', False),
+    ('M12 numeral left of a shift', 'def g (a : UInt64) : UInt64 := 7 + (a >>> 2)\n' + M, False),
+    ('N Nat literal comparison', 'def g (n : UInt64) : UInt64 := if 3 == 4 then 1 else 2\n' + M, True),
+    ('N let literal used as UInt64', 'def g (n : UInt64) : UInt64 := let k := 5; n + k\n' + M, True),
+    ('N literal fuel argument', F + 'def m (x : List UInt8) : List UInt8 := put [] (f 3 x 0)\n', True),
+    ('N fuel literal reused as UInt64', F + 'def m (x : List UInt8) : List UInt8 := let k := 3; put [] (f k x k)\n', False),
+    ('N literal shift operand', 'def g (n : UInt64) : UInt64 := n + (1 <<< 3)\n' + M, False),
+]
+REJ_NANO_ONLY += [  # Lean computes these in Nat (3 - 4 = 0, bignum arithmetic): nano rejects Nat arithmetic
+    ('M1 literal arithmetic in a comparison', 'def g (n : UInt64) : UInt64 := if 3 - 4 == 0 then 1 else 2\n' + M),
+    ('N Nat arithmetic on literals', F + 'def m (x : List UInt8) : List UInt8 := put [] (f (2 + 1) x 0)\n'),
 ]
 W = tempfile.mkdtemp(prefix='synreg_')
 for c, s in (('riscv64-linux-gnu-gcc', 'shim_rv'), ('aarch64-linux-gnu-gcc', 'shim_arm')):
@@ -87,8 +96,5 @@ for name, text, lean in CASES:
     for cn, cmd in COMP:
         acc = len(subprocess.run(cmd, input=text.encode(), capture_output=True, timeout=300).stdout) > 0
         if acc != lean: bad += 1; print(f'FAIL {cn}: {name}: nano {"accepts" if acc else "rejects"}, Lean {"accepts" if lean else "rejects"}')
-for name, text in PENDING_B:
-    acc = len(subprocess.run(COMP[0][1], input=text.encode(), capture_output=True, timeout=300).stdout) > 0
-    print(f'pending B: {name}: nano {"accepts" if acc else "rejects"} (Lean rejects or differs)')
 print(f'syntax_regress: {len(CASES)} cases x {len(COMP)} compilers, {bad} failures')
 sys.exit(1 if bad else 0)
