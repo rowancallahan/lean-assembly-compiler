@@ -27,7 +27,7 @@ theorem ofNat_mem (HL : LitEnv env) {ρ : Nat → S} {T n i : S} (hT : O.mem T (
 
 /-- **`FactsM.litN`, discharged** -/
 theorem litN_field (H : EncEnv env) (HL : LitEnv env) (HN : InstN env)
-    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hb : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0))))
     {ρ : Nat → S} {k : Nat} {R : S}
@@ -131,8 +131,8 @@ theorem cases_ty (H : EncEnv env) (HP : CasesPEnv env) {ρ : Nat → S} {l r R :
 
 /-- the stored `prod_c`, motive `fun _ => R` -/
 def ProdCEnv (env : List Const) : Prop :=
-  HasTy env "prod_c" [] (piN [(.sort 1, false), (.sort 1, false), (.sort 1, false),
-      (.forallE (.bvar 2) (.forallE (.bvar 2) (.bvar 2) false) false, false), (.bvar 3, false), (.bvar 3, false)]
+  HasTy env "prod_c" [] (piN [(.sort 1, true), (.sort 1, true), (.sort 1, true),
+      (.forallE (.bvar 2) (.forallE (.bvar 2) (.bvar 2) false) false, true), (.bvar 3, true), (.bvar 3, true)]
     (eqE 1 (.bvar 3)
       (.app (.app (.app (.app (.app (.const "Prod.casesOn" [1, 0, 0]) (.bvar 5)) (.bvar 4))
           (.lam (.app (.app (.const "Prod" [0, 0]) (.bvar 5)) (.bvar 4)) (.bvar 4) false))

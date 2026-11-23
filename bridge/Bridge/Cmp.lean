@@ -36,16 +36,16 @@ structure CmpEnv (env : List Const) : Prop where
   ble : HasTy env "Nat.ble" [] nnb
   beq : HasTy env "Nat.beq" [] nnb
   blt : HasTy env "Nat.blt" [] nnb
-  ble0 : HasTy env "ble0" [] (piN [(tNat, false)] (eqE 1 tB (bin2 "Nat.ble" nz (.bvar 0)) tt))
-  bleS0 : HasTy env "bleS0" [] (piN [(tNat, false)] (eqE 1 tB (bin2 "Nat.ble" (sc (.bvar 0)) nz) ff))
-  bleSS : HasTy env "bleSS" [] (piN [(tNat, false), (tNat, false)]
+  ble0 : HasTy env "ble0" [] (piN [(tNat, true)] (eqE 1 tB (bin2 "Nat.ble" nz (.bvar 0)) tt))
+  bleS0 : HasTy env "bleS0" [] (piN [(tNat, true)] (eqE 1 tB (bin2 "Nat.ble" (sc (.bvar 0)) nz) ff))
+  bleSS : HasTy env "bleSS" [] (piN [(tNat, true), (tNat, true)]
     (eqE 1 tB (bin2 "Nat.ble" (sc (.bvar 1)) (sc (.bvar 0))) (bin2 "Nat.ble" (.bvar 1) (.bvar 0))))
   beq00 : HasTy env "beq00" [] (eqE 1 tB (bin2 "Nat.beq" nz nz) tt)
-  beq0S : HasTy env "beq0S" [] (piN [(tNat, false)] (eqE 1 tB (bin2 "Nat.beq" nz (sc (.bvar 0))) ff))
-  beqS0 : HasTy env "beqS0" [] (piN [(tNat, false)] (eqE 1 tB (bin2 "Nat.beq" (sc (.bvar 0)) nz) ff))
-  beqSS : HasTy env "beqSS" [] (piN [(tNat, false), (tNat, false)]
+  beq0S : HasTy env "beq0S" [] (piN [(tNat, true)] (eqE 1 tB (bin2 "Nat.beq" nz (sc (.bvar 0))) ff))
+  beqS0 : HasTy env "beqS0" [] (piN [(tNat, true)] (eqE 1 tB (bin2 "Nat.beq" (sc (.bvar 0)) nz) ff))
+  beqSS : HasTy env "beqSS" [] (piN [(tNat, true), (tNat, true)]
     (eqE 1 tB (bin2 "Nat.beq" (sc (.bvar 1)) (sc (.bvar 0))) (bin2 "Nat.beq" (.bvar 1) (.bvar 0))))
-  bltDef : HasTy env "bltDef" [] (piN [(tNat, false), (tNat, false)]
+  bltDef : HasTy env "bltDef" [] (piN [(tNat, true), (tNat, true)]
     (eqE 1 tB (bin2 "Nat.blt" (.bvar 1) (.bvar 0)) (bin2 "Nat.ble" (sc (.bvar 1)) (.bvar 0))))
 
 variable (L : SetLaws O)
@@ -164,7 +164,7 @@ structure BeqEnv (env : List Const) : Prop where
   ofDec : HasTy env "instBEqOfDecidableEq" [0] (.forallE (.sort 1) (.forallE (.app (.const "DecidableEq" [1]) (.bvar 0))
     (.app (.const "BEq" [0]) (.bvar 1)) false) false)
   decU : HasTy env "instDecidableEqUInt64" [] (.app (.const "DecidableEq" [1]) tU)
-  brBeq : HasTy env "br_beq" [] (piN [(tNat, false), (tNat, false), (guard (.bvar 1), false), (guard (.bvar 1), false)]
+  brBeq : HasTy env "br_beq" [] (piN [(tNat, true), (tNat, true), (guard (.bvar 1), true), (guard (.bvar 1), true)]
     (eqE 1 tB (beqU (ofN (.bvar 3)) (ofN (.bvar 2))) (bin2 "Nat.beq" (.bvar 3) (.bvar 2))))
 
 variable (L : SetLaws O)
@@ -195,7 +195,7 @@ theorem beqU_mem (H : EncEnv env) (_HC : CmpEnv env) (HB : BeqEnv env) {ρ : Nat
 
 /-- the literal `18446744073709551616` denotes `natEnc 2^64` -/
 theorem nLit_D (H : EncEnv env) (HL : LitEnv env) (HN : InstN env)
-    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hb : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0)))) (ρ : Nat → S) : D O M.cval ρ nLit (natEnc M UInt64.size) := by
   obtain ⟨R, hR⟩ : ∃ R, D O M.cval ρ nLit R :=
@@ -205,7 +205,7 @@ theorem nLit_D (H : EncEnv env) (HL : LitEnv env) (HN : InstN env)
 
 /-- **the guard's proof element**: for `a < 2^64`, `pt` inhabits `⟦Nat.blt a 2^64 = true⟧` -/
 theorem guard_mem (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpEnv env)
-    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hb : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0)))) {ρ : Nat → S} {i a : Nat} (hi : ρ i = natEnc M a) (ha : a < UInt64.size) :
     ∃ G, D O M.cval ρ (guard (.bvar i)) G ∧ O.mem O.pt G := by
@@ -220,7 +220,7 @@ theorem guard_mem (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpE
 
 /-- **UInt64 `==` on encodings** -/
 theorem beqU_set (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpEnv env) (HB : BeqEnv env)
-    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hb : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0)))) (ρ : Nat → S) (x y : UInt64) :
     O.app (O.app (O.app (O.app (M.cval "BEq.beq" [0]) (M.cval "UInt64" []))

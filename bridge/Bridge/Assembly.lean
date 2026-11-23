@@ -21,7 +21,7 @@ structure Env (env : List Const) (sig : Sig) (P : Prog) : Prop where
   enc : EncEnv env
   lit : LitEnv env
   instN : InstN env
-  brLitN : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+  brLitN : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0)))
   casesN : CasesNEnv env

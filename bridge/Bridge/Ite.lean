@@ -87,7 +87,7 @@ theorem ite_mem (HI : IteEnv env) {ρ : Nat → S} {R c d t e : S} (hR : O.mem R
 /-- **the `ite` fact for UInt64 `==`** -/
 theorem iteEqU_field (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpEnv env) (HB : BeqEnv env)
     (HI : IteEnv env)
-    (hbl : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hbl : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0))))
     {ρ : Nat → S} {r : Sh} {a b c d : X} {va vb : ExprSpec.V} {Hv Xt Xe : S}

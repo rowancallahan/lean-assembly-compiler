@@ -11,7 +11,7 @@ open ExprSpec ParSpec Bridge.Typed Bridge.Mini Bridge.EvM Bridge.TT Bridge.HT Br
 
 variable {S : Type} {O : SetOps S} {env : List Const} {M : Model O env}
 
-def brLitNTy : E := piN [(tNat, false)] (eqE 1 tNat
+def brLitNTy : E := piN [(tNat, true)] (eqE 1 tNat
   (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0))) (.bvar 0))
 
 structure Env2 (env : List Const) (sig : Sig) (P : Prog) : Prop extends Env env sig P where

@@ -62,11 +62,11 @@ def motive (i : Nat) : E := .lam tNat (.bvar (i + 1)) false
 `nat_z : ∀ (R : Type) (z : R) (s : Nat → R), Nat.casesOn (motive := fun _ => R) Nat.zero z s = z` and
 `nat_s : ∀ (R : Type) (z : R) (s : Nat → R) (n : Nat), Nat.casesOn (motive := fun _ => R) (Nat.succ n) z s = s n` -/
 structure IotaEnv (env : List Const) : Prop where
-  z : HasTy env "nat_z" [] (piN [(.sort 1, false), (.bvar 0, false), (.forallE tNat (.bvar 2) false, false)]
+  z : HasTy env "nat_z" [] (piN [(.sort 1, true), (.bvar 0, true), (.forallE tNat (.bvar 2) false, true)]
     (eqE 1 (.bvar 2) (.app (.app (.app (.app (.const "Nat.casesOn" [1]) (motive 2)) (.const "Nat.zero" []))
       (.bvar 1)) (.bvar 0)) (.bvar 1)))
-  s : HasTy env "nat_s" [] (piN [(.sort 1, false), (.bvar 0, false), (.forallE tNat (.bvar 2) false, false),
-      (tNat, false)]
+  s : HasTy env "nat_s" [] (piN [(.sort 1, true), (.bvar 0, true), (.forallE tNat (.bvar 2) false, true),
+      (tNat, true)]
     (eqE 1 (.bvar 3) (.app (.app (.app (.app (.const "Nat.casesOn" [1]) (motive 3))
       (.app (.const "Nat.succ" []) (.bvar 0))) (.bvar 2)) (.bvar 1)) (.app (.bvar 1) (.bvar 0))))
 

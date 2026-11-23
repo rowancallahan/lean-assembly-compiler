@@ -37,12 +37,12 @@ structure AddEnv (env : List Const) : Prop where
     (.app (.app (.app (.const "HAdd" [0, 0, 0]) (.bvar 1)) (.bvar 1)) (.bvar 1)) false) false)
   addNat : HasTy env "instAddNat" [] (.app (.const "Add" [0]) tNat)
   addU64 : HasTy env "instAddUInt64" [] (.app (.const "Add" [0]) tU)
-  add0 : HasTy env "add0" [] (piN [(tNat, false)] (eqE 1 tNat (addN (.bvar 0) (.const "Nat.zero" [])) (.bvar 0)))
-  addS : HasTy env "addS" [] (piN [(tNat, false), (tNat, false)] (eqE 1 tNat
+  add0 : HasTy env "add0" [] (piN [(tNat, true)] (eqE 1 tNat (addN (.bvar 0) (.const "Nat.zero" [])) (.bvar 0)))
+  addS : HasTy env "addS" [] (piN [(tNat, true), (tNat, true)] (eqE 1 tNat
     (addN (.bvar 1) (.app (.const "Nat.succ" []) (.bvar 0))) (.app (.const "Nat.succ" []) (addN (.bvar 1) (.bvar 0)))))
-  brAdd : HasTy env "br_add" [] (piN [(tNat, false), (tNat, false)] (eqE 1 tU
+  brAdd : HasTy env "br_add" [] (piN [(tNat, true), (tNat, true)] (eqE 1 tU
     (addU (ofN (.bvar 1)) (ofN (.bvar 0))) (ofN (addN (.bvar 1) (.bvar 0)))))
-  brWrap : HasTy env "br_wrap" [] (piN [(tNat, false)] (eqE 1 tU
+  brWrap : HasTy env "br_wrap" [] (piN [(tNat, true)] (eqE 1 tU
     (ofN (addN (.bvar 0) (litNat UInt64.size))) (ofN (.bvar 0))))
 
 variable (L : SetLaws O)
@@ -104,7 +104,7 @@ end Alg
 
 /-- **`Open.bin` for `+`, discharged** -/
 theorem add_field (H : EncEnv env) (HL : LitEnv env) (HN : InstN env)
-    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+    (hb : HasTy env "br_litN" [] (piN [(tNat, true)] (eqE 1 tNat
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
       (.bvar 0)))) (HA : AddEnv env) {ρ : Nat → S} {Hv : S}
     (hH : D O M.cval ρ (trM (apps (.c "HAdd.hAdd" [0, 0, 0]) [U, U, U, apps (.c "instHAdd" [0]) [U, .c "instAddUInt64" []]])) Hv)

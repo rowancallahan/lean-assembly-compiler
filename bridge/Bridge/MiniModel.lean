@@ -254,7 +254,7 @@ structure LitEnv (env : List Const) : Prop where
       (.forallE (.app (.app (.const "OfNat" [ls.headD 0]) (.bvar 1)) (.bvar 0)) (.bvar 2) false) false) false) ∈ env
   /-- `UInt64.instOfNat : (n : Nat) → OfNat UInt64 n` (nano emits it applied to the literal) -/
   inst : ("UInt64.instOfNat", fun _ => .forallE tNat (.app (.app (.const "OfNat" [0]) tU) (.bvar 0)) false) ∈ env
-  brLit : ("br_lit", fun _ => piN [(tNat, false)] (eqE 1 tU
+  brLit : ("br_lit", fun _ => piN [(tNat, true)] (eqE 1 tU
       (.app (.app (.app (.const "OfNat.ofNat" [0]) tU) (.bvar 0)) (.app (.const "UInt64.instOfNat" []) (.bvar 0)))
       (.app (.const "UInt64.ofNat" []) (.bvar 0)))) ∈ env
 
