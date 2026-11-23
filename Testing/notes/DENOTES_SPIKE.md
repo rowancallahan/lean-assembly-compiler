@@ -335,3 +335,18 @@ obstacle seen. The remaining u64 ops (`+ - * <<< >>> &&& |||`, ites) all go thro
 | level handling | `CvalParams M` (= `ModelExists2.CvalParams`), used ONCE: `cval Nat (φ0 φ) = cval Nat φ` where `φ0 φ = substFn φ [u] [0]` | the only place finding (a) bites for `litU`; `OfNat` itself needs no hypothesis (`substFn (φ0 φ) [u] [param u] = φ0 φ`, `Real.φ0_self`) |
 | `transferN` (n binders) | one binder inlined (`inhab_const` + `Inhab.pi` + `Inhab.eq`) | — |
 Not yet ported: the `.bin` ops (`+ - * <<< >>> &&& |||`) and ites; they use the same pattern (stored types read at `φ0`-style assignments, `CvalParams` for level-free constants inside polymorphic heads).
+
+**S6 handoff (u64 ops, acceptance).**
+* `+` (`Bridge/Add.lean`, 212 lines) and the other ops (`Arith`, `Shift`, `Bits`, `Ite*`) are NOT ported. They depend on the
+  Mini-based scaffolding `Bridge.Assembly`/`HasTy`/`piN`/`mem_ty`/`np` (not on `Real.lean`), so porting them means
+  re-basing that scaffolding first. Recipe, from `litU_fact`: (1) replace `HasTy env n ls ty` by `Real.Stored env n ps ty` (`find?` +
+  `levelParams` + exact `type`); (2) each stored-type denotation is built at the assignment the head is read at
+  (`φ0`-style `Level.substFn φ ps us`); (3) every level-free constant inside a polymorphic head's type (`Nat`, `UInt64`) needs one
+  `CvalParams M` rewrite, as in `litU_fact`; (4) `HAdd.{0,0,0}`/`OfNat.{0}`: heads read at `substFn φ [u,v,w] [0,0,0]`, the
+  `.param` self-reads collapse by `substFn_param_self` (`Real.φ0_self` is the one-parameter case). Estimated ≥1 day for the
+  whole group; not mechanical within the 30-min limit, so handed to DENOTES-3.
+* Acceptance pipeline (lead's request to S6): **blocked.** `con-leche` exe builds (`cd bridge && lake build con-leche:exe` →
+  `.lake/packages/con-leche/.lake/build/bin/con-leche`). Building `lean4export` (clone of leanprover/lean4export at tag
+  `v4.35.0-rc3`, `lake build lean4export` in `/tmp/claude-0/l4e/lean4export`, a toolchain-matching tag since master needs 4.36) was DENIED
+  by the permission classifier; not worked around. `accept.sh` (S5, branch `keep_round1_denotes-s5`) needs both binaries.
+  Steps (a)–(d) and the negative test are not run.
