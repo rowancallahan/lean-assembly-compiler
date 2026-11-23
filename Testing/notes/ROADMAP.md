@@ -29,6 +29,24 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## MAIN THEOREM PLAN (owner, 2026-11-23): Expr is the central IR
+Theorem A, the main theorem: for every Expr e in nano's slice and every input, the compiled machine code (RISC-V
+Sail, ARM DeepMind, ARM Sail) writes the encoding of Lean's value of e to the output location.
+Ingredients:
+- have: ExprSpec (the slice and Ev); the compiler theorems (machine code = Sem) on all three machines;
+  eval_emit (Ev(emit p) = Sem p); C_lean_all / C_expr (the compiler's Expr = Lean's, and Ev of it = mC).
+- new 1: the Expr ENTRY POINT. A decoder from serialized Expr to nano's AST, written in nano (self-hosted), with
+  Sem(decode e) = Ev e for EVERY e in the slice. Composed with the compiler theorems, this gives Theorem A with
+  "Ev" in place of "Lean's value".
+- new 2: Ev = Lean's value. Per program, an auto-generated certificate Ev(e) = f, proved symbolically (by
+  unfolding, not by enumerating inputs; cost scales with program size). In general: a standard meaning, then
+  con-leche's model.
+- self-application: the compiler is total (fuel, no partial), so it is an Expr in the slice and A applies to
+  itself. The binary = compiled code comes from the fixpoint now, and from kernel evaluation later.
+Theorem B (front end) stays a per-program check: nano accepts + Expr matches ⇒ by A, output = Lean's value.
+Programs with partial defs (e.g. parts of con-leche) must be rewritten in total, fuel style with a proved equation
+(the "friendly track") before they are Exprs in the slice.
+
 ## TRUST CHAIN FOR SELF-HOSTING (owner, 2026-11-21) — what is proved, what is trusted, what is next
 Status (keep_round1_expr; EXPR.md is the detailed report):
 - E (Expr emitter) is written in bootstrap nano and compiled by B2. Its output = emitSpec byte for byte.
