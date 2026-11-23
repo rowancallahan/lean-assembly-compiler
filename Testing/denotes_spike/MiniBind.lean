@@ -53,6 +53,7 @@ inductive Tm : List Ty → Ty → Type
   | pair {Γ s t} (a : Tm Γ s) (b : Tm Γ t) : Tm Γ (.prod s t)
   | fst {Γ s t} (p : Tm Γ (.prod s t)) : Tm Γ s
   | snd {Γ s t} (p : Tm Γ (.prod s t)) : Tm Γ t
+  | natCase {Γ t} (n : Tm Γ .nat) (z : Tm Γ t) (s : Tm (.nat :: Γ) t) : Tm Γ t
 
 abbrev Env (Γ : List Ty) := ∀ {t}, Var Γ t → t.den
 def Env.cons (v : s.den) (σ : Env Γ) : Env (s :: Γ) := fun {t} x => match x with
@@ -67,6 +68,7 @@ def eval : Tm Γ t → Env Γ → t.den
   | .pair a b, σ => (eval a σ, eval b σ)
   | .fst p, σ => (eval p σ).1
   | .snd p, σ => (eval p σ).2
+  | .natCase n z s, σ => match eval n σ with | 0 => eval z σ | k + 1 => eval s (σ.cons k)
 
 def tr : Tm Γ t → Expr
   | .var x => .bvar x.idx
@@ -76,6 +78,9 @@ def tr : Tm Γ t → Expr
   | .pair a b => .app (.app (.const "Prod.mk") (tr a)) (tr b)
   | .fst p => .proj 0 (tr p)
   | .snd p => .proj 1 (tr p)
+  | .natCase (t := t) n z s =>
+    .app (.app (.app (.app (.const "Nat.casesOn") (.lam (.const "Nat") (.const t.name))) (tr n)) (tr z))
+      (.lam (.const "Nat") (tr s))
 
 variable (cval : String → V)
 def enc : Nat → V | 0 => cval "Nat.zero" | n + 1 => app (cval "Nat.succ") (enc n)
@@ -91,6 +96,9 @@ theorem lit_denotes (ρ : Nat → V) : ∀ n, Denotes app lamR mem sfst ssnd r c
 it is a parameter whose spec is `dec_enc`. -/
 structure Facts (dec : ∀ t : Ty, V → t.den) : Prop where
   add : ∀ a b, app (app (cval "Nat.add") (enc app cval a)) (enc app cval b) = enc app cval (a + b)
+  /-- `Nat.casesOn` at a constant motive: iota on encodings (`M` = the motive's denotation, arbitrary) -/
+  cases0 : ∀ M z f, app (app (app (app (cval "Nat.casesOn") M) (enc app cval 0)) z) f = z
+  casesS : ∀ M z f k, app (app (app (app (cval "Nat.casesOn") M) (enc app cval (k + 1))) z) f = app f (enc app cval k)
   fst : ∀ x y, sfst (app (app (cval "Prod.mk") x) y) = x
   snd : ∀ x y, ssnd (app (app (cval "Prod.mk") x) y) = y
   beta : r ≠ 0 → ∀ A F a, mem a A → app (lamR r A F) a = F a
@@ -106,6 +114,17 @@ theorem Rel.cons {σ : Env Γ} {ρ} (h : Rel app cval σ ρ) (v : s.den) :
   | zero => rfl
   | succ x => exact h x
 
+theorem lam_den (dec : ∀ t : Ty, V → t.den) (H : Facts app lamR mem sfst ssnd r cval dec)
+    {Γ s t} (b : Tm (s :: Γ) t) (σ : Env Γ) (ρ : Nat → V) (h : Rel app cval σ ρ)
+    (ihb : ∀ (σ : Env (s :: Γ)) (ρ : Nat → V), Rel app cval σ ρ →
+      Denotes app lamR mem sfst ssnd r cval ρ (tr b) (encT app cval t (eval b σ))) :
+    Denotes app lamR mem sfst ssnd r cval ρ (.lam (.const s.name) (tr b))
+      (lamR r (cval s.name) fun x => encT app cval t (eval b (σ.cons (dec s x)))) := by
+  refine Denotes.lam .const (fun x hx => ?_) (fun _ _ _ => rfl)
+  obtain ⟨w, rfl⟩ := H.onlyEnc s x hx
+  simp only [H.dec_enc]
+  exact ihb _ _ (h.cons app cval w)
+
 theorem sound (hr : r ≠ 0) (dec : ∀ t : Ty, V → t.den) (H : Facts app lamR mem sfst ssnd r cval dec) :
     ∀ {Γ t} (e : Tm Γ t) (σ : Env Γ) (ρ : Nat → V), Rel app cval σ ρ →
       Denotes app lamR mem sfst ssnd r cval ρ (tr e) (encT app cval t (eval e σ)) := by
@@ -120,14 +139,10 @@ theorem sound (hr : r ≠ 0) (dec : ∀ t : Ty, V → t.den) (H : Facts app lamR
   | let_ v b ihv ihb =>
     rename_i s t
     intro σ ρ h
-    have key := Denotes.app (Denotes.lam (body := tr b) (F := fun x => encT app cval t (eval b (σ.cons (dec s x))))
-      (Denotes.const (n := s.name)) (fun x hx => ?_) (fun _ _ _ => rfl)) (ihv σ ρ h)
-    · rw [H.beta hr _ _ _ (H.memEnc s _)] at key
-      simp only [H.dec_enc] at key
-      exact key
-    · obtain ⟨w, rfl⟩ := H.onlyEnc s x hx
-      simp only [H.dec_enc]
-      exact ihb _ _ (h.cons app cval w)
+    have key := Denotes.app (lam_den app lamR mem sfst ssnd r cval dec H b σ ρ h ihb) (ihv σ ρ h)
+    rw [H.beta hr _ _ _ (H.memEnc s _)] at key
+    simp only [H.dec_enc] at key
+    exact key
   | pair a b iha ihb =>
     intro σ ρ h
     exact .app (.app .const (iha σ ρ h)) (ihb σ ρ h)
@@ -145,6 +160,24 @@ theorem sound (hr : r ≠ 0) (dec : ∀ t : Ty, V → t.den) (H : Facts app lamR
     generalize eval p σ = pr at this ⊢
     obtain ⟨x, y⟩ := pr
     simp only [encT, H.snd] at this; exact this
+  | natCase n z f ihn ihz ihf =>
+    rename_i t
+    intro σ ρ h
+    have hM : Denotes app lamR mem sfst ssnd r cval ρ (.lam (.const "Nat") (.const t.name))
+        (lamR r (cval "Nat") fun _ => cval t.name) := .lam .const (fun _ _ => .const) (fun _ _ _ => rfl)
+    have hn := ihn σ ρ h
+    have hz := ihz σ ρ h
+    have hf := lam_den app lamR mem sfst ssnd r cval dec H f σ ρ h ihf
+    simp only [tr, eval]
+    generalize eval n σ = m at hn ⊢
+    cases m with
+    | zero =>
+      have := Denotes.app (Denotes.app (Denotes.app (Denotes.app (Denotes.const (n := "Nat.casesOn")) hM) hn) hz) hf
+      simp only [encT] at this; rw [H.cases0] at this; exact this
+    | succ k =>
+      have := Denotes.app (Denotes.app (Denotes.app (Denotes.app (Denotes.const (n := "Nat.casesOn")) hM) hn) hz) hf
+      simp only [encT] at this; rw [H.casesS, H.beta hr _ _ (enc app cval k) (H.memEnc .nat k)] at this
+      have e := H.dec_enc .nat k; simp only [encT] at e; simp only [e] at this; exact this
 
 end MiniBind
 #print axioms MiniBind.sound
