@@ -322,3 +322,21 @@ lean4export v4.35.0-rc3 built. All results below: no sorry, axioms propext/Class
    theorems carry annotation data whose regime is not exposed. Plan: lambda-lift into aux defs, or derive
    regime 1 for data lambdas from inhabitation of the stored type.
 4. The Ev → Denotes induction (trimmed `EvMini`) is not yet ported; `Conv` is the intended target.
+
+### 12.1 Nano tie and natLitSupported (DENOTES-3, later)
+* **`Bridge.Main.nano_tiny`** (bridge/Bridge/Main.lean): nano program `def m (x : List UInt8) : List UInt8 := put [] 1`.
+  Export `Testing/denotes_real/tinym.ndjson` (put, m, m_eq, put_one, br_litN) accepted by con-leche (304 decls);
+  `dsM` = the parsed stream as a Lean literal (5.7 MB). Statement: ∀ env accepted from `dsM` → `IndStored env
+  indHeads` → ∃ M (model_exists', CvalParams), ∀ inp out, `Ev (progOf oM) [.l inp] mainX (.l out)` →
+  `Denotes (tr mainX)` with the input bound to `⟦encL inp⟧` = `⟦encL out⟧`. Std axioms, no sorry.
+  Proved: Ev inversion (`NanoTiny.ev_main`), record presence and the Nat-pin record in `dsM` (kernel decide),
+  **`natLitSupported` from acceptance** (`Real.NatLit.natLit_of_accepted`: con-leche's install walk re-run with a
+  generalised per-step conclusion; the Nat block is the pinned one, `DeclBasisRun`).
+  `#eval` only (Testing/denotes_real/CheckNano.lean): `emitXs srcM = oM` (the emitter does not reduce in the
+  kernel), `dsM = parse(file)`, acceptance, `IndStored` true.
+* Remaining hypothesis `IndStored env indHeads` (List, List.nil, List.cons, UInt8, UInt64 stored as declared).
+  Route: the same walk with the per-step fact from `DeclBlockRun` (Semantics/Inductives/DeclBlock.lean): formers
+  from `checkBlockInds`, constructors from `checkBlockCtors` ("each stored as declared"); needs lemmas about those
+  two kernel functions' outputs (annotation of the declared types). Not attempted; estimate several hours.
+* Not composed with `expr_rv` into one term: toolchains differ (nano 4.34.1 + Sail vs bridge 4.35.0-rc3). The Ev
+  premise has exactly `ExprCorrect`'s conclusion shape (`mainX` copied verbatim from MachExpr on keep_round1_armfix).
