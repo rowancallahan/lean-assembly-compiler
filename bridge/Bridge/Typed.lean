@@ -239,7 +239,7 @@ elab "cases_and" : tactic => liftMetaTactic1 fun g => g.casesAnd
 
 /-- unify an `apps` equation: split, substitute -/
 macro "unif" : tactic => `(tactic| ((try simp only [apps_eq_apps, List.cons.injEq, X.c.injEq, X.lt.injEq, X.bv.injEq,
-  X.lam.injEq, and_true, true_and] at *); cases_and; (try subst_vars)))
+  X.lam.injEq, X.nat.injEq, X.app.injEq, X.pi.injEq, and_true, true_and] at *); cases_and; (try subst_vars)))
 
 /-- discharge a mismatched `Wf` rule -/
 macro "kill" : tactic => `(tactic| (unif; first
@@ -353,5 +353,11 @@ theorem ev_shape {sig : Sig} {P : Prog} (hP : PWf sig P) {env e v} (h : Ev P env
     intro env a as v vs _ _ iha ihl Γ ss hw he
     cases hw with
     | cons h1 h2 => exact .cons (iha h1 he) (ihl h2 he)
+
+/-- subject reduction for argument lists (recursion on the list, `ev_shape` per element) -/
+theorem evL_shape_of {sig : Sig} {P : Prog} (hP : PWf sig P) {env : List ExprSpec.V} :
+    ∀ {as vs ss Γ}, EvL P env as vs → WfL sig Γ as ss → Fa2 VSh Γ env → Fa2 VSh ss vs
+  | [], _, _, _, .nil, .nil, _ => .nil
+  | _ :: _, _, _, _, .cons ha hl, .cons h1 h2, he => .cons (ev_shape hP ha h1 he) (evL_shape_of hP hl h2 he)
 
 end Bridge.Typed

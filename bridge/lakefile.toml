@@ -22,4 +22,4 @@ globs = ["Nano.Codegen.BufL", "Nano.Codegen.Gen", "Nano.Expr.Correct", "Nano.Exp
 # the bridge itself
 [[lean_lib]]
 name = "Bridge"
-roots = ["Bridge.EvSkeleton", "Bridge.Typed"]
+roots = ["Bridge.EvSkeleton", "Bridge.Typed", "Bridge.EvBridge"]

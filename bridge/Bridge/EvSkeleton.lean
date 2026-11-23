@@ -11,7 +11,10 @@ from one or two stored theorems + typing (Transfer.lean).  The skeleton does the
 spines, environments (`ρE`), binders (let as a beta-redex, Prod.casesOn, Nat.casesOn), argument lists and
 calls (`strip`, `vs.reverse`).
 
-STATUS: proved, no sorry (the `Facts` fields are HYPOTHESES, i.e. the open per-constant lemmas). -/
+STATUS: proved, no sorry (the `Facts` fields are HYPOTHESES, i.e. the open per-constant lemmas).
+SUPERSEDED for the main statement by EvBridge.lean (`Facts` here quantify over arbitrary type/instance
+arguments, so they cannot all hold in a real model; EvBridge restricts to well-formed terms).  This file keeps
+the trimmed `D`, `tr`, the inversions and `PrimFacts`/`BinFacts`. -/
 import Nano.Expr.Correct
 
 namespace Bridge.Skel
