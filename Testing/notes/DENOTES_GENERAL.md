@@ -179,3 +179,24 @@ splitting.
 
 Done for (1): `TySubst.hasTy_subst` (typing under substitution of typed closed values) and `GenLet.conv_let` +
 `substD_comp` (the `let` step: congruence into the argument, `Conv.beta`, the env-extended substitution).
+
+### 5.2 Decision: λ-lift at export (supersedes `instL`)
+Even redex-only stored equations need an `instL` rule and a meta-independence lemma. Both depend on typing, and
+`instL` would change `ThmsOk`/`Conv` in every program file. Instead the generator lambda-lifts:
+* `let y := v; b` at env depth `n` ↦ an aux def `kᵢ : T_{n-1} → … → T_0 → T → S`, with
+  `kᵢ x_{n-1} … x_0 y = N(b)`, and the use site `N(lt v b) = kᵢ (bv (n-1)) … (bv 0) N(v)`;
+* `Prod.casesOn v (λ a b. body)` ↦ `kⱼ … (Prod.fst N(v)) (Prod.snd N(v))` (η, accepted, §5.1);
+* fuel loops ↦ `f 0 … = N(z)`, `f (n+1) … = N(s)` (as `lp_zero`/`lp_succ`).
+
+Every stored equation (`n_eq`, `kᵢ_eq`, the prelude) is then **λ-free**, so the existing proved `Conv.inst`
+(binder-free `substB`) covers calls, lets and destructuring. The invariant becomes
+`R env e r := Conv (substB (env.map encV) (N e)) (encV r) (tyV r)`.
+* `Ev.lt`: congruence on the last argument (IH for `v`), `kᵢ_eq`, then IH for `b` at `encV a :: env`.
+* `Ev.cases`: the same, with `Prod.fst/snd (Prod.mk a b)` prelude equations.
+* `Ev.natS`/`natZ`: `f_succ`/`f_zero` with `litS`/`lit0`.
+
+con-leche checks every `kᵢ_eq`/`n_eq` by `rfl` (δβ). The λ engine pieces (`beta_den`, `HasTy.lam`, `TySubst`,
+`GenLet`) stay as proved infrastructure; they are not needed on this path.
+
+Next: the normalizer `N : X → Expr` with the aux-def list, the generic `R` over `substB`/`N`, and the `Cases` from
+the library lemmas.
