@@ -141,9 +141,10 @@ theorem br_shrsucc : ∀ n m : Nat, n >>> Nat.succ m = (n >>> m) / 2 := Nat.shif
 They need no con-leche import: every field of `NatEqs` is the set-level image of one theorem above, i.e. exactly
 what `transfer` yields from it (restricted to canonical numerals `nat k`, which are in `⟦Nat⟧`).  `ite`/`cond`
 fields quantify over all `t e` (they are `⟦R⟧`-members in use). -/
+theorem u_surj (x : UInt64) : ∃ a, x = UInt64.ofNat a := ⟨x.toNat, (UInt64.ofNat_toNat).symm⟩
+
 namespace SetLevel
-universe w
-structure NatEqs (V : Type w) where
+structure NatEqs (V : Type) where
   app : V → V → V
   Z : V
   S : V
@@ -167,7 +168,7 @@ structure NatEqs (V : Type w) where
   condT : ∀ t e, COND BT t e = t
   condF : ∀ t e, COND BF t e = e
 
-variable {V : Type w} (N : NatEqs V)
+variable {V : Type} (N : NatEqs V)
 
 def NatEqs.nat (N : NatEqs V) : Nat → V
   | 0 => N.Z
@@ -277,6 +278,7 @@ structure BitRec (N : NatEqs V) : Prop where
   shr0 : ∀ n, N.app (N.app N.SHR (N.nat n)) N.Z = N.nat n
   shrS : ∀ n m, N.app (N.app N.SHR (N.nat n)) (N.app N.S (N.nat m)) = N.app (N.app N.DIV (N.app (N.app N.SHR (N.nat n)) (N.nat m))) (N.nat 2)
 
+section Bits
 variable (B : BitRec N)
 include B
 
@@ -315,4 +317,125 @@ theorem nat_lor : ∀ n m, N.app (N.app N.LOR (N.nat n)) (N.nat m) = N.nat (n ||
       simp only [nat_div R, nat_mod R, ih (n / 2) (by omega), nat_mul R, nat_add R, nat_sub R]
       exact congrArg N.nat (br_lor_rec n m).symm
 
+end Bits
+
+/-! ## UInt64 at the set level.  Encoding `u x = OF (nat x.toNat)`; each field is the set-level image of the
+named theorem (`OF = ⟦UInt64.ofNat⟧`, the `*64` heads are `⟦@HAdd.hAdd UInt64 UInt64 UInt64 (instHAdd ..)⟧` etc.). -/
+structure U64Rec (N : NatEqs V) where
+  OF : V
+  ADD64 : V
+  SUB64 : V
+  MUL64 : V
+  AND64 : V
+  OR64 : V
+  SHL64 : V
+  SHR64 : V
+  BEQ64 : V
+  ITELT : V → V → V → V → V      -- `⟦ite R (a < b) (UInt64.decLt a b)⟧` as a function of the operand sets and t e
+  wrap : ∀ n, N.app OF (N.app (N.app N.ADD (N.nat n)) (N.nat 18446744073709551616)) = N.app OF (N.nat n)
+  add : ∀ a b, N.app (N.app ADD64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) = N.app OF (N.app (N.app N.ADD (N.nat a)) (N.nat b))
+  mul : ∀ a b, N.app (N.app MUL64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) = N.app OF (N.app (N.app N.MUL (N.nat a)) (N.nat b))
+  sub : ∀ a b, N.app (N.app SUB64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) =
+    N.app OF (N.app (N.app N.ADD (N.nat a)) (N.app (N.app N.SUB (N.app (N.app N.MUL (N.nat 18446744073709551616)) (N.nat b))) (N.nat b)))
+  and : ∀ a b, N.app (N.app AND64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) = N.app OF (N.app (N.app N.LAND (N.nat a)) (N.nat b))
+  or : ∀ a b, N.app (N.app OR64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) = N.app OF (N.app (N.app N.LOR (N.nat a)) (N.nat b))
+  shl : ∀ a b, N.app (N.app SHL64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) =
+    N.app OF (N.app (N.app N.SHL (N.nat a)) (N.app (N.app N.MOD (N.nat b)) (N.nat 64)))
+  shr : ∀ a b, N.app (N.app SHR64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) =
+    N.app OF (N.app (N.app N.SHR (N.app (N.app N.MOD (N.nat a)) (N.nat 18446744073709551616))) (N.app (N.app N.MOD (N.nat b)) (N.nat 64)))
+  beq : ∀ a b, N.app (N.app BEQ64 (N.app OF (N.nat a))) (N.app OF (N.nat b)) =
+    N.app (N.app N.BEQ (N.app (N.app N.MOD (N.nat a)) (N.nat 18446744073709551616))) (N.app (N.app N.MOD (N.nat b)) (N.nat 18446744073709551616))
+  lt : ∀ a b t e, ITELT (N.app OF (N.nat a)) (N.app OF (N.nat b)) t e =
+    N.COND (N.app (N.app N.BLE (N.app (N.app N.ADD (N.app (N.app N.MOD (N.nat a)) (N.nat 18446744073709551616))) (N.nat 1)))
+      (N.app (N.app N.MOD (N.nat b)) (N.nat 18446744073709551616))) t e
+
+variable (U : U64Rec N)
+include R U
+def u (x : UInt64) : V := N.app U.OF (N.nat x.toNat)
+
+theorem of_mod : ∀ n, N.app U.OF (N.nat n) = N.app U.OF (N.nat (n % 18446744073709551616)) := by
+  have hk : ∀ n k, N.app U.OF (N.nat (n + 18446744073709551616 * k)) = N.app U.OF (N.nat n) := by
+    intro n k
+    induction k with
+    | zero => rfl
+    | succ k ih =>
+      have h := U.wrap (n + 18446744073709551616 * k)
+      rw [nat_add R] at h
+      rw [show n + 18446744073709551616 * (k + 1) = n + 18446744073709551616 * k + 18446744073709551616 by omega, h, ih]
+  intro n
+  have h := hk (n % 18446744073709551616) (n / 18446744073709551616)
+  rw [Nat.mod_add_div] at h
+  exact h
+
+theorem u_ofNat : ∀ n, u U (UInt64.ofNat n) = N.app U.OF (N.nat n) := by
+  intro n
+  simp only [u, UInt64.toNat_ofNat']
+  exact (of_mod R U n).symm
+
+theorem u64_add : ∀ x y : UInt64, N.app (N.app U.ADD64 (u U x)) (u U y) = u U (x + y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.add, nat_add R, br_add, u_ofNat R U]
+
+theorem u64_mul : ∀ x y : UInt64, N.app (N.app U.MUL64 (u U x)) (u U y) = u U (x * y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.mul, nat_mul R, br_mul, u_ofNat R U]
+
+theorem u64_sub : ∀ x y : UInt64, N.app (N.app U.SUB64 (u U x)) (u U y) = u U (x - y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.sub, nat_mul R, nat_sub R, nat_add R, br_sub, u_ofNat R U]
+
+theorem u64_beq : ∀ x y : UInt64, N.app (N.app U.BEQ64 (u U x)) (u U y) = N.bl (x == y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.beq, nat_mod R, nat_mod R, nat_beq R, br_beq64]
+
+theorem u64_lt : ∀ (x y : UInt64) (t e : V), U.ITELT (u U x) (u U y) t e = if x < y then t else e := by
+  intro x y t e
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.lt, nat_mod R, nat_mod R, nat_add R, nat_ble R, NatEqs.cond_bl, br_lt64 V a b t e]
+  cases Nat.ble (a % 18446744073709551616 + 1) (b % 18446744073709551616) <;> rfl
+
+section Bits
+variable (B : BitRec N)
+include B
+theorem u64_and : ∀ x y : UInt64, N.app (N.app U.AND64 (u U x)) (u U y) = u U (x &&& y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.and, nat_land R B, br_and, u_ofNat R U]
+
+theorem u64_or : ∀ x y : UInt64, N.app (N.app U.OR64 (u U x)) (u U y) = u U (x ||| y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.or, nat_lor R B, br_or, u_ofNat R U]
+
+theorem u64_shl : ∀ x y : UInt64, N.app (N.app U.SHL64 (u U x)) (u U y) = u U (x <<< y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.shl, nat_mod R, nat_shl R B, br_shl, u_ofNat R U]
+
+theorem u64_shr : ∀ x y : UInt64, N.app (N.app U.SHR64 (u U x)) (u U y) = u U (x >>> y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := _root_.u_surj x; obtain ⟨b, rfl⟩ := _root_.u_surj y
+  rw [u_ofNat R U, u_ofNat R U, U.shr, nat_mod R, nat_mod R, nat_shr R B, br_shr, u_ofNat R U]
+end Bits
+
 end SetLevel
+
+#print axioms br_sub
+#print axioms br_shl
+#print axioms br_shr
+#print axioms br_beq64
+#print axioms br_lt64
+#print axioms br_ltN
+#print axioms br_mod
+#print axioms br_land_rec
+#print axioms SetLevel.nat_mod
+#print axioms SetLevel.nat_land
+#print axioms SetLevel.u64_add
+#print axioms SetLevel.u64_sub
+#print axioms SetLevel.u64_lt
+#print axioms SetLevel.u64_shr
+#print axioms SetLevel.u64_or
