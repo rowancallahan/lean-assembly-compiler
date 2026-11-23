@@ -8,6 +8,7 @@ pushed argument values and the INSTANTIATED type at the program's assignment is 
 `eval_subst` + `CvalParams`, bound variables by the arguments' denotations). -/
 import Bridge.Real.Spine
 import Bridge.Real.Tiny
+import Bridge.Real.Scope
 
 namespace Bridge.Real.Engine
 open ConLeche ConLeche.SetModel SetTheory Bridge Bridge.Real Bridge.ModelExists2
@@ -46,19 +47,25 @@ abbrev Tab := Name → Option Head
 
 mutual
 /-- `HasTy tab eqs Γ t T`: `t` has type `T` in context `Γ` (types of bound variables, closed). -/
-inductive HasTy (tab : Tab) (eqs : List (Expr × Expr)) (Γ : List Expr) : Expr → Expr → Prop
-  | sort {u : Level} : HasTy tab eqs Γ (.sort u) (.sort (.succ u))
-  | conv {t T T' : Expr} : HasTy tab eqs Γ t T → (T, T') ∈ eqs → HasTy tab eqs Γ t T'
-  | bvar {i : Nat} {T : Expr} : Γ[i]? = some T → HasTy tab eqs Γ (.bvar i) T
-  | lit {n : Nat} : HasTy tab eqs Γ (.lit (.natVal n)) Tiny.natC
-  | head {n : Name} {us : List Level} {h : Head} {as : List Expr} :
+inductive HasTy (tab : Tab) (eqs : List (Expr × Expr)) : List Expr → Expr → Expr → Prop
+  | sort {Γ : List Expr} {u : Level} : HasTy tab eqs Γ (.sort u) (.sort (.succ u))
+  | conv {Γ : List Expr} {t T T' : Expr} : HasTy tab eqs Γ t T → (T, T') ∈ eqs → HasTy tab eqs Γ t T'
+  | bvar {Γ : List Expr} {i : Nat} {T : Expr} : Γ[i]? = some T → HasTy tab eqs Γ (.bvar i) T
+  | lit {Γ : List Expr} {n : Nat} : HasTy tab eqs Γ (.lit (.natVal n)) Tiny.natC
+  | head {Γ : List Expr} {n : Name} {us : List Level} {h : Head} {as : List Expr} :
       tab n = some h → us.length = h.ps.length → ArgsTy tab eqs Γ h.ps us h.Ts as [] →
       HasTy tab eqs Γ (apps (.const n us) as) (substB as.reverse (inst h.ps us h.B))
+  /-- a non-dependent λ, read in regime 1 (binder data `.never`); closed domain, codomain and context -/
+  | lam {Γ : List Expr} {T b S : Expr} {u : Level} : HasTy tab eqs Γ T (.sort u) → EngineLam.wfk 0 T = true → EngineLam.wfk 0 S = true → (∀ U ∈ Γ, EngineLam.wfk 0 U = true) →
+      HasTy tab eqs (T :: Γ) b S → HasTy tab eqs Γ (.lam T b ⟨.never⟩) (.forallE T S ⟨.never⟩)
+  /-- application at a non-dependent arrow -/
+  | app {Γ : List Expr} {f a T S : Expr} : HasTy tab eqs Γ f (.forallE T S ⟨.never⟩) → HasTy tab eqs Γ a T →
+      EngineLam.wfk 0 S = true → HasTy tab eqs Γ (.app f a) S
 /-- arguments against a telescope; `done` = earlier arguments, innermost first -/
-inductive ArgsTy (tab : Tab) (eqs : List (Expr × Expr)) (Γ : List Expr) :
-    List Name → List Level → List Expr → List Expr → List Expr → Prop
-  | nil {ps : List Name} {us : List Level} {done : List Expr} : ArgsTy tab eqs Γ ps us [] [] done
-  | cons {ps : List Name} {us : List Level} {T : Expr} {Ts : List Expr} {a : Expr} {as done : List Expr} :
+inductive ArgsTy (tab : Tab) (eqs : List (Expr × Expr)) :
+    List Expr → List Name → List Level → List Expr → List Expr → List Expr → Prop
+  | nil {Γ : List Expr} {ps : List Name} {us : List Level} {done : List Expr} : ArgsTy tab eqs Γ ps us [] [] done
+  | cons {Γ : List Expr} {ps : List Name} {us : List Level} {T : Expr} {Ts : List Expr} {a : Expr} {as done : List Expr} :
       HasTy tab eqs Γ a (substB done (inst ps us T)) → ArgsTy tab eqs Γ ps us Ts as (a :: done) →
       ArgsTy tab eqs Γ ps us (T :: Ts) (a :: as) done
 end
@@ -222,15 +229,15 @@ def GammaOk (M : Model V env) (φ : LevelParam → Nat) (ρ : BVarIdx → V) (Γ
 
 section
 variable {M : Model V env} (hP : CvalParams M) (hnat : natLitSupported env = true) {tab : Tab}
-  (htab : TabOk M tab) {eqs : List (Expr × Expr)} (heqs : EqsOk M eqs) {Γ : List Expr} {φ : LevelParam → Nat} {ρ : BVarIdx → V} (hΓ : GammaOk M φ ρ Γ)
-include hP hnat htab heqs hΓ
+  (htab : TabOk M tab) {eqs : List (Expr × Expr)} (heqs : EqsOk M eqs) {φ : LevelParam → Nat}
+include hP hnat htab heqs
 
 mutual
-theorem sound : ∀ {t T : Expr}, HasTy tab eqs Γ t T →
+theorem sound {Γ : List Expr} {ρ : BVarIdx → V} (hΓ : GammaOk M φ ρ Γ) : ∀ {t T : Expr}, HasTy tab eqs Γ t T →
     ∃ X A, Denotes M.cval env φ ρ t X ∧ Denotes M.cval env φ ρ T A ∧ X ∈ˢ A
   | _, _, .sort (u := u) => ⟨_, _, .sort, .sort, by simpa [Level.eval] using univ_mem_univ (Level.eval φ u)⟩
   | _, _, .conv ht hp => by
-    obtain ⟨X, A, hX, hA, hm⟩ := sound ht
+    obtain ⟨X, A, hX, hA, hm⟩ := sound hΓ ht
     exact ⟨X, A, hX, (heqs _ hp).2.2 φ ρ A hA, hm⟩
   | _, _, .bvar h => by
     obtain ⟨A, hA, hm⟩ := hΓ _ _ h
@@ -239,7 +246,7 @@ theorem sound : ∀ {t T : Expr}, HasTy tab eqs Γ t T →
     ⟨_, _, Tiny.lit_den M hnat φ ρ n, Tiny.nat_den M hnat φ ρ, Tiny.natV_mem M hnat φ ρ n⟩
   | _, _, @HasTy.head _ _ _ n us h as htn hus hargs => by
     have hs := htab n h htn
-    obtain ⟨xs, hdl, ht⟩ := soundArgs hargs [] ρ .nil (fun i T hi => by simpa using hs.scT i T hi)
+    obtain ⟨xs, hdl, ht⟩ := soundArgs hΓ hargs [] ρ .nil (fun i T hi => by simpa using hs.scT i T hi)
     obtain ⟨ms, P, hml, hPd, hPm⟩ := hs.mem (Level.substFn φ h.ps us) ρ
     obtain ⟨Bv, hB, hBm⟩ := spine_mem hml hPd hPm ht
     have hd := hdl.reverse
@@ -247,16 +254,49 @@ theorem sound : ∀ {t T : Expr}, HasTy tab eqs Γ t T →
       rw [List.length_reverse, hargs.length]; exact hs.scB
     have hB' := (inst_den hP (ρ0 := ρ) hd h.B hsc).mp (by simpa using hB)
     exact ⟨_, Bv, den_apps (hs.den φ ρ us hus) hdl, hB', hBm⟩
-theorem soundArgs : ∀ {ps : List Name} {us : List Level} {Ts as done : List Expr},
+  | _, _, .lam (T := T) (b := b) (S := S) hTy hT hS hG hb => by
+    -- the body at each point of the domain, in the pushed context of closed types
+    have hΓx : ∀ A x, Denotes M.cval env φ ρ T A → x ∈ˢ A → GammaOk M φ (push x ρ) (T :: Γ) := by
+      intro A x hA hx i U hi
+      cases i with
+      | zero =>
+        simp at hi; subst hi
+        exact ⟨A, EngineLam.den_move hT (fun _ h => absurd h (Nat.not_lt_zero _)) hA, hx⟩
+      | succ i =>
+        simp at hi
+        obtain ⟨A', hA', hm'⟩ := hΓ i U hi
+        exact ⟨A', EngineLam.den_move (hG U (List.mem_of_getElem? hi)) (fun _ h => absurd h (Nat.not_lt_zero _)) hA', hm'⟩
+    haveI := Classical.propDecidable
+    obtain ⟨A, -, dT, -, -⟩ := sound hΓ hTy
+    have hx : ∀ x, x ∈ˢ A → ∃ X B, Denotes M.cval env φ (push x ρ) b X ∧ Denotes M.cval env φ (push x ρ) S B ∧ X ∈ˢ B :=
+      fun x hx => sound (hΓx A x dT hx) hb
+    let F : V → V := fun x => if h : x ∈ˢ A then Classical.choose (hx x h) else empty
+    let B : V → V := fun x => if h : x ∈ˢ A then Classical.choose (Classical.choose_spec (hx x h)) else empty
+    have hFB : ∀ x (h : x ∈ˢ A), Denotes M.cval env φ (push x ρ) b (F x) ∧ Denotes M.cval env φ (push x ρ) S (B x) ∧
+        F x ∈ˢ B x := by
+      intro x h
+      simp only [F, B, h, dif_pos]
+      exact Classical.choose_spec (Classical.choose_spec (hx x h))
+    have hr : regime φ (⟨.never⟩ : BinderMeta).pw ≠ 0 := by rw [EngineLam.regime_never]; exact Nat.one_ne_zero
+    refine ⟨_, _, .lam dT (fun x h => (hFB x h).1) (fun h0 => absurd h0 hr),
+      .pi dT (fun x h => (hFB x h).2.1) (fun h0 => absurd h0 hr), ?_⟩
+    rw [lamR_pos hr, piR_pos hr]
+    exact graph_mem_piSet (fun x h => (hFB x h).2.2)
+  | _, _, .app hf ha hS => by
+    obtain ⟨Ff, P, dF, dP, hFm⟩ := sound hΓ hf
+    obtain ⟨Xa, A, da, dA, hXa⟩ := sound hΓ ha
+    obtain ⟨Bx, dB, hm⟩ := mem_app dP hFm dA hXa
+    exact ⟨_, Bx, .app dF da, EngineLam.den_move hS (fun _ h => absurd h (Nat.not_lt_zero _)) dB, hm⟩
+theorem soundArgs {Γ : List Expr} {ρ : BVarIdx → V} (hΓ : GammaOk M φ ρ Γ) : ∀ {ps : List Name} {us : List Level} {Ts as done : List Expr},
     ArgsTy tab eqs Γ ps us Ts as done → ∀ (xsd : List V) (ρ0 : BVarIdx → V), DenL M φ ρ done xsd →
     (∀ i T, Ts[i]? = some T → sc (done.length + i) T = true) →
     ∃ xs, DenL M φ ρ as xs ∧
       TeleX M (Level.substFn φ ps us) (pushAll xsd ρ0) Ts xs (pushAll (xs.reverse ++ xsd) ρ0)
   | _, _, _, _, _, .nil, xsd, ρ0, _, _ => ⟨[], .nil, by simpa using TeleX.nil⟩
   | _, _, T :: Ts, a :: as, done, .cons ha hr, xsd, ρ0, hd, hsc => by
-    obtain ⟨X, A, hX, hA, hm⟩ := sound ha
+    obtain ⟨X, A, hX, hA, hm⟩ := sound hΓ ha
     have hA' := (inst_den hP (ρ0 := ρ0) hd T (by simpa using hsc 0 T rfl)).mpr hA
-    obtain ⟨xs, hdl, ht⟩ := soundArgs hr (X :: xsd) ρ0 (.cons hX hd)
+    obtain ⟨xs, hdl, ht⟩ := soundArgs hΓ hr (X :: xsd) ρ0 (.cons hX hd)
       (fun i T' hi => by have := hsc (i + 1) T' (by simpa using hi); simpa [Nat.add_assoc, Nat.add_comm 1] using this)
     refine ⟨X :: xs, .cons hX hdl, ?_⟩
     have e : (X :: xs).reverse ++ xsd = xs.reverse ++ X :: xsd := by simp
