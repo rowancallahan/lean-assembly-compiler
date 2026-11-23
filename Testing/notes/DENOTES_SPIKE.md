@@ -231,7 +231,10 @@ its con-leche checkout (cdc2cf8, merged). Everything listed below is sorry-free;
   Axioms: propext, Classical.choice, Quot.sound. The chain is `C_denotes_final{,3..9}`, each dropping fields of the
   previous `Open`. `Final9.open9_all` shows the last `Open9` holds outright. `Top.sem_denotes` gives the same for any
   emitted program under its `Open`. With `self_expr_C` (CExprTop, needs Sail) this reaches C's RISC-V code.
-* Stored-statement sanity check (`Bridge/StoredFacts.lean`): STOREDFACTS
+* Stored-statement sanity check (`Bridge/StoredFacts.lean`): all 69 stored equations the
+  `Env*` structures assume are stated in plain Lean (E-expression in a comment above each) and PROVED, core only, no
+  sorry. So `Env9` is not vacuous for a sound checker. The translation E → Lean was done by eye (heads checked with
+  `pp.explicit`). Acceptance by con-leche is checked only for S2's 10.
 * Task 4: merged S2 three times. Its 34 equations and set lemmas came in; Transfer.lean compiled against real
   con-leche. §10.1 (BridgeStored): the 10 stored theorems I requested (nat_z/s, prod_c, br_litN, add0/S, outParam_eq,
   buf_eq, …) exported and ACCEPTED by con-leche (441 declarations, --verified). Their elaborated shapes and level-param
