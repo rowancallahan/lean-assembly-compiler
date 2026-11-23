@@ -1,4 +1,4 @@
-import Bridge.Real.AddOne
+import Bridge.Real.Calls
 open ConLeche ConLeche.Frontend Bridge.Real
 
 def cvOf : Declaration → Option ConstantVal
@@ -16,7 +16,9 @@ def expected : List (Bool × ConstantVal) :=
     (true, ⟨AddOne.outParamN, [AddOne.lu], AddOne.piV [.sort AddOne.pu] (.sort AddOne.pu)⟩),
     (false, ⟨N "f_body", [], AddOne.piV [Tiny.natC] (AddOne.e1B (N "f"))⟩),
     (false, ⟨N "add_one", [], AddOne.piV [Tiny.natC] AddOne.e2B⟩),
-    (false, ⟨N "outParam_eq", [], AddOne.piV [] AddOne.e3B⟩) ]
+    (false, ⟨N "outParam_eq", [], AddOne.piV [] AddOne.e3B⟩),
+    (true, ⟨Calls.gN, [], Engine.piV [Tiny.natC] Tiny.natC⟩),
+    (false, ⟨N "g_eq", [], Calls.gEq.stmt⟩) ]
 
 def main' : IO Unit := do
   let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tiny.ndjson"

@@ -4,3 +4,6 @@ theorem f_eq : ∀ x : Nat, f x = Nat.succ x := fun _ => rfl
 theorem f_body : ∀ x : Nat, f x = x + 1 := fun _ => rfl
 theorem add_one : ∀ x : Nat, x + 1 = Nat.succ x := fun _ => rfl
 theorem outParam_eq : outParam.{2} Type = Type := rfl
+-- step 3b (calls)
+def g (x : Nat) : Nat := f (f x)
+theorem g_eq : ∀ x : Nat, g x = f (f x) := fun _ => rfl
