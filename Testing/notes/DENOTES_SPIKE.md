@@ -119,3 +119,34 @@ performance/acceptance on the generated `f = body` theorems for C (236 defs) and
   run with the full `~/.elan/bin/lake` path was allowed. Nothing else was blocked.
 * Option worth asking con-leche for: a `Model` field `defn : ∀ stored definition c, cval c = ⟦c.value⟧` (the proof
   already has it as `defn_reads`). It would remove all per-def `f = body` theorems.
+
+## 9. S1 overnight (bridge prelude, UInt64 + Nat) — branch `keep_round1_denotes-s1`
+File: `Testing/denotes_spike/BridgeU64.lean`, core Lean only, checked with Lean 4.35.0-rc3 (`lean BridgeU64.lean`, 0 errors,
+no `sorry`; axioms in `#print axioms` at the end: only `propext`, `Quot.sound` (+ `Classical.choice` for `br_beq64`)).
+* **Lean theorems (all proved)**, `ofNat` form with Nat binders, `2^64` as the literal: `br_add br_mul br_wrap br_sub br_and br_or
+  br_shl br_shr` (sub is `ofNat (a + (2^64*b - b))`, no `%`; shl is `ofNat (a <<< (b % 64))`; shr is `ofNat ((a % 2^64) >>> (b % 64))`),
+  `br_beq64` (`ofNat a == ofNat b = Nat.beq (a % 2^64) (b % 2^64)`), `br_lt64` (`ite R (ofNat a < ofNat b) (UInt64.decLt ..) t e =
+  cond (Nat.ble (a % 2^64 + 1) (b % 2^64)) t e`), Nat-fuel twins `br_beqN`, `br_ltN`, `br_ite_cond/t/f`, `br_cond_t/f`, `br_lit`, `br_litN`.
+  Nat recursion: add, sub (+pred), mul, `Nat.beq`, `Nat.ble`, shifts, and `br_mod` / `br_div` / `br_land_rec` / `br_lor_rec` (the
+  last four are the only non-`rfl` ones; `%`, `/`, `&&&`, `|||` have no structural equations, so each is stated as a
+  one-step unfolding `cond (Nat.ble m n) (cond (Nat.beq m 0) ..) ..` that a strong induction on `n` can use).
+  `xor` is not emitted by nano and is not covered.
+* **Set-level lemmas (all proved)** in `namespace SetLevel`, style of `add_u64` but ABSTRACT over `app : V → V → V` (structure
+  `NatEqs`, hypothesis structures `NatRec`, `BitRec`, `U64Rec`; each field is the set-level image of one theorem above, at
+  canonical numerals `nat k`): `nat_add nat_mul nat_sub nat_beq nat_ble nat_mod nat_div nat_shl nat_shr nat_land nat_lor`,
+  `of_mod` (from `br_wrap`: `OF n = OF (n % 2^64)`), and for UInt64 `u64_add u64_sub u64_mul u64_and u64_or u64_shl u64_shr
+  u64_beq u64_lt` (`⟦op⟧ (u x) (u y) = u (x op y)`, `⟦==⟧ = bl (x == y)`, `⟦ite lt⟧ .. t e = if x < y then t else e`).
+  Not done: set-level lemma for the Nat-fuel `br_beqN`/`br_ltN` (same shape as `u64_beq/u64_lt`, no `mod`), `ite_bool` re-proved.
+* **NOT done: export + con-leche acceptance.** `mcp__claude-code-remote__add_repo dwijayuda/con-leche` was DENIED by the auto-mode
+  classifier ("Unauthorized Access"), so I had no con-leche checkout, no lean4export, and did not work around it. Consequences:
+  (1) `lean4export`/`con-leche` never ran on `BridgeU64.lean`; acceptance is untested (the closure now includes `Nat.mod/div`,
+  `Nat.bitwise`/`Nat.land`, `Nat.shiftLeft/Right`, `UInt64.ofNat_*`, `Nat.strongRecOn`, `Bool`-related `decide` machinery; the set-level
+  section drags in `Nat.strongRecOn`, so export only the `br_*` names plus what they use, not `SetLevel`, when testing).
+  (2) The set-level lemmas are not tied to con-leche's `SetTheory`: `NatEqs.app` is a free function. Porting = instantiate `app`
+  with `SetTheory.app` and discharge each field by `transfer0/1` from the stored theorem of the same name; hypotheses are only at
+  canonical numerals, which is weaker than `add_u64`'s `∀ x : V` and so is what `transfer` can give.
+* Things the lead should know: `br_mod/div/land/lor` and `br_shl/shr` need `%`/`/` set-level evaluation, so the Nat prelude is
+  larger than the spike's estimate (~25 Nat theorems beyond the 7 ops). `BEq`/`<` need the `% 2^64` normalisation because the
+  theorem binders are plain `Nat`; the alternative (a hypothesis `a < 2^64` binder) needs multi-binder transfer.
+* Environment: `~/.elan` was missing; installed via elan-init (network OK). Use `~/.elan/toolchains/leanprover--lean4---v4.35.0-rc3/bin/lean`
+  directly (elan default toolchain is none; the repo's `lean-toolchain` is 4.34.1).
