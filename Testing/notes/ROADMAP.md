@@ -55,6 +55,13 @@ theorems around Expr (days).
   standalone (no Lean needed) and is still proved against Lean as far as possible, but it is not on the critical
   path of the main theorem.
 
+## SIDE PROJECT, maybe, next time the owner has time (2026-11-23): the "natural hybrid"
+Keep today's nano front end (Lean-syntax elaborator) as the user-facing compiler: people compile real Lean code and
+can check per file that its Expr matches Lean's. Separately, bootstrap the compiler itself from its Expr file (E's
+output) through a tiny Expr-text parser plus the Expr entry point. The compiler's own trusted path is then: tiny
+parser → Expr → back end → Denotes. The main line stays as it is now (owner decision: the elaborator stays part of
+the compiler).
+
 ## SIMPLIFICATIONS (owner, 2026-11-23)
 - Reuse con-leche maximally: emit con-leche's own term type (a subset of it) as nano's Expr, so no translation step.
 - Ev is internal, so rewrite it to mirror Denotes rule by rule (same environment / bvar / app / lam / let structure;
