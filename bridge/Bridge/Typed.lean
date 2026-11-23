@@ -77,7 +77,7 @@ inductive Wf (sig : Sig) : List Sh → X → Sh → Prop
   | bv {Γ e i s} : e = .bv i → Γ[i]? = some s → Wf sig Γ e s
   | lt {Γ e v b s r} : e = .lt true (shTy s) v b → Wf sig Γ v s → Wf sig (s :: Γ) b r → Wf sig Γ e r
   | litU {Γ e k} : e = apps (.c "OfNat.ofNat" [0]) [U, .nat k, .app (.c "UInt64.instOfNat" []) (.nat k)] →
-      Wf sig Γ e .uw
+      k < UInt64.size → Wf sig Γ e .uw
   | litN {Γ e k} : e = apps (.c "OfNat.ofNat" [0]) [.c "Nat" [], .nat k, .app (.c "instOfNatNat" []) (.nat k)] →
       Wf sig Γ e .nt
   | bin {Γ e op n i a b} : e = apps (.c n [0, 0, 0]) [U, U, U, i, a, b] → binHead op = (n, i) →

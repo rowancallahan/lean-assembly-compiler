@@ -24,7 +24,7 @@ structure FactsW (sapp : S → S → S) (mem : S → S → Prop) (lamS : S → (
   letβ : ∀ {env Γ s v b a R}, Typed.Fa2 VSh Γ env → Wf sig Γ v s → Ev P env v a → VSh s a →
     D sapp mem lamS cval (ρE enc junk env) (tr (.lt true (shTy s) v b)) R →
     D sapp mem lamS cval (ρE enc junk (a :: env)) (tr b) R
-  litU : ∀ {ρ k R}, D sapp mem lamS cval ρ
+  litU : ∀ {ρ k R}, k < UInt64.size → D sapp mem lamS cval ρ
     (tr (apps (.c "OfNat.ofNat" [0]) [U, .nat k, .app (.c "UInt64.instOfNat" []) (.nat k)])) R →
     R = enc (.w (UInt64.ofNat k))
   litN : ∀ {ρ k R}, D sapp mem lamS cval ρ
@@ -90,7 +90,7 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
   case litU =>
     intro env ls k i Γ s hw he R hR
     cases hw with
-    | litU => unif; exact F.litU hR
+    | litU h1 h2 => unif; exact F.litU h2 hR
     | _ => kill
   case litN =>
     intro env ls k i Γ s hw he R hR
