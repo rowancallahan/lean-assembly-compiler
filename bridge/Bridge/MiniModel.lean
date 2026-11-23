@@ -52,6 +52,8 @@ structure SetLaws {V : Type} (O : SetOps V) : Prop where
   univ_mem_univ : ∀ n, O.mem (O.univ n) (O.univ (n + 1))
   /-- SetModel/Ops.lean:88 -/
   lamR_congr : ∀ {v A} {F F' : V → V}, (∀ x, O.mem x A → F x = F' x) → O.lamR v A F = O.lamR v A F'
+  /-- SetModel/Ops.lean:134 -/
+  lamR_mem : ∀ {v A} {F B : V → V}, (∀ x, O.mem x A → O.mem (F x) (B x)) → O.mem (O.lamR v A F) (O.piR v A B)
   /-- SetModel/Ops.lean:79 -/
   piR_congr : ∀ {v A} {B B' : V → V}, (∀ x, O.mem x A → B x = B' x) → O.piR v A B = O.piR v A B'
 
