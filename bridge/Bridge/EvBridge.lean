@@ -34,7 +34,7 @@ structure FactsW (sapp : S → S → S) (mem : S → S → Prop) (lamS : S → (
     D sapp mem lamS cval ρ (tr (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     sapp (sapp H (enc (.w x))) (enc (.w y)) = enc (.w z)
   /-- `ite` with the emitted condition/instance; the condition's truth value comes from its `EvB` -/
-  ite : ∀ {env r n cmp a b c d bc H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) → EvB P env c bc →
+  ite : ∀ {env r n cmp a b c d bc H Xt Xe}, condX n cmp a b = (c, d) → iteOk n cmp a b → EvB P env c bc →
     D sapp mem lamS cval (ρE enc junk env) (tr (apps (.c "ite" [1]) [shTy r, c, d])) H →
     sapp (sapp H Xt) Xe = if bc then Xt else Xe
   pair : ∀ {ρ A B H x y}, VSh A x → VSh B y →

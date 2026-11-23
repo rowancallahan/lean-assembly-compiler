@@ -73,7 +73,7 @@ def node (sig : Sig) (g : List Sh → X → Option Sh) (Γ : List Sh) (n : Strin
     | [T, c, d, t, el] => do
       let r ← shInv T
       let (nb, cmp, a, b) ← condInv c
-      if ls = [1] ∧ T = shTy r ∧ condX nb cmp a b = (c, d) ∧ (cmp = 1 ∨ cmp = 2) ∧
+      if ls = [1] ∧ T = shTy r ∧ condX nb cmp a b = (c, d) ∧ iteOk nb cmp a b ∧
         g Γ a = some (if nb then .nt else .uw) ∧ g Γ b = some (if nb then .nt else .uw) ∧ g Γ t = some r ∧
         g Γ el = some r then some r else none
     | _ => none
@@ -175,7 +175,7 @@ theorem node_sound {sig : Sig} {g : List Sh → X → Option Sh}
       rcases hc : condInv c with _ | ⟨nb, cmp, a, b⟩
       · rw [hc] at h; simp at h
       rw [hc] at h; simp only at h
-      by_cases hh : ls = [1] ∧ T = shTy r ∧ condX nb cmp a b = (c, d) ∧ (cmp = 1 ∨ cmp = 2) ∧
+      by_cases hh : ls = [1] ∧ T = shTy r ∧ condX nb cmp a b = (c, d) ∧ iteOk nb cmp a b ∧
           g Γ a = some (if nb then .nt else .uw) ∧ g Γ b = some (if nb then .nt else .uw) ∧ g Γ t = some r ∧
           g Γ el = some r
       · rw [if_pos hh] at h

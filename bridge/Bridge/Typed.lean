@@ -66,6 +66,14 @@ def condX (n : Bool) (cmp : Nat) (a b : X) : X × X :=
     (apps (.c "LT.lt" [0]) [T, .c (if n then "instLTNat" else "instLTUInt64") [], a, b],
       apps (.c (if n then "Nat.decLt" else "UInt64.decLt") []) [a.dropHead, b.dropHead])
 
+/-- the ite forms the bridge discharges: any `==`, and `<` on UInt64 operands without leading unused `let`s.
+(A Wf premise; the checker tests it — true of all ites in C's emitted Expr.) -/
+abbrev iteOk (n : Bool) (cmp : Nat) (a b : X) : Prop :=
+  cmp = 1 ∨ (cmp = 2 ∧ n = false ∧ a.dropHead = a ∧ b.dropHead = b)
+
+theorem iteOk_cmp {n : Bool} {cmp : Nat} {a b : X} (h : iteOk n cmp a b) : cmp = 1 ∨ cmp = 2 := by
+  rcases h with h | ⟨h, _⟩ <;> simp [h]
+
 theorem iteX_eq (r : Sh) (n : Bool) (cmp : Nat) (a b t e : X) :
     iteX r n cmp a b t e = apps (.c "ite" [1]) [shTy r, (condX n cmp a b).1, (condX n cmp a b).2, t, e] := by
   unfold iteX condX; by_cases h : cmp = 1 <;> simp [h]
@@ -83,7 +91,7 @@ inductive Wf (sig : Sig) : List Sh → X → Sh → Prop
   | bin {Γ e op n i a b} : e = apps (.c n [0, 0, 0]) [U, U, U, i, a, b] → binHead op = (n, i) →
       n ∈ binList → 1 ≤ op → op ≤ 7 → Wf sig Γ a .uw → Wf sig Γ b .uw → Wf sig Γ e .uw
   | ite {Γ e r n cmp a b c d t el} : e = apps (.c "ite" [1]) [shTy r, c, d, t, el] → condX n cmp a b = (c, d) →
-      (cmp = 1 ∨ cmp = 2) →
+      iteOk n cmp a b →
       Wf sig Γ a (if n then .nt else .uw) → Wf sig Γ b (if n then .nt else .uw) →
       Wf sig Γ t r → Wf sig Γ el r → Wf sig Γ e r
   | mk {Γ e a b A B} : e = apps (.c "Prod.mk" [0, 0]) [shTy A, shTy B, a, b] → Wf sig Γ a A → Wf sig Γ b B →

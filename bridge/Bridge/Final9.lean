@@ -1,5 +1,5 @@
-/- Bridge.Final9: `Final8` plus the Nat-`==` ite (IteNat).  `Open9` = what remains open: ite on Nat `<` and on
-`dropHead`-affected UInt64 `<` (0 occurrences of either in C's emitted Expr).
+/- Bridge.Final9: `Final8` plus the Nat-`==` ite (IteNat).  `Open9` (ite on Nat `<` and on
+`dropHead`-affected UInt64 `<`) holds outright since `Wf` now requires `iteOk`: `ev_denotes_full` has no open fields.
 
 STATUS: proved, no sorry. -/
 import Bridge.IteNat
@@ -16,13 +16,13 @@ structure Env9 (env : List Const) (sig : Sig) (P : Prog) : Prop extends Env8 env
   natEq : NatEqEnv env
 
 structure Open9 (M : Model O env) (sig : Sig) (P : Prog) (junk : S) : Prop where
-  iteTy : ∀ {ρ r n cmp a b c d H X Y}, ¬ doneIte9 n cmp a b → condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+  iteTy : ∀ {ρ r n cmp a b c d H X Y}, ¬ doneIte9 n cmp a b → condX n cmp a b = (c, d) → iteOk n cmp a b →
     (∀ A, D O M.cval ρ (trM a) A → O.mem A (tyS M (if n then .nt else .uw))) →
     (∀ B, D O M.cval ρ (trM b) B → O.mem B (tyS M (if n then .nt else .uw))) →
     D O M.cval ρ (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
     O.mem X (tyS M r) → O.mem Y (tyS M r) → O.mem (O.app (O.app H X) Y) (tyS M r)
   ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, ¬ doneIte9 n cmp a b → condX n cmp a b = (c, d) →
-    (cmp = 1 ∨ cmp = 2) → VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
+    iteOk n cmp a b → VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
     (∀ A, D O M.cval (ρE (encM M) junk env) (trM a) A → A = encM M va) →
     (∀ B, D O M.cval (ρE (encM M) junk env) (trM b) B → B = encM M vb) →
     D O M.cval (ρE (encM M) junk env) (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
@@ -49,5 +49,27 @@ theorem ev_denotes_final9 (E : Env9 env sig P) (Op : Open9 M sig P junk) (hbl : 
     (hw : Wf sig Γ e s) (he : Typed.Fa2 VSh Γ envV) :
     ∀ R, D O M.cval (ρE (encM M) junk envV) (trM e) R → R = encM M v :=
   ev_denotes_final8 L E.toEnv8 (open8_of L E Op) hbl hP h hw he
+
+omit L in
+/-- every ite `Wf` admits is discharged -/
+theorem iteOk_done {n : Bool} {cmp : Nat} {a b : X} (h : iteOk n cmp a b) : doneIte9 n cmp a b := by
+  rcases h with rfl | ⟨rfl, rfl, ha, hb⟩
+  · cases n
+    · exact Or.inl (Or.inl ⟨rfl, rfl⟩)
+    · exact Or.inr ⟨rfl, rfl⟩
+  · exact Or.inl (Or.inr ⟨rfl, rfl, ha, hb⟩)
+
+omit L in
+/-- **`Open9` holds outright**: its fields assume an ite that is `iteOk` yet not discharged -/
+theorem open9_all : Open9 M sig P junk where
+  iteTy := fun h1 _ hok _ _ _ _ _ => (h1 (iteOk_done hok)).elim
+  ite := fun h1 _ hok _ _ _ _ _ _ _ => (h1 (iteOk_done hok)).elim
+
+/-- **Ev ⇒ Denotes, no open fields** (trimmed model): every remaining assumption is a stored theorem of `env` -/
+theorem ev_denotes_full (E : Env9 env sig P) (hbl : HasTy env "br_litN" [] brLitNTy)
+    (hP : PWf sig P) {envV : List ExprSpec.V} {e : X} {v : ExprSpec.V} (h : Ev P envV e v) {Γ : List Sh} {s : Sh}
+    (hw : Wf sig Γ e s) (he : Typed.Fa2 VSh Γ envV) :
+    ∀ R, D O M.cval (ρE (encM M) junk envV) (trM e) R → R = encM M v :=
+  ev_denotes_final9 L E open9_all hbl hP h hw he
 
 end Bridge.Final9

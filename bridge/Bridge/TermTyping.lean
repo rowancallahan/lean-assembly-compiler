@@ -56,7 +56,7 @@ structure HeadTy (M : Model O env) (sig : Sig) : Prop where
     O.mem X (tyS M .uw) → O.mem Y (tyS M .uw) → O.mem (O.app (O.app H X) Y) (tyS M .uw)
   /-- ite: the condition's operands are typed (`a`, `b` at shape `o`); then the head with its condition and
   instance maps two members of `⟦r⟧` into `⟦r⟧` -/
-  ite : ∀ {ρ r n cmp a b c d H X Y}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+  ite : ∀ {ρ r n cmp a b c d H X Y}, condX n cmp a b = (c, d) → iteOk n cmp a b →
     (∀ A, D O M.cval ρ (trM a) A → O.mem A (tyS M (if n then .nt else .uw))) →
     (∀ B, D O M.cval ρ (trM b) B → O.mem B (tyS M (if n then .nt else .uw))) →
     D O M.cval ρ (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →

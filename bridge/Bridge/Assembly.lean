@@ -37,7 +37,7 @@ structure Open (M : Model O env) (sig : Sig) (P : Prog) (junk : S) : Prop where
   binTy : ∀ {ρ op n i H X Y}, binHead op = (n, i) → n ∈ binList →
     D O M.cval ρ (trM (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     O.mem X (tyS M .uw) → O.mem Y (tyS M .uw) → O.mem (O.app (O.app H X) Y) (tyS M .uw)
-  iteTy : ∀ {ρ r n cmp a b c d H X Y}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+  iteTy : ∀ {ρ r n cmp a b c d H X Y}, condX n cmp a b = (c, d) → iteOk n cmp a b →
     (∀ A, D O M.cval ρ (trM a) A → O.mem A (tyS M (if n then .nt else .uw))) →
     (∀ B, D O M.cval ρ (trM b) B → O.mem B (tyS M (if n then .nt else .uw))) →
     D O M.cval ρ (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
@@ -45,7 +45,7 @@ structure Open (M : Model O env) (sig : Sig) (P : Prog) (junk : S) : Prop where
   bin : ∀ {ρ op n i H x y z}, binHead op = (n, i) → 1 ≤ op → op ≤ 7 → binV n x y = some z →
     D O M.cval ρ (trM (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     O.app (O.app H (encM M (.w x))) (encM M (.w y)) = encM M (.w z)
-  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → iteOk n cmp a b →
     VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
     (∀ A, D O M.cval (ρE (encM M) junk env) (trM a) A → A = encM M va) →
     (∀ B, D O M.cval (ρE (encM M) junk env) (trM b) B → B = encM M vb) →

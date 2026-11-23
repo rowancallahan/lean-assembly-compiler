@@ -127,7 +127,7 @@ structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (
     D O cval ρ (trM (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     O.app (O.app H (enc (.w x))) (enc (.w y)) = enc (.w z)
   /-- `ite` with the emitted condition/instance; the condition's truth value comes from its `EvB` -/
-  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → iteOk n cmp a b →
     VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
     (∀ A, D O cval (ρE enc junk env) (trM a) A → A = enc va) →
     (∀ B, D O cval (ρE enc junk env) (trM b) B → B = enc vb) →
@@ -196,7 +196,7 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S} {t
   refine Ev.rec
     (motive_1 := fun env e v _ => ∀ {Γ s}, Wf sig Γ e s → Typed.Fa2 VSh Γ env →
       ∀ R, D O cval (ρE enc junk env) (trM e) R → R = enc v)
-    (motive_2 := fun env c bc _ => ∀ {n cmp a b d}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+    (motive_2 := fun env c bc _ => ∀ {n cmp a b d}, condX n cmp a b = (c, d) → iteOk n cmp a b →
       ∃ va vb, Ev P env a va ∧ Ev P env b vb ∧ bc = cmpV cmp va vb ∧
         (∀ {Γ s}, Wf sig Γ a s → Typed.Fa2 VSh Γ env → ∀ R, D O cval (ρE enc junk env) (trM a) R → R = enc va) ∧
         (∀ {Γ s}, Wf sig Γ b s → Typed.Fa2 VSh Γ env → ∀ R, D O cval (ρE enc junk env) (trM b) R → R = enc vb))

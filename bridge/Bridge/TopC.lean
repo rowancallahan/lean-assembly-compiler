@@ -128,4 +128,13 @@ theorem C_denotes_final9 (L : SetLaws O) {junk : S} (E : Final9.Env9 env (sigOf 
       (O.app (M.cval "m" []) (encM M (.l inp))) := .app .const .bvar
   exact Final9.ev_denotes_final9 L E Op hbl cPWf hev hw (.cons (.ls _) .nil) _ hD
 
+/-- **THE HEADLINE (trimmed model, no open fields)**: in every model of an env holding the bridge's stored theorems
+(`Env9`: prelude typing + the equations listed in §11) and C's defs, C's own term `m inp` denotes the encoding of
+C's result: `⟦m⟧ (enc inp) = enc (mC inp)`. -/
+theorem C_denotes_full (L : SetLaws O) {junk : S} (E : Final9.Env9 env (sigOf oC) (ExprSpec.progOf oC))
+    (hbl : HasTy env "br_litN" [] Final.brLitNTy)
+    (inp : List UInt8) (hin : inp.length < 2 ^ 64) (hs : Sem κC Cert.PC.all inp = .ok (mC inp)) :
+    O.app (M.cval "m" []) (encM M (.l inp)) = encM M (.l (mC inp)) :=
+  C_denotes_final9 (junk := junk) L E Final9.open9_all hbl inp hin hs
+
 end Bridge.TopC
