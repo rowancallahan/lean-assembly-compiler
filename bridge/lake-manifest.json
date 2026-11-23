@@ -1,0 +1,16 @@
+{"version": "1.3.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"url": "https://github.com/dwijayuda/con-leche",
+   "type": "git",
+   "subDir": null,
+   "scope": "",
+   "rev": "3b37939f0d9d37bfd86299dc92d9a97fbacba29e",
+   "name": "«con-leche»",
+   "manifestFile": "lake-manifest.json",
+   "inputRev": "3b37939f0d9d37bfd86299dc92d9a97fbacba29e",
+   "inherited": false,
+   "configFile": "lakefile.toml"}],
+ "name": "«nano-bridge»",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

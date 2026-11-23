@@ -1,0 +1,24 @@
+# The Ev ↔ con-leche `Denotes` bridge (DENOTES_SPIKE.md).  A SEPARATE Lake package on con-leche's
+# toolchain (4.35.0-rc3); nano's main package stays on 4.34.1 (owner decision, not bumped here).
+# It requires con-leche (pinned) and rebuilds nano's toolchain-neutral Expr modules from ../Nano
+# (their import closure is 24 modules, none needs Sail; DENOTES_SPIKE.md §5 H2).
+name = "nano-bridge"
+defaultTargets = ["NanoExpr", "Bridge"]
+moreLeanArgs = ["--tstack=400000"]
+
+[[require]]
+name = "con-leche"
+git = "https://github.com/dwijayuda/con-leche"
+rev = "3b37939f0d9d37bfd86299dc92d9a97fbacba29e"
+
+# nano's Expr spec + Ev + eval_emit, compiled from the main tree unchanged
+[[lean_lib]]
+name = "NanoExpr"
+srcDir = ".."
+roots = ["Nano.Expr.ExprSpec", "Nano.Expr.Correct", "Nano.Expr.EvalEmit"]
+# the 24-module import closure (lake only builds modules a lib claims)
+globs = ["Nano.Codegen.BufL", "Nano.Codegen.Gen", "Nano.Expr.Correct", "Nano.Expr.Eval", "Nano.Expr.EvalEmit", "Nano.Expr.EvalLeaf", "Nano.Expr.ExprSpec", "Nano.Lexer.Dsg", "Nano.Lexer.Lex2", "Nano.Lexer.Lex2Sound", "Nano.Lexer.Lex2Spec", "Nano.Lexer.MainTokWF", "Nano.Lexer.ParTokWF", "Nano.Main.Chain", "Nano.Main.Prelude", "Nano.Main.Sem", "Nano.Ownership.Own", "Nano.Ownership.OwnSpec", "Nano.Parser.NumC", "Nano.Parser.NumSpec", "Nano.Parser.Par1", "Nano.Parser.ParInv", "Nano.Parser.ParSerLen", "Nano.Parser.ParSpec"]
+
+# the bridge itself
+[[lean_lib]]
+name = "Bridge"
