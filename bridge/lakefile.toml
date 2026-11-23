@@ -34,4 +34,4 @@ globs = ["Nano.Expr.CExpr", "Nano.Expr.CData", "Nano.SelfHost.Cert.PC"]
 # the Wf check of C's own Expr (kernel; needs NanoC)
 [[lean_lib]]
 name = "BridgeC"
-roots = ["Bridge.CheckC", "Bridge.CheckForm"]
+roots = ["Bridge.CheckC", "Bridge.CheckForm", "Bridge.TopC"]
