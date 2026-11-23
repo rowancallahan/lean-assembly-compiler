@@ -7,6 +7,7 @@ stream, closed `Tᵢ` and `S`).  `conv_sound`: both sides denote the same set, a
 A program run `f (enc v) ⇝ enc out` written as a `Conv` derivation is therefore `⟦f v⟧ = ⟦out⟧` in the model of
 `model_exists'`. -/
 import Bridge.Real.Engine2
+import Bridge.Real.EngineLam
 
 namespace Bridge.Real.Engine
 open ConLeche ConLeche.SetModel SetTheory Bridge Bridge.Real Bridge.ModelExists2
@@ -53,6 +54,10 @@ inductive Conv (tab : Tab) (eqs : List (Expr × Expr)) (thms : List Thm) (Γ : L
   /-- an instance of a stored equation at typed arguments (outermost binder first) -/
   | inst {t : Thm} {as : List Expr} : t ∈ thms → ArgsC tab eqs Γ t.Ts as →
       Conv tab eqs thms Γ (substB as.reverse t.lhs) (substB as.reverse t.rhs) t.S
+  /-- β at a redex the derivation reached, whatever binder data the λ carries (`EngineLam.beta_den`) -/
+  | beta {x T b a S : Expr} {m : BinderMeta} : Conv tab eqs thms Γ x (.app (.lam T b m) a) S →
+      HasTy tab eqs Γ a T → EngineLam.wfk 1 b = true → EngineLam.wfk 0 a = true →
+      Conv tab eqs thms Γ x (EngineLam.substD [a] 0 b) S
 /-- pointwise conversion of argument lists -/
 inductive ConvL (tab : Tab) (eqs : List (Expr × Expr)) (thms : List Thm) (Γ : List Expr) :
     List Expr → List Expr → List Expr → Prop
@@ -73,6 +78,7 @@ theorem Conv.mono {tab : Tab} {eqs : List (Expr × Expr)} {thms thms' : List Thm
   | _, _, _, .litS => .litS
   | _, _, _, .lit0 => .lit0
   | _, _, _, .inst hm ha => .inst (hs _ hm) ha
+  | _, _, _, .beta c ha hb h0 => .beta (Conv.mono hs c) ha hb h0
 theorem ConvL.mono {tab : Tab} {eqs : List (Expr × Expr)} {thms thms' : List Thm} {Γ : List Expr}
     (hs : ∀ t ∈ thms, t ∈ thms') : ∀ {as bs Ts : List Expr}, ConvL tab eqs thms Γ as bs Ts → ConvL tab eqs thms' Γ as bs Ts
   | _, _, _, .nil => .nil
@@ -164,6 +170,10 @@ theorem conv_sound : ∀ {a b T : Expr}, Conv tab eqs thms Γ a b T →
     have hd := Tiny.lit_den M hnat φ ρ 0
     refine ⟨_, _, hd, ?_, Tiny.nat_den M hnat φ ρ, Tiny.natV_mem M hnat φ ρ 0⟩
     cases hd with | natLit h => exact h
+  | _, _, _, .beta c ha hb h0 => by
+    obtain ⟨X, A, d1, d2, dA, hm⟩ := conv_sound c
+    obtain ⟨Xa, AT, da, dT, hma⟩ := sound hP hnat htab heqs hΓ ha
+    exact ⟨X, A, d1, EngineLam.beta_den hb h0 d2 dT da hma, dA, hm⟩
   | _, _, _, .inst (t := t) (as := as) hmem hargs => by
     obtain ⟨hrec, k, hok⟩ := hthms t hmem
     simp only [Thm.ok, Bool.and_eq_true, beq_iff_eq] at hok
