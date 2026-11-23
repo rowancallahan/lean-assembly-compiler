@@ -22,7 +22,7 @@ globs = ["Nano.Codegen.BufL", "Nano.Codegen.Gen", "Nano.Expr.Correct", "Nano.Exp
 # the bridge itself
 [[lean_lib]]
 name = "Bridge"
-roots = ["Bridge.EvSkeleton", "Bridge.Typed", "Bridge.EvBridge", "Bridge.MiniModel", "Bridge.EvMini", "Bridge.TermTyping", "Bridge.HeadTyping", "Bridge.Iota", "Bridge.Iota2", "Bridge.Call", "Bridge.Assembly", "Bridge.Add", "Bridge.Check", "Bridge.CheckExamples", "Bridge.Top", "Bridge.Cmp", "Bridge.Ite", "Bridge.Final", "Bridge.IteLt", "Bridge.Final3", "Bridge.Len", "Bridge.Push", "Bridge.Final4"]
+roots = ["Bridge.EvSkeleton", "Bridge.Typed", "Bridge.EvBridge", "Bridge.MiniModel", "Bridge.EvMini", "Bridge.TermTyping", "Bridge.HeadTyping", "Bridge.Iota", "Bridge.Iota2", "Bridge.Call", "Bridge.Assembly", "Bridge.Add", "Bridge.Check", "Bridge.CheckExamples", "Bridge.Top", "Bridge.Cmp", "Bridge.Ite", "Bridge.Final", "Bridge.IteLt", "Bridge.Final3", "Bridge.Len", "Bridge.Push", "Bridge.Final4", "Bridge.Index"]
 
 # C's own emitted Expr (`ExprSpec.oC`), for running the Wf checker on the compiler itself
 [[lean_lib]]
