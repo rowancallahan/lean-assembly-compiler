@@ -183,24 +183,24 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
       g41 c (serialize ds) = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
       tg (serialize ds) (hs.getLastD 0 + 2) = 0 ∧ tg (serialize ds) (hs.getLastD 0 + 5) = 1 ∧ o.length < 2 ^ 24 ∧ o.length + 32 < 2 ^ 18 ∧
       (o.length < 2 ^ 24 →
-        o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
+        o = g34 bnew ++ (defsJ (pcOf 2097152 hb c29 inp T) ds 0 hs.length).map encG ∧
         (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
           tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64 ∧ OpV (dA ds j).body) ∧
         (∀ j, j < hs.length → (dA ds j).npw < 251 ∧ (dA ds j).nslots < 251 ∧ (dA ds j).nres < 251 ∧
           (dA ds j).npw ≤ (dA ds j).nslots) ∧
-        (∀ j, j < hs.length → (pcOf 524288 hb c29 inp T).T j =
-          (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
-        (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
-          OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
-          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
+        (∀ j, j < hs.length → (pcOf 2097152 hb c29 inp T).T j =
+          (g34 bnew).length + (defsJ (pcOf 2097152 hb c29 inp T) ds 0 j).length) ∧
+        (∀ k, k < hs.length → ScV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body →
+          OkV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body ∧
+          wd (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
   obtain ⟨_, hs, T, o, D, hD, hW, hne, l2, l5, hg, hol0, hc18⟩ := gen41_full c (serialize ds) hXl h
   refine ⟨hs, T, o, hD, hne, hg, l2, l5, hol0, hc18, fun hol => ?_⟩
-  have cw := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
+  have cw := chainW (P := pcOf 2097152 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp only [bnew, List.length_nil, Nat.zero_add] at cw
-  have perK : ∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
-      OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
-      wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres := by
+  have perK : ∀ k, k < hs.length → ScV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body →
+      OkV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body ∧
+      wd (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres := by
     intro k hk hsc
     have wc := wchain (ds := ds) hW 0 ds (by simp) (by simp [dD]) (by simp) (SerAt_serialize ds)
       (by simp [serialize]; omega) hdb k hk
@@ -208,7 +208,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     obtain ⟨i0, sa0, hWk⟩ := wc
     obtain ⟨_, dnp, dns, _, dnr, dnb⟩ := DB_dA hdb k
     obtain ⟨p251, -, q251, -⟩ := by simpa using cw.2.2.2 k hk
-    have hK : WK (scAt (pcOf 524288 hb c29 inp T) ds k) (dD ds (k + 1)) (dA ds k).npw.toUInt64
+    have hK : WK (scAt (pcOf 2097152 hb c29 inp T) ds k) (dD ds (k + 1)) (dA ds k).npw.toUInt64
         (dA ds k).nres.toUInt64 := {
       ep := by show (dA ds k).npw = _; rw [toU_lt _ dnp]
       eq := by show (dA ds k).nres = _; rw [toU_lt _ dnr]
@@ -225,7 +225,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     have bl := body_ser_lt ds hXl k
     obtain ⟨_, wdv, ew⟩ := wV hK (dA ds k).body true (i0 + 6) _ _ dnb hsc sb hWk bl
     have lw := wd_lt hK (dA ds k).body dnb bl
-    have ewd : wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
+    have ewd : wd (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
       ofNat_inj' (by simpa [Nat.toUInt64] using ew) (by omega) (by omega)
     exact ⟨okV_of _ _ wdv hsc, ewd⟩
   refine ⟨cw.1, by simpa using cw.2.2.1, by simpa using cw.2.2.2, cw.2.1, perK⟩

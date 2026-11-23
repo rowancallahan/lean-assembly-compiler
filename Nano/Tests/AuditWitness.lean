@@ -37,11 +37,11 @@ theorem ex1_applies (hy : C.y16 (C.s10 Witness.x2) = Witness.a2) (inp : List UIn
   exact ⟨fin, h1, h2, h3, h4⟩
 
 /-- the same on the input `[5]` with the memory premise DISCHARGED (D's `AuditSpace.spaceC_ex1_eq`, after `spaceC` became
-E's explicit bound): 4,194,416 bytes of work memory suffice, and the output is the single byte `Ex1.m [5]`.  The only
+E's explicit bound): 16,777,328 bytes of work memory suffice, and the output is the single byte `Ex1.m [5]`.  The only
 hypotheses left are the native-only parser run `hy` and the start state. -/
 theorem ex1_applies_5 (hy : C.y16 (C.s10 Witness.x2) = Witness.a2) (startState : riscv.State) (call : Call)
     (hs : StartCorrect riscv startState call (mC Witness.x2) [5]) (ho : 1 ≤ call.outputLength)
-    (hw : 4194416 ≤ call.workLength) :
+    (hw : 16777328 ≤ call.workLength) :
     ∃ finishState, Runs riscv startState finishState ∧
       (riscv.observe finishState).programCounter = call.returnAddress ∧
       (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧

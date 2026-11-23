@@ -16,20 +16,20 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
     (hb : Nat) (c29 : UInt64) (inp : Nat → UInt64) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       (
-        g41 c (serialize ds) = g40 16777216 c ((stubJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length) ++
-          defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length ++
-          startJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length)
-            ((pcOf 524288 hb c29 inp T).T (hs.length - 1))).map encG) 0 [] ∧
+        g41 c (serialize ds) = g40 16777216 c ((stubJ (11 + (defsJ (pcOf 2097152 hb c29 inp T) ds 0 hs.length).length) ++
+          defsJ (pcOf 2097152 hb c29 inp T) ds 0 hs.length ++
+          startJ (11 + (defsJ (pcOf 2097152 hb c29 inp T) ds 0 hs.length).length)
+            ((pcOf 2097152 hb c29 inp T).T (hs.length - 1))).map encG) 0 [] ∧
         (dA ds (hs.length - 1)).npw = 0 ∧ (dA ds (hs.length - 1)).nres = 1 ∧
-        11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length + 32 < 2 ^ 18 ∧
+        11 + (defsJ (pcOf 2097152 hb c29 inp T) ds 0 hs.length).length + 32 < 2 ^ 18 ∧
         (∀ k, k < hs.length → OpV (dA ds k).body) ∧
         (∀ j, j < hs.length → (dA ds j).npw < 251 ∧ (dA ds j).nslots < 251 ∧ (dA ds j).nres < 251 ∧
           (dA ds j).npw ≤ (dA ds j).nslots) ∧
-        (∀ j, j < hs.length → (pcOf 524288 hb c29 inp T).T j =
-          (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
-        (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
-          OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
-          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
+        (∀ j, j < hs.length → (pcOf 2097152 hb c29 inp T).T j =
+          (g34 bnew).length + (defsJ (pcOf 2097152 hb c29 inp T) ds 0 j).length) ∧
+        (∀ k, k < hs.length → ScV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body →
+          OkV (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body ∧
+          wd (scAt (pcOf 2097152 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
   obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hol, hc18, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨ho, hhd, hbd, hTp, hpk⟩ := hrest hol
@@ -50,7 +50,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
   have hT1 : bsize T - 1 = (hs.length - 1).toUInt64 := by
     unfold bsize; rw [hTl]
     have : hs.length < 2 ^ 64 := by
-      have := defsJ_ge (pcOf 524288 hb c29 inp T) ds 0 hs.length
+      have := defsJ_ge (pcOf 2097152 hb c29 inp T) ds 0 hs.length
       have := congrArg List.length ho; simp at this; omega
     apply UInt64.toNat_inj.mp
     simp only [Nat.toUInt64]

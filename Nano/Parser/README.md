@@ -67,3 +67,8 @@ Per-handler proofs that each step of the parser's machine code preserves the rep
 machine memory and the L2 state (one file per handler: `ParInvAtom`, `ParInvCall`, `ParInvIte`, …; shared helpers in
 `ParInvOps`, `ParInvStep`, `ParInvTop`). Swept: no dead declarations; same-statement copies merged
 (`status_bset0`, `ite0`, `shRow0`, `drop_bset0`, `nt_code`).
+
+Lean compatibility (owner rule: nano accepts only what Lean accepts, with the same result): the front end's reject rules
+(misplaced modifiers, attribute whitelist, module docs, duplicate arms, doc whitespace, the scope frame) are listed with
+examples in Testing/notes/SYNTAX_EXP.md "Reject rules". Still open there: Nat defaulting of literal-only operands (B) and
+Lean's offside rule (D).

@@ -43,7 +43,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     (hld : T.loader s call I.code x)
     (y : List UInt8) (hSem : NanoMain.Sem NanoMain.κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
-    (hS : ∀ Tb, ∃ vs H', semAt (pcOf 524288 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
+    (hS : ∀ Tb, ∃ vs H', semAt (pcOf 2097152 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
       (NanoMain.inpW x) Tb) p (p.length - 1) [] ((call.workAddress.toNat + call.workLength) / 8 * 8)
       ⟨call.workAddress.toNat + 16, fun _ => none⟩ = some (vs, H')) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧

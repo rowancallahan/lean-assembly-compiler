@@ -64,7 +64,12 @@ def s3 (x : Array UInt8) (p e : UInt64) : UInt64 :=
   let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
   let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
   let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
-  r19
+  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 97 else r19 else r19 else r19 else r19;
+  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 0 else r20 else r20 else r20 else r20 else r20;
+  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 98 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
+  let r23 := if d == 9 then if c == 110 then if rd x (p + 1) == 97 then if rd x (p + 2) == 109 then if rd x (p + 3) == 101 then if rd x (p + 4) == 115 then if rd x (p + 5) == 112 then if rd x (p + 6) == 97 then if rd x (p + 7) == 99 then if rd x (p + 8) == 101 then 92 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22;
+  let r24 := if d == 7 then if c == 112 then if rd x (p + 1) == 114 then if rd x (p + 2) == 105 then if rd x (p + 3) == 118 then if rd x (p + 4) == 97 then if rd x (p + 5) == 116 then if rd x (p + 6) == 101 then 93 else r23 else r23 else r23 else r23 else r23 else r23 else r23 else r23;
+  r24
 
 def s4 (x : Array UInt8) (p : UInt64) : UInt64 := if p < len x then
     let c := rd x p;
@@ -75,7 +80,7 @@ def s4 (x : Array UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 40 then 6
     else if c == 41 then 7
     else if c == 43 then 10
-    else if c == 45 then 11
+    else if c == 45 then if d == 45 then 94 else 11
     else if c == 42 then 12
     else if c == 59 then 13
     else if c == 44 then 15
@@ -89,6 +94,8 @@ def s4 (x : Array UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
+    else if c == 47 then if d == 45 then 95 else 0
+    else if c == 64 then if d == 91 then 96 else 0
     else if c < 48 then if c == 39 then s3 x p (s1 (len' x) x p) else 0
     else if c < 58 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
     else if s0 c == 1 then s3 x p (s1 (len' x) x p)
@@ -124,12 +131,119 @@ def s6 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64 → UInt64
   | 0, x, i, e, a => a
   | n + 1, x, i, e, a => if i < e then s6 n x (i + 1) e (a * 10 + (rd x i - 48)) else a
 
+def s28 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, e, a => 0
+  | n + 1, x, i, e, a => if i < e then
+      if 1844674407370955161 < a then 0
+      else if a == 1844674407370955161 then (if 53 < rd x i then 0 else s28 n x (i + 1) e (a * 10 + (rd x i - 48)))
+      else s28 n x (i + 1) e (a * 10 + (rd x i - 48))
+    else 1
+
 def s7 : Nat → Array UInt8 → UInt64 → UInt64 → Buf → Buf
   | 0, x, i, e, o => q0 o 0
   | n + 1, x, i, e, o => if i < e then s7 n x (i + 1) e (q0 (q0 o 1) (rd x i)) else q0 o 0
 
 def s8 (v : UInt64) (o : Buf) : Buf := q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o v) (v >>> 8)) (v >>> 16)) (v >>> 24)) (v >>> 32)) (v >>> 40)) (v >>> 48))
     (v >>> 56)
+
+def s11 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64
+  | 0, x, i, d => 0
+  | n + 1, x, i, d => if i < len x then
+      if rd x i == 45 then if rd x (i + 1) == 47 then if d == 0 then i + 2 else s11 n x (i + 2) (d - 1) else s11 n x (i + 1) d
+      else if rd x i == 47 then if rd x (i + 1) == 45 then s11 n x (i + 2) (d + 1) else s11 n x (i + 1) d
+      else s11 n x (i + 1) d
+    else 0
+
+def s12 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64
+  | 0, x, i, b => i
+  | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
+
+def s13 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if rd x i == 32 then s13 n x (i + 1) else i else i
+
+def s21 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => i
+  | n + 1, x, i => if i < len x then if 96 < rd x i then if rd x i < 123 then s21 n x (i + 1) else i else i else i
+
+def s20 (x : Array UInt8) (a b : UInt64) : UInt64 :=
+  let j := s21 (len' x) x (a + 1);
+  if 64 < rd x a then if rd x a < 91 then if j < b then if s2 (len' x) x j b == 1 then
+    if j == a + 3 then if rd x a == 73 then if rd x (a + 1) == 110 then if rd x (a + 2) == 116 then 0 else 1 else 1 else 1
+    else if j == a + 5 then if rd x a == 70 then if rd x (a + 1) == 108 then if rd x (a + 2) == 111 then if rd x (a + 3) == 97 then if rd x (a + 4) == 116 then 0 else 1 else 1 else 1 else 1 else 1
+    else 1
+  else 0 else 0 else 0 else 0
+
+def s22 (x : Array UInt8) (q a b e k : UInt64) : UInt64 :=
+  let v := if e < len x then if rd x e == 10 then 1 else 0 else 1;
+  if v == 0 then 0
+  else if a == b then if k == 92 then 0 else 1
+  else if k == 98 then 0 else if rd x q == 32 then s20 x a b else 0
+
+def s16 (x : Array UInt8) (p e : UInt64) : UInt64 :=
+  let d := e - p;
+  let c := rd x p;
+  if d == 6 then
+    if c == 105 then if rd x (p + 1) == 110 then if rd x (p + 2) == 108 then if rd x (p + 3) == 105 then if rd x (p + 4) == 110 then if rd x (p + 5) == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0
+  else if d == 9 then
+    if c == 114 then if rd x (p + 1) == 101 then if rd x (p + 2) == 100 then if rd x (p + 3) == 117 then if rd x (p + 4) == 99 then if rd x (p + 5) == 105 then if rd x (p + 6) == 98 then if rd x (p + 7) == 108 then if rd x (p + 8) == 101 then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+  else 0
+
+def s14 : Nat → Array UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, ws, d => 0
+  | n + 1, x, i, ws, d => if i < len x then
+      if s0 (rd x i) == 1 then if d == 1 then 0 else s14 n x (i + 1) (if ws == 0 then i else ws) 0
+      else
+        let d2 := if ws == 0 then d else if s16 x ws i == 1 then 1 else 2;
+        if d2 == 2 then 0
+        else if rd x i == 32 then s14 n x (i + 1) 0 d2
+        else if rd x i == 44 then if d2 == 1 then s14 n x (i + 1) 0 0 else 0
+        else if rd x i == 93 then if d2 == 1 then i + 1 else 0
+        else 0
+    else 0
+
+def s15 : Nat → Array UInt8 → UInt64 → UInt64
+  | 0, x, i => 0
+  | n + 1, x, i => if i < len x then
+      if rd x i == 32 then s15 n x (i + 1)
+      else if rd x i == 10 then s15 n x (i + 1)
+      else if rd x i == 13 then if rd x (i + 1) == 10 then s15 n x (i + 1) else 0
+      else if rd x i == 9 then 0
+      else if rd x i == 45 then if rd x (i + 1) == 45 then s15 n x (s12 (len' x) x (i + 1) 10) else i
+      else if rd x i == 47 then if rd x (i + 1) == 45 then if rd x (i + 2) == 45 then i else if rd x (i + 2) == 33 then i
+        else if s11 (len' x) x (i + 3) 0 == 0 then 0 else s15 n x (s11 (len' x) x (i + 3) 0) else i
+      else i
+    else i
+
+def s19 (x : Array UInt8) (j : UInt64) : UInt64 :=
+  if rd x j == 100 then if rd x (j + 1) == 101 then if rd x (j + 2) == 102 then if s0 (rd x (j + 3)) == 0 then 1 else 0 else 0 else 0 else 0
+
+def s18 (x : Array UInt8) (j k : UInt64) : UInt64 :=
+  if 0 < k then
+    if rd x j == 112 then if rd x (j + 1) == 114 then if rd x (j + 2) == 105 then if rd x (j + 3) == 118 then if rd x (j + 4) == 97 then if rd x (j + 5) == 116 then if rd x (j + 6) == 101 then if s0 (rd x (j + 7)) == 0 then 1 else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j else s19 x j
+  else s19 x j
+
+def s17 (x : Array UInt8) (i k : UInt64) : UInt64 :=
+  let j := s15 (len' x) x i;
+  if j == 0 then 0
+  else if k == 2 then if rd x j == 64 then if rd x (j + 1) == 91 then 1 else s18 x j k else s18 x j k
+  else s18 x j k
+
+def s23 (k : UInt64) : UInt64 := if k == 92 then 1 else if k == 97 then 1 else if k == 98 then 1 else 0
+
+def s25 (x : Array UInt8) (j : UInt64) : UInt64 :=
+  let e := s1 (len' x) x j;
+  if s3 x j e == 92 then 1 else if s3 x j e == 97 then 1 else if s3 x j e == 98 then 1 else 0
+
+def s24 (x : Array UInt8) (i : UInt64) : UInt64 :=
+  let j := s15 (len' x) x i;
+  if j == 0 then 0
+  else if j < len x then
+    if rd x j == 47 then if rd x (j + 1) == 45 then 1 else 0
+    else if rd x j == 64 then if rd x (j + 1) == 91 then 1 else 0
+    else if s18 x j 1 == 1 then 1
+    else s25 x j
+  else 0
 
 def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
@@ -138,11 +252,230 @@ def s9 : Nat → Array UInt8 → UInt64 → Buf → Buf
     if k == 0 then bnew
     else if k == 91 then o
     else if k == 90 then s9 n x (p + 1) o
-    else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
+    else if k == 5 then if s28 (len' x) x p (s5 x p k) 0 == 1 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5)) else bnew
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
+    else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
+    else if s23 k == 1 then
+      let q := s5 x p k;
+      let a := s13 (len' x) x q;
+      let b := s1 (len' x) x a;
+      let e := s13 (len' x) x b;
+      let m := if k == 97 then 49 else 48;
+      let m2 := if k == 97 then 51 else 50;
+      if s22 x q a b e k == 1 then
+        if a == b then s9 n x e (q0 o m2) else s9 n x e (s7 (len' x) x a b (q0 (q0 o m) 14))
+      else bnew
+    else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
+    else if k == 95 then
+      let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 3;
+      if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew
+      else if rd x (p + 2) == 45 then if s17 x (s11 (len' x) x b 0) 2 == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
+      else if rd x (p + 2) == 33 then if s24 x (s11 (len' x) x b 0) == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
+      else s9 n x (s11 (len' x) x b 0) o
+    else if k == 96 then if s14 (len' x) x (p + 2) 0 0 == 0 then bnew
+      else if s17 x (s14 (len' x) x (p + 2) 0 0) 1 == 1 then s9 n x (s14 (len' x) x (p + 2) 0 0) o else bnew
     else s9 n x (s5 x p k) (q0 o k)
 
 def s10 (x : Array UInt8) : Buf := s9 16777216 x 0 bnew
+
+-- ===== Dsg =====
+def t1 : Nat → Buf → UInt64 → UInt64
+  | 0, t, j => 0
+  | n + 1, t, j => if j < bsize t then if bget t j == 0 then j + 1 else if bget t j == 1 then if j + 1 < bsize t then t1 n t (j + 2) else 0 else 0 else 0
+
+def t0 (t : Buf) (i : UInt64) : UInt64 :=
+  if bget t i == 5 then if i + 8 < bsize t then i + 9 else 0
+  else if bget t i == 14 then t1 16777216 t (i + 1)
+  else i + 1
+
+def t2 (t : Buf) (i e : UInt64) : UInt64 :=
+  if e == i + 12 then if bget t i == 14 then if bget t (i + 1) == 1 then if bget t (i + 2) == 109 then if bget t (i + 3) == 1 then if bget t (i + 4) == 97 then if bget t (i + 5) == 1 then if bget t (i + 6) == 116 then if bget t (i + 7) == 1 then if bget t (i + 8) == 99 then if bget t (i + 9) == 1 then if bget t (i + 10) == 104 then if bget t (i + 11) == 0 then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+
+def t3 (t : Buf) (i e : UInt64) : UInt64 :=
+  if e == i + 10 then if bget t i == 14 then if bget t (i + 1) == 1 then if bget t (i + 2) == 119 then if bget t (i + 3) == 1 then if bget t (i + 4) == 105 then if bget t (i + 5) == 1 then if bget t (i + 6) == 116 then if bget t (i + 7) == 1 then if bget t (i + 8) == 104 then if bget t (i + 9) == 0 then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+
+def t4 (t : Buf) (i e : UInt64) : UInt64 :=
+  if e == i + 4 then if bget t i == 14 then if bget t (i + 1) == 1 then if bget t (i + 2) == 95 then if bget t (i + 3) == 0 then 1 else 0 else 0 else 0 else 0 else 0
+
+def t5 (o : Buf) : Buf := bpush (bpush (bpush (bpush o 14) 1) 36) 0
+
+def t6 : Nat → Buf → UInt64 → UInt64 → Buf → Buf
+  | 0, t, a, b, o => o
+  | n + 1, t, a, b, o => if a < b then t6 n t (a + 1) b (bpush o (bget t a)) else o
+
+def t8 (t : Buf) (j : UInt64) (o : Buf) : UInt64 × Buf :=
+  let x := t0 t (j + 1);
+  if bget t (j + 1) == 14 then if x == 0 then (0, bnew) else if bget t x == 15 then if bget t (x + 1) == 14 then
+    let y := t0 t (x + 1);
+    if y == 0 then (0, bnew) else if bget t y == 7 then if bget t (y + 1) == 19 then
+      ((y + 2) * 4 + 2, bpush (t5 (bpush (bpush (t6 16777216 t (x + 1) y (bpush (t6 16777216 t (j + 1) x (bpush (bpush o 2) 6)) 15)) 7) 9)) 13)
+    else (0, bnew) else (0, bnew)
+  else (0, bnew) else (0, bnew) else (0, bnew)
+
+def t7 (t : Buf) (j f : UInt64) (o : Buf) : UInt64 × Buf :=
+  let e := t0 t j;
+  if j < bsize t then
+    if e == 0 then (0, bnew)
+    else if bget t j == 5 then if bget t e == 19 then
+        ((e + 1) * 4 + 1, bpush (t6 16777216 t j e (bpush (t5 (bpush (if f == 1 then o else bpush o 34) 32)) 23)) 33)
+      else (0, bnew)
+    else if t4 t j e == 1 then if bget t e == 19 then ((e + 1) * 4 + 2, if f == 1 then o else bpush o 34) else (0, bnew)
+    else if bget t j == 14 then if bget t e == 19 then
+        ((e + 1) * 4 + 2, bpush (t5 (bpush (t6 16777216 t j e (bpush (if f == 1 then o else bpush o 34) 2)) 9)) 13)
+      else (0, bnew)
+    else if bget t j == 6 then if f == 1 then t8 t j o else (0, bnew)
+    else (0, bnew)
+  else (0, bnew)
+
+def t9 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
+  | 0, t, i, d, s, c, o => bnew
+  | n + 1, t, i, d, s, c, o =>
+    if i < bsize t then
+      let e := t0 t i;
+      let k := bget t i;
+      if e == 0 then bnew
+      else if c == 1 then
+        if t3 t i e == 1 then
+          if bget t e == 18 then
+            let (q, o1) := t7 t (e + 1) 1 (bpush o 13);
+            if q == 0 then bnew else t9 n t (q >>> 2) d (bset s d (q &&& 3)) 0 o1
+          else bnew
+        else if t2 t i e == 1 then bnew
+        else if k == 18 then bnew
+        else if k == 19 then bnew
+        else t9 n t e d s 1 (t6 16777216 t i e o)
+      else if t2 t i e == 1 then
+        if bget s d == 1 then bnew else t9 n t e d s 1 (bpush (t5 (bpush o 2)) 9)
+      else if t3 t i e == 1 then bnew
+      else if k == 18 then
+        if bget s d == 1 then
+          let (q, o1) := t7 t e 0 o;
+          if q == 0 then bnew else t9 n t (q >>> 2) d (bset s d (q &&& 3)) 0 o1
+        else if bget s d == 2 then bnew
+        else t9 n t e d s 0 (bpush o 18)
+      else if k == 6 then t9 n t e (d + 1) (if d + 1 < bsize s then bset s (d + 1) 0 else bpush s 0) 0 (bpush o 6)
+      else if k == 7 then
+        if bget s d == 1 then bnew else if d == 0 then bnew else t9 n t e (d - 1) (bset s d 0) 0 (bpush o 7)
+      else if k == 1 then
+        if d == 0 then if bget s 0 == 1 then bnew else t9 n t e 0 (bset s 0 0) 0 (bpush o 1) else bnew
+      else t9 n t e d s 0 (t6 16777216 t i e o)
+    else if c == 1 then bnew else if d == 0 then if bget s 0 == 1 then bnew else o else bnew
+
+def t14 (u : Buf) (k : UInt64) (t : Buf) (j : UInt64) : UInt64 :=
+  if bget u (k + 1) == bget t (j + 1) then if bget u (k + 2) == bget t (j + 2) then if bget u (k + 3) == bget t (j + 3) then if bget u (k + 4) == bget t (j + 4) then if bget u (k + 5) == bget t (j + 5) then if bget u (k + 6) == bget t (j + 6) then if bget u (k + 7) == bget t (j + 7) then if bget u (k + 8) == bget t (j + 8) then 1 else 0 else 0 else 0 else 0 else 0 else 0 else 0 else 0
+
+def t13 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → UInt64
+  | 0, u, k, id, t, j => 1
+  | n + 1, u, k, id, t, j =>
+    if k + 8 < bsize u then
+      if bget u k == id then if t14 u k t j == 1 then 1 else t13 n u (k + 9) id t j else t13 n u (k + 9) id t j
+    else 0
+
+def t15 (u : Buf) (id : UInt64) (t : Buf) (j : UInt64) : Buf :=
+  bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush u id) (bget t (j + 1))) (bget t (j + 2))) (bget t (j + 3))) (bget t (j + 4))) (bget t (j + 5))) (bget t (j + 6))) (bget t (j + 7))) (bget t (j + 8))
+
+def t12 : Nat → Buf → UInt64 → UInt64 → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, t, i, d, s, u, m, c => 0
+  | n + 1, t, i, d, s, u, m, c =>
+    if i < bsize t then
+      let e := t0 t i;
+      if e == 0 then 0
+      else if c == 1 then
+        if t3 t i e == 1 then
+          if bget t e == 18 then
+            if bget t (e + 1) == 5 then
+              if e + 10 < bsize t then if bget t (e + 10) == 19 then
+                t12 n t (e + 11) d (bset s d (m + 1)) (t15 u (m + 1) t (e + 1)) (m + 1) 0
+              else 0 else 0
+            else
+              let (q, o1) := t7 t (e + 1) 1 bnew;
+              if q == 0 then 0 else t12 n t (q >>> 2) d (bset s d 0) u (m + 1) 0
+          else 0
+        else t12 n t e d s u m 1
+      else if t2 t i e == 1 then t12 n t e d s u m 1
+      else if bget t i == 18 then
+        if bget s d == 0 then t12 n t e d s u m 0
+        else if bget t e == 5 then
+          if e + 9 < bsize t then if bget t (e + 9) == 19 then
+            if t13 16777216 u 0 (bget s d) t e == 1 then 0
+            else t12 n t (e + 10) d s (t15 u (bget s d) t e) m 0
+          else 0 else 0
+        else
+          let (q, o1) := t7 t e 0 bnew;
+          if q == 0 then 0 else t12 n t (q >>> 2) d (bset s d 0) u m 0
+      else if bget t i == 6 then t12 n t e (d + 1) (if d + 1 < bsize s then bset s (d + 1) 0 else bpush s 0) u m 0
+      else if bget t i == 7 then if d == 0 then 0 else t12 n t e (d - 1) s u m 0
+      else if bget t i == 1 then t12 n t e 0 (bset s 0 0) u m 0
+      else t12 n t e d s u m 0
+    else 1
+
+def t11 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
+
+def t22 (t : Buf) (j : UInt64) : UInt64 :=
+  if bget t j == 9 then if bget t (j + 1) == 30 then if bget t (j + 2) == 31 then 1
+    else 0 else if bget t (j + 1) == 6 then if bget t (j + 2) == 30 then if bget t (j + 3) == 31 then if bget t (j + 4) == 7 then 1
+    else 0 else 0 else 0 else 0 else 0
+
+def t21 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0
+      else if bget t i == 2 then
+        if t0 t i < bsize t then if bget t (t0 t i) == 14 then if t0 t (t0 t i) == 0 then 0
+          else if t22 t (t0 t (t0 t i)) == 1 then 0 else t21 n t (t0 t i)
+        else t21 n t (t0 t i) else t21 n t (t0 t i)
+      else t21 n t (t0 t i)
+    else 1
+
+def t20 (t : Buf) : Buf :=
+  if t21 16777216 t 0 == 0 then bnew else
+  if bsize t < 16777216 then
+    if t11 16777216 t 0 == 1 then t else
+    if t12 16777216 t 0 0 (bpush bnew 0) bnew 0 0 == 0 then bnew else
+    let o := t9 16777216 t 0 0 (bpush bnew 0) 0 bnew;
+    if bsize o < 16777216 then o else bnew
+  else bnew
+
+def t19 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if 47 < bget t i then if bget t i < 52 then 2 else t19 n t (t0 t i) else t19 n t (t0 t i) else 1
+
+def t17 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, t, a, e, b => 0
+  | n + 1, t, a, e, b => if a < e then if b < bsize t then if bget t a == bget t b then t17 n t (a + 1) e (b + 1) else 0 else 0 else 1
+
+def t18 (s : Buf) (d v : UInt64) : Buf := if d < bsize s then bset s d v else bpush s v
+
+def t16 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
+  | 0, t, i, ph, s, d, o => bnew
+  | n + 1, t, i, ph, s, d, o =>
+    if i < bsize t then
+      let k := bget t i;
+      if k == 48 then
+        if ph == 0 then if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew
+          else t16 n t (t0 t (i + 1)) 0 (t18 s d (i + 1)) (d + 1) o else bnew else bnew
+      else if k == 50 then if ph == 0 then t16 n t (i + 1) 0 (t18 s d 0) (d + 1) o else bnew
+      else if k == 49 then
+        if i + 1 < bsize t then if t0 t (i + 1) == 0 then bnew else if 0 < d then
+          let a := bget s (d - 1);
+          if 0 < a then
+            if t0 t (i + 1) - (i + 1) == t0 t a - a then
+              if t17 16777216 t a (t0 t a) (i + 1) == 1 then t16 n t (t0 t (i + 1)) 2 s (d - 1) o else bnew
+            else bnew
+          else bnew
+        else bnew else bnew
+      else if k == 51 then if 0 < d then if bget s (d - 1) == 0 then t16 n t (i + 1) 2 s (d - 1) o else bnew else bnew
+      else if ph == 2 then bnew
+      else if t0 t i == 0 then bnew else t16 n t (t0 t i) 1 s d (t6 16777216 t i (t0 t i) o)
+    else o
+
+def t10 (t : Buf) : Buf :=
+  if bsize t < 16777216 then
+    if t19 16777216 t 0 == 1 then t20 t
+    else if t19 16777216 t 0 == 2 then t20 (t16 16777216 t 0 0 bnew 0 bnew)
+    else bnew
+  else bnew
 
 -- ===== Par1 =====
 def y5 : Nat → Buf → Buf
@@ -2033,7 +2366,7 @@ def g_4095 : UInt64 := 4095
 def g_901 : UInt64 := g_0 - 1
 def g_902 : UInt64 := g_0 - 2
 def g_908 : UInt64 := g_0 - 8
-def g_999 : UInt64 := 524288
+def g_999 : UInt64 := 2097152
 
 /-! ## encoders (RV64I/M) -/
 def g1 (f7 f3 d a b : UInt64) : UInt64 :=
@@ -2486,8 +2819,803 @@ def g42 (c : Array UInt8) (x : Buf) (u : UInt64) : Array UInt8 :=
 /-- the code generator with the default buffer capacity κ = 2^19 words -/
 def g41 (c : Array UInt8) (x : Buf) : Array UInt8 := g42 c x g_999
 
+-- ===== Num =====
+-- set word j (j ≤ size)
+def u20 (b : Buf) (j v : UInt64) : Buf := if j < bsize b then bset b j v else bpush b v
+
+-- a rejected tree task's result
+def u64 (b t s y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let z := bsize b + bsize t + bsize s + bsize y + bsize y1 + bsize y2;
+  (b, (0, (t, (0, (0, (s, (0, (0, (0, (y, (y1, y2)))))))))))
+
+-- a tree task's result
+def u65 (b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb ok : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let z := bsize b + bsize t + bsize s + bsize y + bsize y1 + bsize y2;
+  (b, (bt, (t, (tt, (c, (s, (st, (gb, (ok, (y, (y1, y2)))))))))))
+
+-- the end of k consecutive nodes from position i (0: error)
+def u12 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, i, k => 0
+  | n + 1, x, i, k =>
+    if k == 0 then i
+    else
+      let t := bget x i;
+      if t == 1 then u12 n x (i + 2) (k - 1)
+      else if t == 2 then u12 n x (i + 3) (k - 1)
+      else if t == 3 then u12 n x (i + 2) (k + 1)
+      else if t == 4 then u12 n x (i + 2) (k + 3)
+      else if t == 5 then u12 n x (i + 3) (k + 1)
+      else if t == 6 then u12 n x (i + 2) (k - 1 + bget x (i + 1))
+      else if t == 8 then u12 n x (i + 3) (k - 1 + bget x (i + 2))
+      else if t == 9 then u12 n x (i + 2) (k - 1 + g33 (bget x (i + 1)))
+      else if t == 10 then u12 n x (i + 1) (k + 1)
+      else if t == 11 then u12 n x (i + 1) k
+      else 0
+
+-- the end of the node at i (0: error)
+def u15 (x : Buf) (i : UInt64) : UInt64 := if i == 0 then 0 else u12 16777216 x i 1
+
+-- the node at q is a shift (1)
+def u34 (x : Buf) (q : UInt64) : UInt64 :=
+  if bget x q == 3 then (if bget x (q + 1) == 6 then 1 else if bget x (q + 1) == 7 then 1 else 0) else 0
+
+-- leaves: the operands of the operator trees on the work stack w (top t), written to p from pt; (p, (pt, (w, 1))), ok 0 on error
+def u13 : Nat → Buf → Buf → UInt64 → Buf → UInt64 → Buf × (UInt64 × (Buf × UInt64))
+  | 0, x, p, pt, w, t => (p, (pt, (w, 0)))
+  | n + 1, x, p, pt, w, t =>
+    if t == 0 then (p, (pt, (w, 1)))
+    else
+      let q := bget w (t - 1);
+      if bget x q == 3 then
+        (if u34 x q == 1 then u13 n x (u20 p pt q) (pt + 1) w (t - 1)
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then (p, (pt, (w, 0)))
+            else u13 n x p pt (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1)))
+      else u13 n x (u20 p pt q) (pt + 1) w (t - 1)
+
+-- the scratch buffers are below 2^39 words (1)
+def u63 (p w : Buf) : UInt64 := if bsize p < 549755813888 then (if bsize w < 549755813888 then 1 else 0) else 0
+
+-- the leaves of the node at i, written to p from pt (w: the work stack)
+def u16 (x p : Buf) (pt : UInt64) (w : Buf) (i : UInt64) : Buf × (UInt64 × (Buf × UInt64)) :=
+  if u63 p w == 1 then u13 16777216 x p pt (u20 w 0 i) 1 else (p, (pt, (w, 0)))
+
+-- spineLet of the nodes on the work stack: (w, r), r 1 some, 0 none, 2 error
+def u14 : Nat → Buf → Buf → UInt64 → Buf × UInt64
+  | 0, x, w, t => (w, 2)
+  | n + 1, x, w, t =>
+    if t == 0 then (w, 0)
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 5 then (w, 1)
+      else if g == 4 then
+        (let b := u15 x (u15 x (q + 2));
+         let e := u15 x b;
+         if e == 0 then (w, 2) else u14 n x (u20 (u20 w (t - 1) e) t b) (t + 1))
+      else u14 n x w (t - 1)
+
+-- spineLet of the node at i (w: the work stack)
+def u17 (x w : Buf) (i : UInt64) : Buf × UInt64 :=
+  if bsize w < 549755813888 then u14 16777216 x (u20 w 0 i) 1 else (w, 2)
+
+-- post (a shift, or after one) of the nodes on the work stack: (w, r), r 1 some, 0 none, 2 error
+def u71 : Nat → Buf → Buf → UInt64 → Buf × UInt64
+  | 0, x, w, t => (w, 2)
+  | n + 1, x, w, t =>
+    if t == 0 then (w, 0)
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 3 then
+        (if u34 x q == 1 then (w, 1)
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then (w, 2) else u71 n x (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1)))
+      else if g == 4 then
+        (let p := u15 x (u15 x (q + 2));
+         if p == 0 then (w, 2) else u71 n x (u20 w (t - 1) p) t)
+      else if g == 5 then
+        (let p := u15 x (q + 3);
+         if p == 0 then (w, 2) else u71 n x (u20 w (t - 1) p) t)
+      else u71 n x w (t - 1)
+
+-- post of the node at i (w: the work stack)
+def u72 (x w : Buf) (i : UInt64) : Buf × UInt64 :=
+  if bsize w < 549755813888 then u71 16777216 x (u20 w 0 i) 1 else (w, 2)
+
+-- slot q in the binding chain b (top t; records [flags, slot, count]): 0 / 1, 2 unbound, 3 error
+def u18 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, b, t, q => 3
+  | n + 1, b, t, q =>
+    if t == 0 then 2
+    else if t < 2 then 3
+    else
+      let m := bget b (t - 1);
+      let s := bget b (t - 2);
+      if t - 2 < m then 3
+      else if q < s then u18 n b (t - 2 - m) q
+      else if q - s < m then bget b (t - 2 - m + (q - s))
+      else u18 n b (t - 2 - m) q
+
+-- push the env words of the k slots from s to v (top vt): (v, (vt, ok))
+def u22 : Nat → Buf → UInt64 → Buf → UInt64 → UInt64 → UInt64 → Buf × (UInt64 × UInt64)
+  | 0, b, bt, v, vt, s, k => (v, (vt, 0))
+  | n + 1, b, bt, v, vt, s, k =>
+    if k == 0 then (v, (vt, 1))
+    else
+      let e := u18 16777216 b bt s;
+      if e == 3 then (v, (vt, 0))
+      else u22 n b bt (u20 v vt (if e == 1 then 1 else 0)) (vt + 1) (s + 1) (k - 1)
+
+-- push k zero words to v
+def u23 : Nat → Buf → UInt64 → UInt64 → Buf × (UInt64 × UInt64)
+  | 0, v, vt, k => (v, (vt, 0))
+  | n + 1, v, vt, k => if k == 0 then (v, (vt, 1)) else u23 n (u20 v vt 0) (vt + 1) (k - 1)
+
+-- zip: v[s + j] := v[s + 1 + j] and v[m + j] for j < k
+def u24 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, v, s, m, j, k => (v, 0)
+  | n + 1, v, s, m, j, k =>
+    if j < k then u24 n (bset v (s + j) (bget v (s + 1 + j) &&& bget v (m + j))) s m (j + 1) k else (v, 1)
+
+-- copy v[j .. e) to b at bt
+def u25 : Nat → Buf → UInt64 → Buf → UInt64 → UInt64 → Buf × (UInt64 × UInt64)
+  | 0, b, bt, v, j, e => (b, (bt, 0))
+  | n + 1, b, bt, v, j, e => if j < e then u25 n (u20 b bt (bget v j)) (bt + 1) v (j + 1) e else (b, (bt, 1))
+
+-- push the binding (v[j .. e), slot s) to the chain b
+def u26 (b : Buf) (bt : UInt64) (v : Buf) (j e s : UInt64) : Buf × (UInt64 × UInt64) :=
+  let (b1, z) := u25 16777216 b bt v j e;
+  let (t1, k) := z;
+  (u20 (u20 b1 t1 s) (t1 + 1) (e - j), (t1 + 2, k))
+
+-- task record n := (k, a, c)
+def u27 (t : Buf) (n k a c : UInt64) : Buf := u20 (u20 (u20 t (3 * n) k) (3 * n + 1) a) (3 * n + 2) c
+
+-- the work buffers are below 2^40 words (1)
+def u35 (v t b : Buf) : UInt64 :=
+  if bsize v < 1099511627776 then (if bsize t < 1099511627776 then (if bsize b < 1099511627776 then 1 else 0) else 0) else 0
+
+def u36 (b t g s : Buf) : UInt64 :=
+  if bsize b < 1099511627776 then
+    (if bsize t < 1099511627776 then (if bsize g < 1099511627776 then (if bsize s < 1099511627776 then 1 else 0) else 0) else 0)
+  else 0
+
+-- lw: the NODE task at the cursor c (tt: the tasks below it)
+def u29 (x d b : Buf) (bt : UInt64) (v : Buf) (vt : UInt64) (t : Buf) (tt c : UInt64) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64)))) :=
+  let g := bget x c;
+  let w := (if g == 9 then 1 else if g == 10 then 1 else if g == 11 then 1 else if g == 3 then u34 x c else 0);
+  if w == 1 then
+    (let e := u15 x c;
+     (u20 v vt 0, (vt + 1, (t, (tt, (e, (if e == 0 then 0 else 1)))))))
+  else if g == 1 then (u20 v vt 1, (vt + 1, (t, (tt, (c + 2, 1)))))
+  else if g == 2 then
+    (let (v1, z) := u22 16777216 b bt v vt (bget x (c + 1)) (bget x (c + 2));
+     let (vt1, ok) := z;
+     (v1, (vt1, (t, (tt, (c + 3, ok))))))
+  else if g == 3 then
+    (v, (vt, (u27 (u27 (u27 (u27 (u27 t tt 2 vt 0) (tt + 1) 1 (vt + 1) 0) (tt + 2) 0 0 0) (tt + 3) 1 vt 0) (tt + 4) 0 0 0,
+      (tt + 5, (c + 2, 1)))))
+  else if g == 4 then
+    (let p := u15 x (u15 x (c + 2));
+     (u20 v vt 0, (vt + 1, (u27 (u27 (u27 (u27 t tt 4 vt 0) (tt + 1) 0 0 0) (tt + 2) 3 vt 0) (tt + 3) 0 0 0,
+       (tt + 4, (p, (if p == 0 then 0 else 1)))))))
+  else if g == 5 then
+    (v, (vt, (u27 (u27 (u27 (u27 t tt 6 bt 0) (tt + 1) 0 0 0) (tt + 2) 5 (bget x (c + 1)) vt) (tt + 3) 0 0 0,
+      (tt + 4, (c + 3, 1)))))
+  else if g == 6 then (v, (vt, (u27 t tt 7 (bget x (c + 1)) 0, (tt + 1, (c + 2, 1)))))
+  else if g == 8 then
+    (let e := u15 x c;
+     let i := bget x (c + 1);
+     let (v1, z) := u23 16777216 v vt (if 2 * i < bsize d then bget d (2 * i + 1) else 1);
+     let (vt1, ok) := z;
+     (v1, (vt1, (t, (tt, (e, (if e == 0 then 0 else ok)))))))
+  else (v, (vt, (t, (tt, (c, 0)))))
+
+-- the lw machine: (b, (v, (vt, (cursor, (ok, t)))))
+def u28 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → Buf → UInt64 → UInt64 →
+    Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × Buf))))
+  | 0, x, d, b, bt, v, vt, t, tt, c => (b, (v, (vt, (c, (0, t)))))
+  | n + 1, x, d, b, bt, v, vt, t, tt, c =>
+    if tt == 0 then (b, (v, (vt, (c, (1, t)))))
+    else if u35 v t b == 0 then (b, (v, (vt, (c, (0, t)))))
+    else
+      let k := bget t (3 * tt - 3);
+      let a := bget t (3 * tt - 2);
+      let a2 := bget t (3 * tt - 1);
+      let u := tt - 1;
+      if k == 0 then
+        (let (v1, z) := u29 x d b bt v vt t u c;
+         let (vt1, z1) := z;
+         let (t1, z2) := z1;
+         let (tt1, z3) := z2;
+         let (c1, ok) := z3;
+         if ok == 1 then u28 n x d b bt v1 vt1 t1 tt1 c1 else (b, (v1, (vt1, (c1, (0, t1))))))
+      else if k == 1 then u28 n x d b bt (u20 v a (if a < vt then bget v a else 0)) (a + 1) t u c
+      else if k == 2 then u28 n x d b bt (bset v a (bget v a &&& bget v (a + 1))) (a + 1) t u c
+      else if k == 3 then u28 n x d b bt (bset v a (vt - a - 1)) vt t u c
+      else if k == 4 then
+        (let l := bget v a;
+         let m := a + 1 + l;
+         let e := vt - m;
+         let q := (if l < e then l else e);
+         let (v1, ok) := u24 16777216 v a m 0 q;
+         if ok == 1 then u28 n x d b bt v1 (a + q) t u c else (b, (v1, (vt, (c, (0, t))))))
+      else if k == 5 then
+        (let (b1, z) := u26 b bt v a2 vt a;
+         let (bt1, ok) := z;
+         if ok == 1 then u28 n x d b1 bt1 v a2 t u c else (b1, (v, (vt, (c, (0, t))))))
+      else if k == 6 then u28 n x d b a v vt t u c
+      else if k == 7 then
+        (if a == 0 then u28 n x d b bt v vt t u c
+         else u28 n x d b bt v vt (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 0 0) (tt + 1) c)
+      else (b, (v, (vt, (c, (0, t)))))
+
+-- lw of the node at c (bindings b, top bt; scratch v, w): (b, (v, (vt, (end, (ok, w)))))
+def u31 (x d b : Buf) (bt : UInt64) (v w : Buf) (c : UInt64) : Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × Buf)))) :=
+  if u63 v w == 1 then u28 16777216 x d b bt v 0 (u27 w 0 0 0 0) 1 c else (b, (v, (0, (c, (0, w)))))
+
+-- isL of the node at c: (b, (r, (v, w))), r 1 yes, 0 no, 2 error
+def u32 (x d b : Buf) (bt : UInt64) (v w : Buf) (c : UInt64) : Buf × (UInt64 × (Buf × Buf)) :=
+  let (b1, z) := u31 x d b bt v w c;
+  let (v1, z1) := z;
+  let (vt, z2) := z1;
+  let (e, z3) := z2;
+  let (ok, w1) := z3;
+  if ok == 1 then (b1, ((if vt == 1 then (if bget v1 0 == 1 then 1 else 0) else 0), (v1, w1))) else (b1, (2, (v1, w1)))
+
+-- mixIte of the node at q: (b, (r, (v, w))), r 1 yes, 0 no, 2 error
+def u70 (x d b : Buf) (bt : UInt64) (v w : Buf) (q : UInt64) : Buf × (UInt64 × (Buf × Buf)) :=
+  if bget x q == 4 then
+    (let tp := u15 x (u15 x (q + 2));
+     let ep := u15 x tp;
+     let (b1, z) := u32 x d b bt v w tp;
+     let (lt, z1) := z;
+     let (v1, w1) := z1;
+     let (b2, z2) := u32 x d b1 bt v1 w1 ep;
+     let (le, z3) := z2;
+     let (v2, w2) := z3;
+     let (w3, st) := u17 x w2 tp;
+     let (w4, se) := u17 x w3 ep;
+     let (w5, pe) := u72 x w4 ep;
+     if ep == 0 then (b2, (2, (v2, w5)))
+     else if lt == 2 then (b2, (2, (v2, w5)))
+     else if le == 2 then (b2, (2, (v2, w5)))
+     else if st == 2 then (b2, (2, (v2, w5)))
+     else if se == 2 then (b2, (2, (v2, w5)))
+     else if pe == 2 then (b2, (2, (v2, w5)))
+     else (b2, ((lt &&& (se ||| pe)) ||| (le &&& st), (v2, w5))))
+  else (b, (0, (v, w)))
+
+-- shapeOk of the leaves p[j .. e) (l: an earlier leaf is literal-only): (b, (r, (v, w))), r 1 ok, 0 rejected or error
+def u33 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → UInt64 → UInt64 → Buf → Buf → Buf × (UInt64 × (Buf × Buf))
+  | 0, x, d, b, bt, p, j, e, l, v, w => (b, (0, (v, w)))
+  | n + 1, x, d, b, bt, p, j, e, l, v, w =>
+    if j < e then
+      (let q := bget p j;
+       let (w1, h) := u17 x w q;
+       if h == 0 then
+         (let (b0, z0) := u70 x d b bt v w1 q;
+          let (mx, z9) := z0;
+          let (v0, w0) := z9;
+          if mx == 0 then
+            (let (b1, z) := u32 x d b0 bt v0 w0 q;
+             let (r, z1) := z;
+             let (v1, w2) := z1;
+             if r == 2 then (b1, (0, (v1, w2)))
+             else if u34 x q == 1 then (if l == 1 then (b1, (0, (v1, w2))) else u33 n x d b1 bt p (j + 1) e (l ||| r) v1 w2)
+             else u33 n x d b1 bt p (j + 1) e (l ||| r) v1 w2)
+          else (b0, (0, (v0, w0))))
+       else (b, (0, (v, w1))))
+    else (b, (1, (v, w)))
+
+-- push COLAT tasks for p[j - 1], …, p[0] (p[0] on top)
+def u43 : Nat → Buf → UInt64 → Buf → UInt64 → Buf × (UInt64 × UInt64)
+  | 0, t, tt, p, j => (t, (tt, 0))
+  | n + 1, t, tt, p, j => if j == 0 then (t, (tt, 1)) else u43 n (u27 t tt 8 (bget p (j - 1)) 0) (tt + 1) p (j - 1)
+
+-- COL d at the cursor, not literal-only: by tag (tt: the tasks below; y, y1, y2: scratch)
+def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let g := bget x c;
+  if g == 3 then
+    (if u34 x c == 1 then
+      (let (b1, z) := u32 x d b bt y y1 (c + 2);
+       let (r, z1) := z;
+       let (y3, y4) := z1;
+       if r == 0 then
+         (let (y5, h) := u17 x y4 (c + 2);
+          let (b2, z2) := u70 x d b1 bt y3 y5 (c + 2);
+          let (ma, z3) := z2;
+          let (y6, y7) := z3;
+          let (b3, z4) := u70 x d b2 bt y6 y7 (u15 x (c + 2));
+          let (mb, z5) := z4;
+          let (y8, y9) := z5;
+          if h == 0 then
+            (if ma == 0 then
+              (if mb == 0 then
+                (if u15 x (c + 2) == 0 then u64 b3 t s y8 y9 y2
+                 else u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 2) s st gb 1 y8 y9 y2)
+               else u64 b3 t s y8 y9 y2)
+             else u64 b3 t s y8 y9 y2)
+          else u64 b3 t s y8 y9 y2)
+       else u64 b1 t s y3 y4 y2)
+     else
+      (let (p, z) := u16 x y2 0 y1 c;
+       let (pt, z1) := z;
+       let (y4, ok) := z1;
+       if ok == 1 then
+         (let (b1, z2) := u33 16777216 x d b bt p 0 pt 0 y y4;
+          let (h, z3) := z2;
+          let (y3, y5) := z3;
+          if h == 1 then
+            (let (t1, z4) := u43 16777216 t tt p pt;
+             let (tt1, ok1) := z4;
+             u65 b1 bt t1 tt1 c s st gb ok1 y3 y5 p)
+          else u64 b1 t s y3 y5 p)
+       else u64 b t s y y4 p))
+  else if g == 4 then
+    (if e == 0 then
+      (let (b1, z) := u70 x d b bt y y1 c;
+       let (mx, z1) := z;
+       let (y3, y4) := z1;
+       if mx == 0 then u65 b1 bt (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y3 y4 y2
+       else u64 b1 t s y3 y4 y2)
+     else u65 b bt (u27 (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y y1 y2)
+  else if g == 5 then
+    (let l := bget x (c + 1);
+     u65 b bt (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 0 e 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0) (tt + 4) (c + 3) s st gb 1 y y1 y2)
+  else if g == 6 then u65 b bt (u27 t tt 7 (bget x (c + 1)) 0) (tt + 1) (c + 2) s st gb 1 y y1 y2
+  else if g == 8 then
+    (let i := bget x (c + 1);
+     let k := bget x (c + 2);
+     if k == 0 then u65 b bt t tt (c + 3) s st gb 1 y y1 y2
+     else u65 b bt (u27 (u27 t tt 7 (k - 1) 0) (tt + 1) 0 (if 2 * i < bsize d then (if bget d (2 * i) == 1 then 2 else 1) else 1) 0) (tt + 2) (c + 3) s st gb 1 y y1 y2)
+  else if g == 9 then u65 b bt (u27 t tt 7 (g33 (bget x (c + 1))) 0) (tt + 1) (c + 2) s st gb 1 y y1 y2
+  else if g == 10 then u65 b bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) (c + 1) s st gb 1 y y1 y2
+  else if g == 11 then u65 b bt (u27 t tt 0 1 0) (tt + 1) (c + 1) s st gb 1 y y1 y2
+  else if g == 1 then u65 b bt t tt (c + 2) s st gb 1 y y1 y2
+  else if g == 2 then u65 b bt t tt (c + 3) s st gb 1 y y1 y2
+  else u64 b t s y y1 y2
+
+-- COL d at the cursor
+def u41 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let (b1, z) := u32 x d b bt y y1 c;
+  let (r, z1) := z;
+  let (y3, y4) := z1;
+  if r == 2 then u64 b1 t s y3 y4 y2
+  else if r == 1 then
+    u65 b1 bt (u27 (u27 t tt 4 e gb) (tt + 1) 1 0 0) (tt + 2) c (u20 s st 0) (st + 1) st 1 y3 y4 y2
+  else u42 x d b1 bt t tt c s st gb e y3 y4 y2
+
+-- LIT at the cursor
+def u44 (x b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let g := bget x c;
+  if g == 2 then u65 b bt t tt (c + 3) (u20 s st (bget x (c + 1))) (st + 1) gb 1 y y1 y2
+  else if g == 3 then
+    u65 b bt (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) (c + 2) (bset s gb 1) st gb 1 y y1 y2
+  else if g == 4 then
+    u65 b bt (u27 (u27 (u27 t tt 1 0 0) (tt + 1) 1 0 0) (tt + 2) 2 0 0) (tt + 3) (c + 2) s st gb 1 y y1 y2
+  else if g == 5 then
+    (let l := bget x (c + 1);
+     u65 b bt (u27 (u27 (u27 (u27 t tt 5 bt 0) (tt + 1) 1 0 0) (tt + 2) 6 l (c + 3)) (tt + 3) 3 l 0) (tt + 4) (c + 3) s st gb 1 y y1 y2)
+  else
+    (let e := u15 x c;
+     u65 b bt t tt e s st gb (if e == 0 then 0 else 1) y y1 y2)
+
+-- CMP: the operands at the cursor
+def u45 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let bp := u15 x c;
+  if bp == 0 then u64 b t s y y1 y2
+  else
+    (let (p1, z) := u16 x y2 0 y1 c;
+     let (pt1, z1) := z;
+     let (y3, o1) := z1;
+     let (p2, z2) := u16 x p1 pt1 y3 bp;
+     let (pt2, z3) := z2;
+     let (y4, o2) := z3;
+     if o1 == 1 then
+       (if o2 == 1 then
+         (let (b1, z4) := u33 16777216 x d b bt p2 0 pt2 0 y y4;
+          let (h, z5) := z4;
+          let (y5, y6) := z5;
+          if h == 1 then
+            (let (b2, z6) := u32 x d b1 bt y5 y6 c;
+             let (la, z7) := z6;
+             let (y7, y8) := z7;
+             let (b3, z8) := u32 x d b2 bt y7 y8 bp;
+             let (lb, z9) := z8;
+             let (y9, y10) := z9;
+             if la == 2 then u64 b3 t s y9 y10 p2
+             else if lb == 2 then u64 b3 t s y9 y10 p2
+             else if (la &&& lb) == 1 then
+               u65 b3 bt (u27 (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) 1 0 0) (tt + 3) c (u20 s st 0) (st + 1) st 1 y9 y10 p2
+             else u65 b3 bt (u27 (u27 t tt 0 1 0) (tt + 1) 0 1 0) (tt + 2) c s st gb 1 y9 y10 p2)
+          else u64 b1 t s y5 y6 p2)
+        else u64 b t s y y4 p2)
+     else u64 b t s y y4 p2)
+
+-- the value at the cursor is bound to slot l: COL m on it, or LIT into a new group (t: tt tasks)
+def u66 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l m : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  let (b1, z) := u32 x d b bt y y1 c;
+  let (r, z1) := z;
+  let (y3, y4) := z1;
+  if r == 2 then u64 b1 t s y3 y4 y2
+  else if r == 1 then
+    u65 b1 bt (u27 (u27 t tt 4 0 gb) (tt + 1) 1 0 0) (tt + 2) c (u20 (u20 s st 0) (st + 1) l) (st + 2) st 1 y3 y4 y2
+  else u65 b1 bt (u27 t tt 0 m 0) (tt + 1) c s st gb 1 y3 y4 y2
+
+-- LETG slot l, the value at the cursor
+def u46 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  if bget x c == 6 then u65 b bt (u27 t tt 9 l (bget x (c + 1))) (tt + 1) (c + 2) s st gb 1 y y1 y2
+  else u66 x d b bt t tt c s st gb l 0 y y1 y2
+
+-- LPSEQ: the next pair field (slot l, k fields left)
+def u39 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l k : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  if k == 0 then u65 b bt t tt c s st gb 1 y y1 y2
+  else u66 x d b bt (u27 t tt 9 (l + 1) (k - 1)) (tt + 1) c s st gb l 0 y y1 y2
+
+-- the tasks that read the tree
+def u49 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb k a a2 : UInt64) (y y1 y2 : Buf) :
+    Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × (UInt64 × (Buf × (Buf × Buf)))))))))) :=
+  if k == 0 then u41 x d b bt t tt c s st gb a y y1 y2
+  else if k == 1 then u44 x b bt t tt c s st gb y y1 y2
+  else if k == 2 then u45 x d b bt t tt c s st gb y y1 y2
+  else if k == 3 then u46 x d b bt t tt c s st gb a y y1 y2
+  else if k == 9 then u39 x d b bt t tt c s st gb a a2 y y1 y2
+  else u64 b t s y y1 y2
+
+-- append s[j .. e) to g
+def u47 : Nat → Buf → Buf → UInt64 → UInt64 → Buf × UInt64
+  | 0, g, s, j, e => (g, 0)
+  | n + 1, g, s, j, e => if j < e then u47 n (bpush g (bget s j)) s (j + 1) e else (g, 1)
+
+-- one step of the main machine: (next: 2, stop with ok 0/1; the state b, bt, t, tt, c, g, s, st, gb, y, y1, y2)
+def u81 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (g s : Buf) (st gb : UInt64) (y y1 y2 : Buf) :
+    UInt64 × (Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (Buf × (UInt64 × (UInt64 × (Buf × (Buf × Buf))))))))))) :=
+  if tt == 0 then (1, (b, (bt, (t, (tt, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+  else if u36 b t g s == 0 then (0, (b, (bt, (t, (tt, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+  else
+    let k := bget t (3 * tt - 3);
+    let a := bget t (3 * tt - 2);
+    let a2 := bget t (3 * tt - 1);
+    let u := tt - 1;
+    if k == 4 then
+      (let (g1, ok) := u47 16777216 (bpush (bpush (bpush g (st - gb - 1)) a) (bget s gb)) s (gb + 1) st;
+       if ok == 1 then (2, (b, (bt, (t, (u, (c, (g1, (s, (gb, (a2, (y, (y1, y2)))))))))))) else (0, (b, (bt, (t, (tt, (c, (g1, (s, (st, (gb, (y, (y1, y2)))))))))))))
+    else if k == 5 then (2, (b, (a, (t, (u, (c, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+    else if k == 6 then
+      (let (b1, z) := u31 x d b bt y y1 a2;
+       let (v, z1) := z;
+       let (vt, z2) := z1;
+       let (e, z3) := z2;
+       let (ok, y3) := z3;
+       if ok == 1 then
+         (let (b2, z4) := u26 b1 bt v 0 vt a;
+          let (bt1, ok1) := z4;
+          if ok1 == 1 then (2, (b2, (bt1, (t, (u, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))) else (0, (b2, (bt, (t, (tt, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))))
+       else (0, (b1, (bt, (t, (tt, (c, (g, (s, (st, (gb, (v, (y3, y2)))))))))))))
+    else if k == 7 then (if a == 0 then (2, (b, (bt, (t, (u, (c, (g, (s, (st, (gb, (y, (y1, y2)))))))))))) else (2, (b, (bt, (u27 (bset t (3 * tt - 2) (a - 1)) tt 0 1 0, (tt + 1, (c, (g, (s, (st, (gb, (y, (y1, y2)))))))))))))
+    else if k == 8 then (2, (b, (bt, (u27 t u 0 1 0, (tt, (a, (g, (s, (st, (gb, (y, (y1, y2))))))))))))
+    else
+      (let (b1, z) := u49 x d b bt t u c s st gb k a a2 y y1 y2;
+       let (bt1, z1) := z;
+       let (t1, z2) := z1;
+       let (tt1, z3) := z2;
+       let (c1, z4) := z3;
+       let (s1, z5) := z4;
+       let (st1, z6) := z5;
+       let (gb1, z7) := z6;
+       let (ok, z8) := z7;
+       let (y3, z9) := z8;
+       let (y4, y5) := z9;
+       if ok == 1 then (2, (b1, (bt1, (t1, (tt1, (c1, (g, (s1, (st1, (gb1, (y3, (y4, y5)))))))))))) else (0, (b1, (bt1, (t1, (tt1, (c1, (g, (s1, (st1, (gb1, (y3, (y4, y5)))))))))))))
+
+-- the main machine: (groups, (cursor, (ok, (b, (t, (s, (y, (y1, y2))))))))
+def u40 : Nat → Buf → Buf → Buf → UInt64 → Buf → UInt64 → UInt64 → Buf → Buf → UInt64 → UInt64 → Buf → Buf → Buf →
+    Buf × (UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × Buf)))))))
+  | 0, x, d, b, bt, t, tt, c, g, s, st, gb, y, y1, y2 => (g, (c, (0, (b, (t, (s, (y, (y1, y2))))))))
+  | n + 1, x, d, b, bt, t, tt, c, g, s, st, gb, y, y1, y2 =>
+    let (k, z) := u81 x d b bt t tt c g s st gb y y1 y2;
+    let (b1, z1) := z;
+    let (bt1, z2) := z1;
+    let (t1, z3) := z2;
+    let (tt1, z4) := z3;
+    let (c1, z5) := z4;
+    let (g1, z6) := z5;
+    let (s1, z7) := z6;
+    let (st1, z8) := z7;
+    let (gb1, z9) := z8;
+    let (y3, z10) := z9;
+    let (y4, y5) := z10;
+    if k == 2 then u40 n x d b1 bt1 t1 tt1 c1 g1 s1 st1 gb1 y3 y4 y5 else (g1, (c1, (k, (b1, (t1, (s1, (y3, (y4, y5))))))))
+
+-- every slot g[j .. e) is below n
+def u52 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, g, j, e, n => 0
+  | m + 1, g, j, e, n => if j < e then (if bget g j < n then u52 m g (j + 1) e n else 0) else 1
+
+-- every slot of the groups from j is below n
+def u51 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, g, j, n => 0
+  | m + 1, g, j, n =>
+    if j < bsize g then
+      (let l := bget g j;
+       if u52 16777216 g (j + 3) (j + 3 + l) n == 1 then u51 m g (j + 3 + l) n else 0)
+    else 1
+
+-- some slot g[j .. e) was marked before round k (0 < f[v] < k): 1, none 0, error 2
+def u53 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, f, g, j, e, k => 2
+  | m + 1, f, g, j, e, k =>
+    if j < e then
+      (let w := bget f (bget g j);
+       if w == 0 then u53 m f g (j + 1) e k
+       else if w < k then 1
+       else u53 m f g (j + 1) e k)
+    else 0
+
+-- mark the unmarked slots g[j .. e) with round k
+def u54 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, f, g, j, e, k => (f, 0)
+  | m + 1, f, g, j, e, k =>
+    if j < e then
+      (let v := bget g j;
+       if bget f v == 0 then u54 m (bset f v k) g (j + 1) e k else u54 m f g (j + 1) e k)
+    else (f, 1)
+
+-- round k of `marked q`: the groups from j
+def u55 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, f, g, j, q, k => (f, 0)
+  | m + 1, f, g, j, q, k =>
+    if j < bsize g then
+      (let l := bget g j;
+       let h := (if bget g (j + 1) == q then 1 else u53 16777216 f g (j + 3) (j + 3 + l) k);
+       if h == 2 then (f, 0)
+       else if h == 1 then
+         (let (f1, ok) := u54 16777216 f g (j + 3) (j + 3 + l) k;
+          if ok == 1 then u55 m f1 g (j + 3 + l) q k else (f1, 0))
+       else u55 m f g (j + 3 + l) q k)
+    else (f, 1)
+
+-- rounds k .. r of `marked q` (the groups from g0)
+def u56 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, f, g, g0, q, k, r => (f, 0)
+  | m + 1, f, g, g0, q, k, r =>
+    if r < k then (f, 1)
+    else
+      (let (f1, ok) := u55 16777216 f g g0 q k;
+       if ok == 1 then u56 m f1 g g0 q (k + 1) r else (f1, 0))
+
+-- zero words j .. k
+def u57 : Nat → Buf → UInt64 → UInt64 → Buf × UInt64
+  | 0, b, j, k => (b, 0)
+  | m + 1, b, j, k => if j < k then u57 m (u20 b j 0) (j + 1) k else (b, 1)
+
+-- some slot g[j .. e) is marked: 1, none 0, error 2
+def u59 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, f, g, j, e => 2
+  | m + 1, f, g, j, e => if j < e then (if bget f (bget g j) == 0 then u59 m f g (j + 1) e else 1) else 0
+
+-- every group from j: not both UInt64 and Nat, no arithmetic unless UInt64
+def u58 : Nat → Buf → Buf → Buf → UInt64 → UInt64
+  | 0, f, h, g, j => 0
+  | m + 1, f, h, g, j =>
+    if j < bsize g then
+      (let l := bget g j;
+       let q := bget g (j + 1);
+       let r := bget g (j + 2);
+       let a := (if q == 1 then 1 else u59 16777216 f g (j + 3) (j + 3 + l));
+       let o := (if q == 2 then 1 else u59 16777216 h g (j + 3) (j + 3 + l));
+       if a == 2 then 0
+       else if o == 2 then 0
+       else if a == 1 then (if o == 1 then 0 else u58 m f h g (j + 3 + l))
+       else if r == 1 then 0
+       else u58 m f h g (j + 3 + l))
+    else 1
+
+-- the class check of the groups g from g0 (n slots; f, h: scratch): (ok, (f, h))
+def u50 (g : Buf) (g0 n : UInt64) (f h : Buf) : UInt64 × (Buf × Buf) :=
+  if n < 16777215 then
+    (if u51 16777216 g g0 n == 1 then
+      (let (z1, k1) := u57 16777216 f 0 n;
+       let (f1, k2) := u56 16777216 z1 g g0 1 1 (n + 1);
+       let (z2, k3) := u57 16777216 h 0 n;
+       let (h1, k4) := u56 16777216 z2 g g0 2 1 (n + 1);
+       if (k1 &&& k2 &&& k3 &&& k4) == 1 then (u58 16777216 f1 h1 g g0, (f1, h1)) else (0, (f1, h1)))
+     else (0, (f, h)))
+  else (0, (f, h))
+
+-- one def: the body at i, n slots (b, t, g, s, y, y1, y2: the buffers): (end, (g, (b, (t, (s, (y2, (ok, (y, y1))))))))
+def u48 (x d : Buf) (i n : UInt64) (b t g s y y1 y2 : Buf) :
+    UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × (UInt64 × (Buf × Buf))))))) :=
+  let g0 := bsize g;
+  let (g1, z) := u40 16777216 x d b 0 (u27 t 0 0 1 0) 1 i g s 0 0 y y1 y2;
+  let (e, z1) := z;
+  let (ok, z2) := z1;
+  let (b1, z3) := z2;
+  let (t1, z4) := z3;
+  let (s1, z5) := z4;
+  let (y3, z6) := z5;
+  let (y4, y5) := z6;
+  if ok == 1 then (e, (g1, (b1, (t1, (s1, (y5, u50 g1 g0 n y3 y4))))))
+  else (e, (g1, (b1, (t1, (s1, (y5, (0, (y3, y4))))))))
+
+-- the def table: (kind, nres) per def
+def u60 : Nat → Buf → Buf → UInt64 → Buf × UInt64
+  | 0, x, d, i => (d, 0)
+  | n + 1, x, d, i =>
+    if i < bsize x then
+      (if bget x i == 20 then
+        (let e := u15 x (i + 6);
+         if e == 0 then (d, 0)
+         else if bget x e == 21 then u60 n x (bpush (bpush d (bget x (i + 4))) (bget x (i + 5))) (e + 1)
+         else (d, 0))
+       else (d, 0))
+    else (d, 1)
+
+-- the next position and pending count after the node at i (k pending nodes, it included)
+def u77 (x : Buf) (i k : UInt64) : UInt64 × UInt64 :=
+  let t := bget x i;
+  if t == 1 then (i + 2, k - 1)
+  else if t == 2 then (i + 3, k - 1)
+  else if t == 3 then (i + 2, k + 1)
+  else if t == 4 then (i + 2, k + 3)
+  else if t == 5 then (i + 3, k + 1)
+  else if t == 6 then (i + 2, k - 1 + bget x (i + 1))
+  else if t == 8 then (i + 3, k - 1 + bget x (i + 2))
+  else if t == 9 then (i + 2, k - 1 + g33 (bget x (i + 1)))
+  else if t == 10 then (i + 1, k + 1)
+  else if t == 11 then (i + 1, k)
+  else (i, 0)
+
+-- the leaves of the operand trees on the work stack (f: the slot marks, 1 late, 2 literal-only): (w, r); r is b (1:
+-- some leaf waits) ||| c (2: every leaf is literal-only) if every leaf waits or is literal-only, else 0; 4 error
+def u82 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, x, f, w, t, b, c => (w, 4)
+  | n + 1, x, f, w, t, b, c =>
+    if t == 0 then (w, b ||| c)
+    else
+      let q := bget w (t - 1);
+      let g := bget x q;
+      if g == 3 then
+        (if u34 x q == 1 then (w, 0)
+         else
+           (let e := u15 x (q + 2);
+            if e == 0 then (w, 4) else u82 n x f (u20 (u20 w (t - 1) e) t (q + 2)) (t + 1) b c))
+      else if g == 4 then
+        (let p := u15 x (u15 x (q + 2));
+         let p2 := u15 x p;
+         if p == 0 then (w, 4) else if p2 == 0 then (w, 4) else u82 n x f (u20 (u20 w (t - 1) p2) t p) (t + 1) b c)
+      else if g == 5 then u82 n x f w (t - 1) 1 0
+      else if g == 1 then u82 n x f w (t - 1) b c
+      else if g == 2 then
+        (let m := bget f (bget x (q + 1));
+         let lw := m &&& 1;
+         let ll := (if bget x (q + 2) == 1 then m &&& 2 else 0);
+         if lw ||| ll == 0 then (w, 0) else u82 n x f w (t - 1) (b ||| lw) (c &&& ll))
+      else (w, 0)
+
+-- the mark of the value at q: 1 waits ||| 2 literal-only (4 error)
+def u83 (x f w : Buf) (q : UInt64) : Buf × UInt64 :=
+  if bsize w < 549755813888 then u82 16777216 x f (u20 w 0 q) 1 0 2 else (w, 4)
+
+-- f[s + j .. s + k) := v: (f, ok), ok 0 past the end of f
+def u78 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × UInt64
+  | 0, f, s, j, k, v => (f, 0)
+  | n + 1, f, s, j, k, v =>
+    if j < k then (if s + j < bsize f then u78 n (bset f (s + j) v) s (j + 1) k v else (f, 0)) else (f, 1)
+
+-- mark slot s + j with the tuple field at q: (f, (w, (the next field, ok)))
+def u85 (x f w : Buf) (q s j : UInt64) : Buf × (Buf × (UInt64 × UInt64)) :=
+  let (w1, r) := u83 x f w q;
+  let e := u15 x q;
+  if r == 4 then (f, (w1, (e, 0)))
+  else if e == 0 then (f, (w1, (e, 0)))
+  else (let (f1, ok) := u78 16777216 f s j (j + 1) r; (f1, (w1, (e, ok))))
+
+-- mark slot s + j with tuple field j (from q, fields j .. k), field by field: (f, (w, ok))
+def u76 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → Buf × (Buf × UInt64)
+  | 0, x, f, w, q, s, j, k => (f, (w, 0))
+  | n + 1, x, f, w, q, s, j, k =>
+    if j < k then
+      (let (f1, z) := u85 x f w q s j;
+       let (w1, z1) := z;
+       let (e, ok) := z1;
+       if ok == 1 then u76 n x f1 w1 e s (j + 1) k else (f1, (w1, 0)))
+    else (f, (w, 1))
+
+-- mark the slots of `let s (width wd) := the value at q`: (f, (w, ok))
+def u75 (x f w : Buf) (q s wd : UInt64) : Buf × (Buf × UInt64) :=
+  if bget x q == 6 then u76 16777216 x f w (q + 2) s 0 (bget x (q + 1))
+  else
+    (let (w1, r) := u83 x f w q;
+     if r == 4 then (f, (w1, 0))
+     else (let (f1, ok) := u78 16777216 f s 0 wd r; (f1, (w1, ok))))
+
+-- the node at i: a let marks its slots, a shift's left operand must not wait: (f, (w, ok))
+def u84 (x f w : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
+  if bget x i == 5 then u75 x f w (i + 3) (bget x (i + 1)) (bget x (i + 2))
+  else if u34 x i == 1 then
+    (let (w1, r) := u83 x f w (i + 2);
+     if r == 4 then (f, (w1, 0)) else if r &&& 1 == 1 then (f, (w1, 0)) else (f, (w1, 1)))
+  else (f, (w, 1))
+
+-- the k nodes from i, in pre-order: (f, (w, ok))
+def u73 : Nat → Buf → Buf → Buf → UInt64 → UInt64 → Buf × (Buf × UInt64)
+  | 0, x, f, w, i, k => (f, (w, 0))
+  | n + 1, x, f, w, i, k =>
+    if k == 0 then (f, (w, 1))
+    else
+      (let (f1, z) := u84 x f w i;
+       let (w1, ok) := z;
+       let (i1, k1) := u77 x i k;
+       if ok == 1 then u73 n x f1 w1 i1 k1 else (f1, (w1, 0)))
+
+-- the late-slot check of the def at i (1): clear y2's slot marks, then scan the body
+def u79 (x y1 y2 : Buf) (i : UInt64) : Buf × (Buf × UInt64) :=
+  let n := bget x (i + 3);
+  let (f0, k0) := u57 16777216 y2 0 (if n < bsize y2 then bsize y2 else n);
+  if k0 == 1 then u73 16777216 x f0 y1 (i + 6) 1 else (f0, (y1, 0))
+
+-- one def at i: (next: 1, stop: 0; the cursor and buffers for the next def)
+def u80 (x d : Buf) (i : UInt64) (b t g s y y1 y2 : Buf) :
+    UInt64 × (UInt64 × (Buf × (Buf × (Buf × (Buf × (Buf × (Buf × Buf))))))) :=
+  let (f1, z0) := u79 x y1 y2 i;
+  let (w1, k1) := z0;
+  if k1 == 1 then
+    (let (e, z) := u48 x d (i + 6) (bget x (i + 3)) b t g s y w1 f1;
+     let (g1, z1) := z;
+     let (b1, z2) := z1;
+     let (t1, z3) := z2;
+     let (s1, z4) := z3;
+     let (y5, z5) := z4;
+     let (ok, z6) := z5;
+     let (y3, y4) := z6;
+     ((if ok == 1 then (if bget x e == 21 then 1 else 0) else 0), (e + 1, (b1, (t1, (g1, (s1, (y3, (y4, y5)))))))))
+  else (0, (i, (b, (t, (g, (s, (y, (w1, f1))))))))
+
+-- every def from i (b, t, g, s, y, y1, y2: the buffers, allocated once)
+def u61 : Nat → Buf → Buf → UInt64 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64
+  | 0, x, d, i, b, t, g, s, y, y1, y2 => 0
+  | n + 1, x, d, i, b, t, g, s, y, y1, y2 =>
+    if i < bsize x then
+      (let (k, z) := u80 x d i b t g s y y1 y2;
+       let (i1, z1) := z;
+       let (b1, z2) := z1;
+       let (t1, z3) := z2;
+       let (g1, z4) := z3;
+       let (s1, z5) := z4;
+       let (y3, z6) := z5;
+       let (y4, y5) := z6;
+       if k == 1 then u61 n x d i1 b1 t1 g1 s1 y3 y4 y5 else 0)
+    else 1
+
+-- 1: every def's numerals mean what Lean's mean
+def u11 (x : Buf) : UInt64 :=
+  if bget x 0 == 2 then
+    (if bsize x < 8388608 then
+      (let (d, ok) := u60 16777216 x bnew 1;
+       if ok == 1 then u61 16777216 x d 1 bnew bnew bnew bnew bnew bnew bnew else 0)
+     else 0)
+  else 0
+
+/-- **the numeral check**: the AST back if every def passes `NumSpec.numOkD`, else empty -/
+def u10 (x : Buf) : Buf := if u11 x == 1 then x else bnew
+
 -- ===== driver =====
-def m (x : Array UInt8) : Array UInt8 := g41 x (o41 (y16 (s10 x)))
+def m (x : Array UInt8) : Array UInt8 := g41 x (o41 (u10 (y16 (t10 (s10 x)))))
 
 end C
 
@@ -2512,8 +3640,9 @@ def main (args : List String) : IO UInt32 := do
   let stdout ← IO.getStdout
   match args with
   | ["lex"] => stdout.write (ByteArray.mk (wordsToBytes (C.s10 x)))
-  | ["parse"] => stdout.write (ByteArray.mk (wordsToBytes (C.y16 (C.s10 x))))
-  | ["own"] => stdout.write (ByteArray.mk (wordsToBytes (C.o41 (C.y16 (C.s10 x)))))
+  | ["dsg"] => stdout.write (ByteArray.mk (wordsToBytes (C.t10 (C.s10 x))))
+  | ["parse"] => stdout.write (ByteArray.mk (wordsToBytes (C.y16 (C.t10 (C.s10 x)))))
+  | ["own"] => stdout.write (ByteArray.mk (wordsToBytes (C.o41 (C.y16 (C.t10 (C.s10 x))))))
   | _ => let out := C.m x
          stdout.write (ByteArray.mk (out))
   return 0

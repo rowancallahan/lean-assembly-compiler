@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test_native.sh [NA_DIR] : build and check the native AArch64 back end (C/GenArm.lean).  PROTOTYPE, UNPROVEN glue.
-#  1. self_A.lean (Base+Lex2+Par1+Own+Gen+GenArm, driver a31) -> B2 (RISC-V) compiles it: GA_rv.bin
+#  1. self_A.lean (Base+Lex2+Dsg+Par1+Own+Gen+GenArm, driver a31) -> B2 (RISC-V) compiles it: GA_rv.bin
 #  2. GA_rv compiles self_A: GA_arm.bin (the native-ARM compiler as A64 code); GA_arm compiles self_A: must = GA_arm.bin
 #  3. GA_arm compiles the RISC-V compiler's source: B2_na.bin (B2 as native A64 code); B2_na compiles it: must = B2.bin
 #  4. examples/*.lean and edge/*.lean on several inputs: RISC-V vs native A64 (status + output bytes)

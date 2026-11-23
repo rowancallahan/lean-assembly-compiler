@@ -29,7 +29,7 @@ def tOk (l : List J) : Bool :=
 #guard tOk (binT 8)
 #guard tOk (lenT 1 20)
 #guard tOk rdT
-#guard tOk (bnewT 1 20 524288)
+#guard tOk (bnewT 1 20 2097152)
 #guard tOk bsizeT
 #guard tOk bgetT
 #guard tOk bsetT

@@ -16,233 +16,338 @@ def Spec7 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64),
 def Spec8 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64), Ref (F (enc a1)) (enc (C.s4 inp a1))
 def Spec9 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (C.s5 inp a1 a2))
 def Spec10 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (C.s6 a0 inp a2 a3 a4))
-def Spec11 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (C.s7 a0 inp a2 a3 a4))
-def Spec12 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : Buf), Ref (F (enc (a0, a1))) (enc (C.s8 a0 a1))
-def Spec13 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3))) (enc (C.s9 a0 inp a2 a3))
-def Spec14 (inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.s10 inp))
-def Spec15 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.y5 a0 a1))
-def Spec16 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d1))
-def Spec17 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d2))
-def Spec18 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d3))
-def Spec19 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d4))
-def Spec20 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d5))
-def Spec21 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d6))
-def Spec22 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d7))
-def Spec23 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d8))
-def Spec24 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d9))
-def Spec25 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d10))
-def Spec26 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d11))
-def Spec27 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d12))
-def Spec28 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d13))
-def Spec29 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d14))
-def Spec30 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d15))
-def Spec31 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y15 a0))
-def Spec32 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.y0 a0 a1 a2))
-def Spec33 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.y1 a0 a1))
-def Spec34 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.y2 a0 a1 a2 a3))
-def Spec35 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.y7 a0 a1))
-def Spec36 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.y8 a0))
-def Spec37 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.y10 a0))
-def Spec38 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.y14 a0 a1 a2 a3))
-def Spec39 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v85 a0 a1 a2 a3))
-def Spec40 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v86 a0 a1 a2))
-def Spec41 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v87 a0 a1))
-def Spec42 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.v91 a0))
-def Spec43 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.v92 a0))
-def Spec44 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v90 a0 a1))
-def Spec45 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v0 a0 a1))
-def Spec46 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v94 a0 a1))
-def Spec47 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v95 a0 a1))
-def Spec48 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k40))
-def Spec49 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k41))
-def Spec50 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k42))
-def Spec51 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k43))
-def Spec52 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k44))
-def Spec53 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v205 a0 a1 a2 a3 a4))
-def Spec54 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.v210 a0 a1 a2 a3 a4 a5 a6))
-def Spec55 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v209 a0 a1 a2))
-def Spec56 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v1 a0 a1 a2 a3))
-def Spec57 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v2 a0 a1 a2 a3 a4))
-def Spec58 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.v5 a0 a1 a2 a3 a4 a5 a6))
-def Spec59 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v6 a0 a1 a2 a3))
-def Spec60 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v7 a0 a1 a2 a3))
-def Spec61 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v84 a0 a1 a2 a3))
-def Spec62 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v83 a0 a1 a2 a3 a4))
-def Spec63 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v8 a0 a1 a2))
-def Spec64 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v9 a0 a1))
-def Spec65 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v10 a0 a1 a2 a3 a4))
-def Spec66 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v14 a0 a1 a2))
-def Spec67 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v15 a0 a1))
-def Spec68 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v93 a0 a1 a2))
-def Spec69 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v100 a0 a1 a2))
-def Spec70 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v101 a0 a1 a2))
-def Spec71 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v102 a0 a1 a2))
-def Spec72 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v103 a0 a1 a2))
-def Spec73 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v104b a0 a1 a2))
-def Spec74 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v104 a0 a1 a2))
-def Spec75 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v105 a0 a1 a2))
-def Spec76 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v106 a0 a1 a2))
-def Spec77 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v107 a0 a1 a2))
-def Spec78 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v108 a0 a1 a2))
-def Spec79 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v109 a0 a1 a2))
-def Spec80 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v110 a0 a1 a2))
-def Spec81 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v111 a0 a1 a2))
-def Spec82 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v112 a0 a1 a2))
-def Spec83 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v113 a0 a1 a2))
-def Spec84 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v114 a0 a1 a2))
-def Spec85 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v115 a0 a1 a2))
-def Spec86 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v116 a0 a1 a2))
-def Spec87 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v117 a0 a1 a2))
-def Spec88 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v118 a0 a1 a2))
-def Spec89 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v119 a0 a1 a2))
-def Spec90 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v120 a0 a1 a2))
-def Spec91 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v121 a0 a1 a2))
-def Spec92 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v122 a0 a1 a2))
-def Spec93 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v123 a0 a1 a2))
-def Spec94 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v124 a0 a1 a2))
-def Spec95 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v125 a0 a1 a2))
-def Spec96 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v126 a0 a1 a2))
-def Spec97 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v127 a0 a1 a2))
-def Spec98 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v128 a0 a1 a2))
-def Spec99 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v129 a0 a1 a2))
-def Spec100 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v130 a0 a1 a2))
-def Spec101 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v131 a0 a1 a2))
-def Spec102 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v132 a0 a1 a2))
-def Spec103 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v201 a0 a1 a2))
-def Spec104 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v133 a0 a1 a2))
-def Spec105 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v134 a0 a1 a2))
-def Spec106 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v203 a0 a1 a2 a3))
-def Spec107 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v200 a0 a1 a2))
-def Spec108 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v135 a0 a1 a2))
-def Spec109 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v136 a0 a1 a2))
-def Spec110 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v137 a0 a1 a2))
-def Spec111 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v138 a0 a1 a2))
-def Spec112 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v139 a0 a1 a2))
-def Spec113 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v140 a0 a1 a2))
-def Spec114 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v141 a0 a1 a2))
-def Spec115 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v142 a0 a1 a2))
-def Spec116 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v143 a0 a1 a2))
-def Spec117 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v144 a0 a1 a2))
-def Spec118 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v204 a0 a1 a2))
-def Spec119 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v96 a0 a1 a2 a3))
-def Spec120 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.v97 a0 a1))
-def Spec121 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v98 a0 a1 a2 a3))
-def Spec122 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v99 a0 a1))
-def Spec123 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y13 a0))
-def Spec124 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y16 a0))
-def Spec125 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o0 a0 a1 a2))
-def Spec126 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.o1 a0 a1))
-def Spec127 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o2 a0 a1 a2))
-def Spec128 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o3 a0 a1 a2 a3 a4 a5))
-def Spec129 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.o5 a0))
-def Spec130 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o6 a0 a1 a2))
-def Spec131 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o7 a0 a1 a2))
-def Spec132 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.o10 a0 a1))
-def Spec133 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.o11 a0))
-def Spec134 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o9 a0 a1 a2 a3))
-def Spec135 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o12 a0 a1 a2 a3))
-def Spec136 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o13 a0 a1 a2 a3 a4 a5 a6))
-def Spec137 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o14 a0 a1 a2 a3 a4 a5 a6))
-def Spec138 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o15 a0 a1 a2 a3 a4 a5))
-def Spec139 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o17 a0 a1 a2 a3 a4 a5 a6))
-def Spec140 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o18 a0 a1 a2 a3 a4 a5 a6))
-def Spec141 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.o19 a0 a1 a2 a3))
-def Spec142 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o20 a0 a1 a2 a3 a4 a5 a6))
-def Spec143 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o22 a0 a1 a2 a3 a4 a5 a6))
-def Spec144 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o25 a0 a1 a2 a3 a4 a5))
-def Spec145 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o28 a0 a1 a2 a3 a4))
-def Spec146 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o26 a0 a1 a2 a3 a4 a5 a6 a7))
-def Spec147 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o16 a0 a1 a2 a3 a4 a5 a6 a7))
-def Spec148 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o27 a0 a1 a2 a3 a4 a5 a6))
-def Spec149 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o29 a0 a1 a2 a3))
-def Spec150 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o31 a0 a1 a2 a3 a4))
-def Spec151 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o32 a0 a1 a2 a3 a4))
-def Spec152 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o33 a0 a1 a2 a3 a4))
-def Spec153 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o30 a0 a1 a2 a3 a4))
-def Spec154 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o34 a0 a1 a2 a3 a4 a5))
-def Spec155 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o35 a0 a1 a2 a3 a4 a5))
-def Spec156 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o36 a0 a1 a2 a3 a4 a5))
-def Spec157 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o37 a0 a1 a2 a3 a4 a5))
-def Spec158 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.o40 a0 a1 a2))
-def Spec159 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o42 a0 a1 a2 a3 a4))
-def Spec160 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o38 a0 a1 a2 a3 a4 a5 a6 a7))
-def Spec161 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf) (a8 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8))) (enc (C.o39 a0 a1 a2 a3 a4 a5 a6 a7 a8))
-def Spec162 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.o41 a0))
-def Spec163 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_0))
-def Spec164 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_1))
-def Spec165 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_3))
-def Spec166 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_19))
-def Spec167 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_16))
-def Spec168 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_31))
-def Spec169 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_35))
-def Spec170 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_51))
-def Spec171 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_63))
-def Spec172 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_99))
-def Spec173 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_103))
-def Spec174 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_111))
-def Spec175 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_127))
-def Spec176 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_15))
-def Spec177 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_255))
-def Spec178 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_1023))
-def Spec179 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_4095))
-def Spec180 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_901))
-def Spec181 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_902))
-def Spec182 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_908))
-def Spec183 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_999))
-def Spec184 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g1 a0 a1 a2 a3 a4))
-def Spec185 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g2 a0 a1 a2 a3 a4))
-def Spec186 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g3 a0 a1 a2 a3))
-def Spec187 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g4 a0 a1 a2 a3))
-def Spec188 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g5 a0 a1))
-def Spec189 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g10 a0 a1 a2))
-def Spec190 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g11 a0 a1 a2))
-def Spec191 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g12 a0 a1 a2))
-def Spec192 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g13 a0 a1 a2))
-def Spec193 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g14 a0 a1))
-def Spec194 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g15 a0 a1 a2))
-def Spec195 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g16 a0))
-def Spec196 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g17 a0 a1 a2))
-def Spec197 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g18 a0 a1 a2 a3 a4))
-def Spec198 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g19 a0 a1 a2 a3))
-def Spec199 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g20 a0 a1 a2))
-def Spec200 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g21 a0))
-def Spec201 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g22 a0 a1))
-def Spec202 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g23 a0 a1 a2))
-def Spec203 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g24 a0 a1))
-def Spec204 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g25 a0 a1 a2 a3 a4))
-def Spec205 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g26 a0 a1 a2 a3 a4))
-def Spec206 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.g27 a0 a1 a2 a3))
-def Spec207 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : (Buf × (Buf × Buf))), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.g28 a0 a1 a2))
-def Spec208 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g29 a0 a1 a2 a3 a4))
-def Spec209 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g30 a0 a1))
-def Spec210 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g31 a0 a1))
-def Spec211 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g32 a0 a1 a2))
-def Spec212 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.g33 a0))
-def Spec213 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g34 a0))
-def Spec214 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g35 a0 a1 a2))
-def Spec215 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g43 a0 a1 a2))
-def Spec216 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g36 a0 a1 a2 a3 a4))
-def Spec217 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.g37 a0 a1 a2 a3 a4 a5))
-def Spec218 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g38 a0 a1 a2 a3 a4))
-def Spec219 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.g54 a0 a1 a2 a3 a4 a5))
-def Spec220 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g55 a0 a1 a2))
-def Spec221 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g56 a0 a1 a2))
-def Spec222 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.g39 a0 a1 a2 a3 a4 a5 a6))
-def Spec223 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : Buf) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (Sh.g40 a0 inp a2 a3 a4))
-def Spec224 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g44 a0 a1))
-def Spec225 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g46 a0 a1 a2))
-def Spec226 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g47 a0 a1 a2 a3 a4))
-def Spec227 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g48 a0))
-def Spec228 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g49 a0 a1))
-def Spec229 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g50 a0 a1 a2 a3))
-def Spec230 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g51 a0 a1 a2))
-def Spec231 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : (Buf × (Buf × Buf))), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.g52 a0 a1))
-def Spec232 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g53 a0))
-def Spec233 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : Buf) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (Sh.g42 inp a1 a2))
-def Spec234 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : Buf), Ref (F (enc a1)) (enc (Sh.g41 inp a1))
-def Spec235 (inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (Sh.m inp))
+def Spec11 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (C.s28 a0 inp a2 a3 a4))
+def Spec12 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (C.s7 a0 inp a2 a3 a4))
+def Spec13 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : Buf), Ref (F (enc (a0, a1))) (enc (C.s8 a0 a1))
+def Spec14 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3))) (enc (C.s11 a0 inp a2 a3))
+def Spec15 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3))) (enc (C.s12 a0 inp a2 a3))
+def Spec16 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2))) (enc (C.s13 a0 inp a2))
+def Spec17 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2))) (enc (C.s21 a0 inp a2))
+def Spec18 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (C.s20 inp a1 a2))
+def Spec19 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a1, a2, a3, a4, a5))) (enc (C.s22 inp a1 a2 a3 a4 a5))
+def Spec20 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (C.s16 inp a1 a2))
+def Spec21 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (C.s14 a0 inp a2 a3 a4))
+def Spec22 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a2))) (enc (C.s15 a0 inp a2))
+def Spec23 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64), Ref (F (enc a1)) (enc (C.s19 inp a1))
+def Spec24 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (C.s18 inp a1 a2))
+def Spec25 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (C.s17 inp a1 a2))
+def Spec26 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.s23 a0))
+def Spec27 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64), Ref (F (enc a1)) (enc (C.s25 inp a1))
+def Spec28 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : UInt64), Ref (F (enc a1)) (enc (C.s24 inp a1))
+def Spec29 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3))) (enc (C.s9 a0 inp a2 a3))
+def Spec30 (inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.s10 inp))
+def Spec31 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.t1 a0 a1 a2))
+def Spec32 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.t0 a0 a1))
+def Spec33 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.t2 a0 a1 a2))
+def Spec34 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.t3 a0 a1 a2))
+def Spec35 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.t4 a0 a1 a2))
+def Spec36 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.t5 a0))
+def Spec37 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.t6 a0 a1 a2 a3 a4))
+def Spec38 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.t8 a0 a1 a2))
+def Spec39 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : Buf), Ref (F (enc (a0, a1, a2, a3))) (enc (C.t7 a0 a1 a2 a3))
+def Spec40 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.t9 a0 a1 a2 a3 a4 a5 a6))
+def Spec41 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.t14 a0 a1 a2 a3))
+def Spec42 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.t13 a0 a1 a2 a3 a4 a5))
+def Spec43 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.t15 a0 a1 a2 a3))
+def Spec44 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.t12 a0 a1 a2 a3 a4 a5 a6 a7))
+def Spec45 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.t11 a0 a1 a2))
+def Spec46 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.t22 a0 a1))
+def Spec47 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.t21 a0 a1 a2))
+def Spec48 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.t20 a0))
+def Spec49 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.t19 a0 a1 a2))
+def Spec50 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.t17 a0 a1 a2 a3 a4))
+def Spec51 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.t18 a0 a1 a2))
+def Spec52 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.t16 a0 a1 a2 a3 a4 a5 a6))
+def Spec53 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.t10 a0))
+def Spec54 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.y5 a0 a1))
+def Spec55 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d1))
+def Spec56 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d2))
+def Spec57 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d3))
+def Spec58 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d4))
+def Spec59 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d5))
+def Spec60 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d6))
+def Spec61 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d7))
+def Spec62 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d8))
+def Spec63 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d9))
+def Spec64 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d10))
+def Spec65 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d11))
+def Spec66 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d12))
+def Spec67 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d13))
+def Spec68 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d14))
+def Spec69 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.d15))
+def Spec70 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y15 a0))
+def Spec71 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.y0 a0 a1 a2))
+def Spec72 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.y1 a0 a1))
+def Spec73 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.y2 a0 a1 a2 a3))
+def Spec74 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.y7 a0 a1))
+def Spec75 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.y8 a0))
+def Spec76 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.y10 a0))
+def Spec77 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.y14 a0 a1 a2 a3))
+def Spec78 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v85 a0 a1 a2 a3))
+def Spec79 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v86 a0 a1 a2))
+def Spec80 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v87 a0 a1))
+def Spec81 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.v91 a0))
+def Spec82 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.v92 a0))
+def Spec83 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v90 a0 a1))
+def Spec84 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v0 a0 a1))
+def Spec85 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v94 a0 a1))
+def Spec86 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v95 a0 a1))
+def Spec87 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k40))
+def Spec88 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k41))
+def Spec89 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k42))
+def Spec90 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k43))
+def Spec91 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.k44))
+def Spec92 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v205 a0 a1 a2 a3 a4))
+def Spec93 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.v210 a0 a1 a2 a3 a4 a5 a6))
+def Spec94 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v209 a0 a1 a2))
+def Spec95 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v1 a0 a1 a2 a3))
+def Spec96 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v2 a0 a1 a2 a3 a4))
+def Spec97 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.v5 a0 a1 a2 a3 a4 a5 a6))
+def Spec98 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v6 a0 a1 a2 a3))
+def Spec99 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v7 a0 a1 a2 a3))
+def Spec100 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v84 a0 a1 a2 a3))
+def Spec101 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v83 a0 a1 a2 a3 a4))
+def Spec102 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v8 a0 a1 a2))
+def Spec103 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v9 a0 a1))
+def Spec104 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.v10 a0 a1 a2 a3 a4))
+def Spec105 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v14 a0 a1 a2))
+def Spec106 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v15 a0 a1))
+def Spec107 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v93 a0 a1 a2))
+def Spec108 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v100 a0 a1 a2))
+def Spec109 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v101 a0 a1 a2))
+def Spec110 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v102 a0 a1 a2))
+def Spec111 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v103 a0 a1 a2))
+def Spec112 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v104b a0 a1 a2))
+def Spec113 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v104 a0 a1 a2))
+def Spec114 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v105 a0 a1 a2))
+def Spec115 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v106 a0 a1 a2))
+def Spec116 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v107 a0 a1 a2))
+def Spec117 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v108 a0 a1 a2))
+def Spec118 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v109 a0 a1 a2))
+def Spec119 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v110 a0 a1 a2))
+def Spec120 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v111 a0 a1 a2))
+def Spec121 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v112 a0 a1 a2))
+def Spec122 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v113 a0 a1 a2))
+def Spec123 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v114 a0 a1 a2))
+def Spec124 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v115 a0 a1 a2))
+def Spec125 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v116 a0 a1 a2))
+def Spec126 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v117 a0 a1 a2))
+def Spec127 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v118 a0 a1 a2))
+def Spec128 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v119 a0 a1 a2))
+def Spec129 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v120 a0 a1 a2))
+def Spec130 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v121 a0 a1 a2))
+def Spec131 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v122 a0 a1 a2))
+def Spec132 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v123 a0 a1 a2))
+def Spec133 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v124 a0 a1 a2))
+def Spec134 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v125 a0 a1 a2))
+def Spec135 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v126 a0 a1 a2))
+def Spec136 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v127 a0 a1 a2))
+def Spec137 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v128 a0 a1 a2))
+def Spec138 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v129 a0 a1 a2))
+def Spec139 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v130 a0 a1 a2))
+def Spec140 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v131 a0 a1 a2))
+def Spec141 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v132 a0 a1 a2))
+def Spec142 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.v201 a0 a1 a2))
+def Spec143 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v133 a0 a1 a2))
+def Spec144 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v134 a0 a1 a2))
+def Spec145 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v203 a0 a1 a2 a3))
+def Spec146 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v200 a0 a1 a2))
+def Spec147 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v135 a0 a1 a2))
+def Spec148 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v136 a0 a1 a2))
+def Spec149 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v137 a0 a1 a2))
+def Spec150 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v138 a0 a1 a2))
+def Spec151 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v139 a0 a1 a2))
+def Spec152 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v140 a0 a1 a2))
+def Spec153 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v141 a0 a1 a2))
+def Spec154 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v142 a0 a1 a2))
+def Spec155 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v143 a0 a1 a2))
+def Spec156 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v144 a0 a1 a2))
+def Spec157 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.v204 a0 a1 a2))
+def Spec158 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.v96 a0 a1 a2 a3))
+def Spec159 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.v97 a0 a1))
+def Spec160 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.v98 a0 a1 a2 a3))
+def Spec161 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.v99 a0 a1))
+def Spec162 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y13 a0))
+def Spec163 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.y16 a0))
+def Spec164 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o0 a0 a1 a2))
+def Spec165 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.o1 a0 a1))
+def Spec166 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o2 a0 a1 a2))
+def Spec167 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o3 a0 a1 a2 a3 a4 a5))
+def Spec168 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.o5 a0))
+def Spec169 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o6 a0 a1 a2))
+def Spec170 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.o7 a0 a1 a2))
+def Spec171 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.o10 a0 a1))
+def Spec172 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.o11 a0))
+def Spec173 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o9 a0 a1 a2 a3))
+def Spec174 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o12 a0 a1 a2 a3))
+def Spec175 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o13 a0 a1 a2 a3 a4 a5 a6))
+def Spec176 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o14 a0 a1 a2 a3 a4 a5 a6))
+def Spec177 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o15 a0 a1 a2 a3 a4 a5))
+def Spec178 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o17 a0 a1 a2 a3 a4 a5 a6))
+def Spec179 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o18 a0 a1 a2 a3 a4 a5 a6))
+def Spec180 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.o19 a0 a1 a2 a3))
+def Spec181 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o20 a0 a1 a2 a3 a4 a5 a6))
+def Spec182 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o22 a0 a1 a2 a3 a4 a5 a6))
+def Spec183 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o25 a0 a1 a2 a3 a4 a5))
+def Spec184 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o28 a0 a1 a2 a3 a4))
+def Spec185 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o26 a0 a1 a2 a3 a4 a5 a6 a7))
+def Spec186 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o16 a0 a1 a2 a3 a4 a5 a6 a7))
+def Spec187 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.o27 a0 a1 a2 a3 a4 a5 a6))
+def Spec188 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf), Ref (F (enc (a0, a1, a2, a3))) (enc (C.o29 a0 a1 a2 a3))
+def Spec189 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o31 a0 a1 a2 a3 a4))
+def Spec190 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o32 a0 a1 a2 a3 a4))
+def Spec191 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o33 a0 a1 a2 a3 a4))
+def Spec192 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o30 a0 a1 a2 a3 a4))
+def Spec193 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o34 a0 a1 a2 a3 a4 a5))
+def Spec194 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o35 a0 a1 a2 a3 a4 a5))
+def Spec195 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o36 a0 a1 a2 a3 a4 a5))
+def Spec196 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.o37 a0 a1 a2 a3 a4 a5))
+def Spec197 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.o40 a0 a1 a2))
+def Spec198 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.o42 a0 a1 a2 a3 a4))
+def Spec199 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.o38 a0 a1 a2 a3 a4 a5 a6 a7))
+def Spec200 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf) (a8 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8))) (enc (C.o39 a0 a1 a2 a3 a4 a5 a6 a7 a8))
+def Spec201 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.o41 a0))
+def Spec202 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_0))
+def Spec203 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_1))
+def Spec204 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_3))
+def Spec205 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_19))
+def Spec206 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_16))
+def Spec207 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_31))
+def Spec208 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_35))
+def Spec209 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_51))
+def Spec210 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_63))
+def Spec211 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_99))
+def Spec212 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_103))
+def Spec213 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_111))
+def Spec214 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_127))
+def Spec215 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_15))
+def Spec216 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_255))
+def Spec217 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_1023))
+def Spec218 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_4095))
+def Spec219 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_901))
+def Spec220 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_902))
+def Spec221 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_908))
+def Spec222 (_inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (C.g_999))
+def Spec223 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g1 a0 a1 a2 a3 a4))
+def Spec224 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g2 a0 a1 a2 a3 a4))
+def Spec225 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g3 a0 a1 a2 a3))
+def Spec226 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g4 a0 a1 a2 a3))
+def Spec227 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g5 a0 a1))
+def Spec228 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g10 a0 a1 a2))
+def Spec229 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g11 a0 a1 a2))
+def Spec230 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g12 a0 a1 a2))
+def Spec231 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g13 a0 a1 a2))
+def Spec232 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g14 a0 a1))
+def Spec233 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g15 a0 a1 a2))
+def Spec234 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g16 a0))
+def Spec235 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g17 a0 a1 a2))
+def Spec236 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g18 a0 a1 a2 a3 a4))
+def Spec237 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g19 a0 a1 a2 a3))
+def Spec238 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g20 a0 a1 a2))
+def Spec239 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g21 a0))
+def Spec240 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g22 a0 a1))
+def Spec241 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g23 a0 a1 a2))
+def Spec242 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g24 a0 a1))
+def Spec243 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g25 a0 a1 a2 a3 a4))
+def Spec244 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g26 a0 a1 a2 a3 a4))
+def Spec245 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.g27 a0 a1 a2 a3))
+def Spec246 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : (Buf × (Buf × Buf))), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2))) (enc (C.g28 a0 a1 a2))
+def Spec247 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g29 a0 a1 a2 a3 a4))
+def Spec248 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g30 a0 a1))
+def Spec249 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g31 a0 a1))
+def Spec250 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g32 a0 a1 a2))
+def Spec251 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : UInt64), Ref (F (enc a0)) (enc (C.g33 a0))
+def Spec252 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g34 a0))
+def Spec253 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g35 a0 a1 a2))
+def Spec254 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g43 a0 a1 a2))
+def Spec255 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g36 a0 a1 a2 a3 a4))
+def Spec256 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.g37 a0 a1 a2 a3 a4 a5))
+def Spec257 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g38 a0 a1 a2 a3 a4))
+def Spec258 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.g54 a0 a1 a2 a3 a4 a5))
+def Spec259 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g55 a0 a1 a2))
+def Spec260 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g56 a0 a1 a2))
+def Spec261 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.g39 a0 a1 a2 a3 a4 a5 a6))
+def Spec262 (inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a2 : Buf) (a3 : UInt64) (a4 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a2, a3, a4))) (enc (Sh.g40 a0 inp a2 a3 a4))
+def Spec263 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g44 a0 a1))
+def Spec264 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.g46 a0 a1 a2))
+def Spec265 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.g47 a0 a1 a2 a3 a4))
+def Spec266 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g48 a0))
+def Spec267 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.g49 a0 a1))
+def Spec268 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.g50 a0 a1 a2 a3))
+def Spec269 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.g51 a0 a1 a2))
+def Spec270 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : (Buf × (Buf × Buf))), a0 < 18446744073709551616 → Ref (F (enc (a0, a1))) (enc (C.g52 a0 a1))
+def Spec271 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.g53 a0))
+def Spec272 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : Buf) (a2 : UInt64), Ref (F (enc (a1, a2))) (enc (Sh.g42 inp a1 a2))
+def Spec273 (inp : List UInt8) (F : Fn) : Prop := ∀ (a1 : Buf), Ref (F (enc a1)) (enc (Sh.g41 inp a1))
+def Spec274 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.u20 a0 a1 a2))
+def Spec275 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : Buf) (a5 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u64 a0 a1 a2 a3 a4 a5))
+def Spec276 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : Buf) (a6 : UInt64) (a7 : UInt64) (a8 : UInt64) (a9 : Buf) (a10 : Buf) (a11 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11))) (enc (C.u65 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11))
+def Spec277 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u12 a0 a1 a2 a3))
+def Spec278 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.u15 a0 a1))
+def Spec279 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64), Ref (F (enc (a0, a1))) (enc (C.u34 a0 a1))
+def Spec280 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u13 a0 a1 a2 a3 a4 a5))
+def Spec281 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf), Ref (F (enc (a0, a1))) (enc (C.u63 a0 a1))
+def Spec282 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u16 a0 a1 a2 a3 a4))
+def Spec283 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u14 a0 a1 a2 a3))
+def Spec284 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.u17 a0 a1 a2))
+def Spec285 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u71 a0 a1 a2 a3))
+def Spec286 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.u72 a0 a1 a2))
+def Spec287 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u18 a0 a1 a2 a3))
+def Spec288 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u22 a0 a1 a2 a3 a4 a5 a6))
+def Spec289 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u23 a0 a1 a2 a3))
+def Spec290 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u24 a0 a1 a2 a3 a4 a5))
+def Spec291 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u25 a0 a1 a2 a3 a4 a5))
+def Spec292 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u26 a0 a1 a2 a3 a4 a5))
+def Spec293 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u27 a0 a1 a2 a3 a4))
+def Spec294 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf), Ref (F (enc (a0, a1, a2))) (enc (C.u35 a0 a1 a2))
+def Spec295 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : Buf), Ref (F (enc (a0, a1, a2, a3))) (enc (C.u36 a0 a1 a2 a3))
+def Spec296 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : Buf) (a7 : UInt64) (a8 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8))) (enc (C.u29 a0 a1 a2 a3 a4 a5 a6 a7 a8))
+def Spec297 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : Buf) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9))) (enc (C.u28 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9))
+def Spec298 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u31 a0 a1 a2 a3 a4 a5 a6))
+def Spec299 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u32 a0 a1 a2 a3 a4 a5 a6))
+def Spec300 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u70 a0 a1 a2 a3 a4 a5 a6))
+def Spec301 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : Buf) (a6 : UInt64) (a7 : UInt64) (a8 : UInt64) (a9 : Buf) (a10 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10))) (enc (C.u33 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10))
+def Spec302 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u43 a0 a1 a2 a3 a4))
+def Spec303 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : Buf) (a12 : Buf) (a13 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13))) (enc (C.u42 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13))
+def Spec304 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : Buf) (a12 : Buf) (a13 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13))) (enc (C.u41 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13))
+def Spec305 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : Buf) (a7 : UInt64) (a8 : UInt64) (a9 : Buf) (a10 : Buf) (a11 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11))) (enc (C.u44 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11))
+def Spec306 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : Buf) (a11 : Buf) (a12 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12))) (enc (C.u45 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12))
+def Spec307 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : UInt64) (a12 : Buf) (a13 : Buf) (a14 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14))) (enc (C.u66 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14))
+def Spec308 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : Buf) (a12 : Buf) (a13 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13))) (enc (C.u46 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13))
+def Spec309 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : UInt64) (a12 : Buf) (a13 : Buf) (a14 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14))) (enc (C.u39 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14))
+def Spec310 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : UInt64) (a9 : UInt64) (a10 : UInt64) (a11 : UInt64) (a12 : UInt64) (a13 : Buf) (a14 : Buf) (a15 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15))) (enc (C.u49 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15))
+def Spec311 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u47 a0 a1 a2 a3 a4))
+def Spec312 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : UInt64) (a6 : UInt64) (a7 : Buf) (a8 : Buf) (a9 : UInt64) (a10 : UInt64) (a11 : Buf) (a12 : Buf) (a13 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13))) (enc (C.u81 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13))
+def Spec313 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : Buf) (a6 : UInt64) (a7 : UInt64) (a8 : Buf) (a9 : Buf) (a10 : UInt64) (a11 : UInt64) (a12 : Buf) (a13 : Buf) (a14 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14))) (enc (C.u40 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14))
+def Spec314 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u52 a0 a1 a2 a3 a4))
+def Spec315 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u51 a0 a1 a2 a3))
+def Spec316 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u53 a0 a1 a2 a3 a4 a5))
+def Spec317 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u54 a0 a1 a2 a3 a4 a5))
+def Spec318 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u55 a0 a1 a2 a3 a4 a5))
+def Spec319 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u56 a0 a1 a2 a3 a4 a5 a6))
+def Spec320 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u57 a0 a1 a2 a3))
+def Spec321 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u59 a0 a1 a2 a3 a4))
+def Spec322 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u58 a0 a1 a2 a3 a4))
+def Spec323 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64) (a3 : Buf) (a4 : Buf), Ref (F (enc (a0, a1, a2, a3, a4))) (enc (C.u50 a0 a1 a2 a3 a4))
+def Spec324 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf) (a8 : Buf) (a9 : Buf) (a10 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10))) (enc (C.u48 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10))
+def Spec325 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3))) (enc (C.u60 a0 a1 a2 a3))
+def Spec326 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : UInt64) (a2 : UInt64), Ref (F (enc (a0, a1, a2))) (enc (C.u77 a0 a1 a2))
+def Spec327 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6))) (enc (C.u82 a0 a1 a2 a3 a4 a5 a6))
+def Spec328 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.u83 a0 a1 a2 a3))
+def Spec329 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : UInt64) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u78 a0 a1 a2 a3 a4 a5))
+def Spec330 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u85 a0 a1 a2 a3 a4 a5))
+def Spec331 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64) (a6 : UInt64) (a7 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7))) (enc (C.u76 a0 a1 a2 a3 a4 a5 a6 a7))
+def Spec332 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : UInt64) (a5 : UInt64), Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u75 a0 a1 a2 a3 a4 a5))
+def Spec333 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.u84 a0 a1 a2 a3))
+def Spec334 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : Buf) (a4 : UInt64) (a5 : UInt64), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5))) (enc (C.u73 a0 a1 a2 a3 a4 a5))
+def Spec335 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : Buf) (a3 : UInt64), Ref (F (enc (a0, a1, a2, a3))) (enc (C.u79 a0 a1 a2 a3))
+def Spec336 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf) (a1 : Buf) (a2 : UInt64) (a3 : Buf) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf) (a8 : Buf) (a9 : Buf), Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9))) (enc (C.u80 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9))
+def Spec337 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Nat) (a1 : Buf) (a2 : Buf) (a3 : UInt64) (a4 : Buf) (a5 : Buf) (a6 : Buf) (a7 : Buf) (a8 : Buf) (a9 : Buf) (a10 : Buf), a0 < 18446744073709551616 → Ref (F (enc (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10))) (enc (C.u61 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10))
+def Spec338 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.u11 a0))
+def Spec339 (_inp : List UInt8) (F : Fn) : Prop := ∀ (a0 : Buf), Ref (F (enc a0)) (enc (C.u10 a0))
+def Spec340 (inp : List UInt8) (F : Fn) : Prop := Ref (F (enc ())) (enc (Sh.m inp))
 
-def specs (inp : List UInt8) : List (Fn → Prop) := [Spec0 inp, Spec1 inp, Spec2 inp, Spec3 inp, Spec4 inp, Spec5 inp, Spec6 inp, Spec7 inp, Spec8 inp, Spec9 inp, Spec10 inp, Spec11 inp, Spec12 inp, Spec13 inp, Spec14 inp, Spec15 inp, Spec16 inp, Spec17 inp, Spec18 inp, Spec19 inp, Spec20 inp, Spec21 inp, Spec22 inp, Spec23 inp, Spec24 inp, Spec25 inp, Spec26 inp, Spec27 inp, Spec28 inp, Spec29 inp, Spec30 inp, Spec31 inp, Spec32 inp, Spec33 inp, Spec34 inp, Spec35 inp, Spec36 inp, Spec37 inp, Spec38 inp, Spec39 inp, Spec40 inp, Spec41 inp, Spec42 inp, Spec43 inp, Spec44 inp, Spec45 inp, Spec46 inp, Spec47 inp, Spec48 inp, Spec49 inp, Spec50 inp, Spec51 inp, Spec52 inp, Spec53 inp, Spec54 inp, Spec55 inp, Spec56 inp, Spec57 inp, Spec58 inp, Spec59 inp, Spec60 inp, Spec61 inp, Spec62 inp, Spec63 inp, Spec64 inp, Spec65 inp, Spec66 inp, Spec67 inp, Spec68 inp, Spec69 inp, Spec70 inp, Spec71 inp, Spec72 inp, Spec73 inp, Spec74 inp, Spec75 inp, Spec76 inp, Spec77 inp, Spec78 inp, Spec79 inp, Spec80 inp, Spec81 inp, Spec82 inp, Spec83 inp, Spec84 inp, Spec85 inp, Spec86 inp, Spec87 inp, Spec88 inp, Spec89 inp, Spec90 inp, Spec91 inp, Spec92 inp, Spec93 inp, Spec94 inp, Spec95 inp, Spec96 inp, Spec97 inp, Spec98 inp, Spec99 inp, Spec100 inp, Spec101 inp, Spec102 inp, Spec103 inp, Spec104 inp, Spec105 inp, Spec106 inp, Spec107 inp, Spec108 inp, Spec109 inp, Spec110 inp, Spec111 inp, Spec112 inp, Spec113 inp, Spec114 inp, Spec115 inp, Spec116 inp, Spec117 inp, Spec118 inp, Spec119 inp, Spec120 inp, Spec121 inp, Spec122 inp, Spec123 inp, Spec124 inp, Spec125 inp, Spec126 inp, Spec127 inp, Spec128 inp, Spec129 inp, Spec130 inp, Spec131 inp, Spec132 inp, Spec133 inp, Spec134 inp, Spec135 inp, Spec136 inp, Spec137 inp, Spec138 inp, Spec139 inp, Spec140 inp, Spec141 inp, Spec142 inp, Spec143 inp, Spec144 inp, Spec145 inp, Spec146 inp, Spec147 inp, Spec148 inp, Spec149 inp, Spec150 inp, Spec151 inp, Spec152 inp, Spec153 inp, Spec154 inp, Spec155 inp, Spec156 inp, Spec157 inp, Spec158 inp, Spec159 inp, Spec160 inp, Spec161 inp, Spec162 inp, Spec163 inp, Spec164 inp, Spec165 inp, Spec166 inp, Spec167 inp, Spec168 inp, Spec169 inp, Spec170 inp, Spec171 inp, Spec172 inp, Spec173 inp, Spec174 inp, Spec175 inp, Spec176 inp, Spec177 inp, Spec178 inp, Spec179 inp, Spec180 inp, Spec181 inp, Spec182 inp, Spec183 inp, Spec184 inp, Spec185 inp, Spec186 inp, Spec187 inp, Spec188 inp, Spec189 inp, Spec190 inp, Spec191 inp, Spec192 inp, Spec193 inp, Spec194 inp, Spec195 inp, Spec196 inp, Spec197 inp, Spec198 inp, Spec199 inp, Spec200 inp, Spec201 inp, Spec202 inp, Spec203 inp, Spec204 inp, Spec205 inp, Spec206 inp, Spec207 inp, Spec208 inp, Spec209 inp, Spec210 inp, Spec211 inp, Spec212 inp, Spec213 inp, Spec214 inp, Spec215 inp, Spec216 inp, Spec217 inp, Spec218 inp, Spec219 inp, Spec220 inp, Spec221 inp, Spec222 inp, Spec223 inp, Spec224 inp, Spec225 inp, Spec226 inp, Spec227 inp, Spec228 inp, Spec229 inp, Spec230 inp, Spec231 inp, Spec232 inp, Spec233 inp, Spec234 inp, Spec235 inp]
+def specs (inp : List UInt8) : List (Fn → Prop) := [Spec0 inp, Spec1 inp, Spec2 inp, Spec3 inp, Spec4 inp, Spec5 inp, Spec6 inp, Spec7 inp, Spec8 inp, Spec9 inp, Spec10 inp, Spec11 inp, Spec12 inp, Spec13 inp, Spec14 inp, Spec15 inp, Spec16 inp, Spec17 inp, Spec18 inp, Spec19 inp, Spec20 inp, Spec21 inp, Spec22 inp, Spec23 inp, Spec24 inp, Spec25 inp, Spec26 inp, Spec27 inp, Spec28 inp, Spec29 inp, Spec30 inp, Spec31 inp, Spec32 inp, Spec33 inp, Spec34 inp, Spec35 inp, Spec36 inp, Spec37 inp, Spec38 inp, Spec39 inp, Spec40 inp, Spec41 inp, Spec42 inp, Spec43 inp, Spec44 inp, Spec45 inp, Spec46 inp, Spec47 inp, Spec48 inp, Spec49 inp, Spec50 inp, Spec51 inp, Spec52 inp, Spec53 inp, Spec54 inp, Spec55 inp, Spec56 inp, Spec57 inp, Spec58 inp, Spec59 inp, Spec60 inp, Spec61 inp, Spec62 inp, Spec63 inp, Spec64 inp, Spec65 inp, Spec66 inp, Spec67 inp, Spec68 inp, Spec69 inp, Spec70 inp, Spec71 inp, Spec72 inp, Spec73 inp, Spec74 inp, Spec75 inp, Spec76 inp, Spec77 inp, Spec78 inp, Spec79 inp, Spec80 inp, Spec81 inp, Spec82 inp, Spec83 inp, Spec84 inp, Spec85 inp, Spec86 inp, Spec87 inp, Spec88 inp, Spec89 inp, Spec90 inp, Spec91 inp, Spec92 inp, Spec93 inp, Spec94 inp, Spec95 inp, Spec96 inp, Spec97 inp, Spec98 inp, Spec99 inp, Spec100 inp, Spec101 inp, Spec102 inp, Spec103 inp, Spec104 inp, Spec105 inp, Spec106 inp, Spec107 inp, Spec108 inp, Spec109 inp, Spec110 inp, Spec111 inp, Spec112 inp, Spec113 inp, Spec114 inp, Spec115 inp, Spec116 inp, Spec117 inp, Spec118 inp, Spec119 inp, Spec120 inp, Spec121 inp, Spec122 inp, Spec123 inp, Spec124 inp, Spec125 inp, Spec126 inp, Spec127 inp, Spec128 inp, Spec129 inp, Spec130 inp, Spec131 inp, Spec132 inp, Spec133 inp, Spec134 inp, Spec135 inp, Spec136 inp, Spec137 inp, Spec138 inp, Spec139 inp, Spec140 inp, Spec141 inp, Spec142 inp, Spec143 inp, Spec144 inp, Spec145 inp, Spec146 inp, Spec147 inp, Spec148 inp, Spec149 inp, Spec150 inp, Spec151 inp, Spec152 inp, Spec153 inp, Spec154 inp, Spec155 inp, Spec156 inp, Spec157 inp, Spec158 inp, Spec159 inp, Spec160 inp, Spec161 inp, Spec162 inp, Spec163 inp, Spec164 inp, Spec165 inp, Spec166 inp, Spec167 inp, Spec168 inp, Spec169 inp, Spec170 inp, Spec171 inp, Spec172 inp, Spec173 inp, Spec174 inp, Spec175 inp, Spec176 inp, Spec177 inp, Spec178 inp, Spec179 inp, Spec180 inp, Spec181 inp, Spec182 inp, Spec183 inp, Spec184 inp, Spec185 inp, Spec186 inp, Spec187 inp, Spec188 inp, Spec189 inp, Spec190 inp, Spec191 inp, Spec192 inp, Spec193 inp, Spec194 inp, Spec195 inp, Spec196 inp, Spec197 inp, Spec198 inp, Spec199 inp, Spec200 inp, Spec201 inp, Spec202 inp, Spec203 inp, Spec204 inp, Spec205 inp, Spec206 inp, Spec207 inp, Spec208 inp, Spec209 inp, Spec210 inp, Spec211 inp, Spec212 inp, Spec213 inp, Spec214 inp, Spec215 inp, Spec216 inp, Spec217 inp, Spec218 inp, Spec219 inp, Spec220 inp, Spec221 inp, Spec222 inp, Spec223 inp, Spec224 inp, Spec225 inp, Spec226 inp, Spec227 inp, Spec228 inp, Spec229 inp, Spec230 inp, Spec231 inp, Spec232 inp, Spec233 inp, Spec234 inp, Spec235 inp, Spec236 inp, Spec237 inp, Spec238 inp, Spec239 inp, Spec240 inp, Spec241 inp, Spec242 inp, Spec243 inp, Spec244 inp, Spec245 inp, Spec246 inp, Spec247 inp, Spec248 inp, Spec249 inp, Spec250 inp, Spec251 inp, Spec252 inp, Spec253 inp, Spec254 inp, Spec255 inp, Spec256 inp, Spec257 inp, Spec258 inp, Spec259 inp, Spec260 inp, Spec261 inp, Spec262 inp, Spec263 inp, Spec264 inp, Spec265 inp, Spec266 inp, Spec267 inp, Spec268 inp, Spec269 inp, Spec270 inp, Spec271 inp, Spec272 inp, Spec273 inp, Spec274 inp, Spec275 inp, Spec276 inp, Spec277 inp, Spec278 inp, Spec279 inp, Spec280 inp, Spec281 inp, Spec282 inp, Spec283 inp, Spec284 inp, Spec285 inp, Spec286 inp, Spec287 inp, Spec288 inp, Spec289 inp, Spec290 inp, Spec291 inp, Spec292 inp, Spec293 inp, Spec294 inp, Spec295 inp, Spec296 inp, Spec297 inp, Spec298 inp, Spec299 inp, Spec300 inp, Spec301 inp, Spec302 inp, Spec303 inp, Spec304 inp, Spec305 inp, Spec306 inp, Spec307 inp, Spec308 inp, Spec309 inp, Spec310 inp, Spec311 inp, Spec312 inp, Spec313 inp, Spec314 inp, Spec315 inp, Spec316 inp, Spec317 inp, Spec318 inp, Spec319 inp, Spec320 inp, Spec321 inp, Spec322 inp, Spec323 inp, Spec324 inp, Spec325 inp, Spec326 inp, Spec327 inp, Spec328 inp, Spec329 inp, Spec330 inp, Spec331 inp, Spec332 inp, Spec333 inp, Spec334 inp, Spec335 inp, Spec336 inp, Spec337 inp, Spec338 inp, Spec339 inp, Spec340 inp]
 
 theorem call_0 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 0 < n) :
     DenT cx (.call 0 []) env (C.k255) := by
@@ -288,868 +393,1288 @@ theorem call_10 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat
     DenT cx (.call 10 [e0, e2, e3, e4]) env (C.s6 a0 cx.inp a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec10 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
-theorem call_11 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 11 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
-    DenT cx (.call 11 [e0, e2, e3, e4]) env (C.s7 a0 cx.inp a2 a3 a4) := by
+theorem call_11 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 11 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
+    DenT cx (.call 11 [e0, e2, e3, e4]) env (C.s28 a0 cx.inp a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec11 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
-theorem call_12 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 12 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 12 [e0, e1]) env (C.s8 a0 a1) := by
+theorem call_12 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 12 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
+    DenT cx (.call 12 [e0, e2, e3, e4]) env (C.s7 a0 cx.inp a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec12 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_13 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 13 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) :
-    DenT cx (.call 13 [e0, e2, e3]) env (C.s9 a0 cx.inp a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
+theorem call_13 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 13 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 13 [e0, e1]) env (C.s8 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec13 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a2 a3 hn)
-theorem call_14 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 14 < n) :
-    DenT cx (.call 14 []) env (C.s10 cx.inp) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_14 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 14 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) :
+    DenT cx (.call 14 [e0, e2, e3]) env (C.s11 a0 cx.inp a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec14 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_15 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 15 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 15 [e0, e1]) env (C.y5 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a2 a3 hn)
+theorem call_15 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 15 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) :
+    DenT cx (.call 15 [e0, e2, e3]) env (C.s12 a0 cx.inp a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec15 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
-theorem call_16 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 16 < n) :
-    DenT cx (.call 16 []) env (C.d1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a2 a3 hn)
+theorem call_16 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 : Nd} {a0 : Nat} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 16 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 16 [e0, e2]) env (C.s13 a0 cx.inp a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec16 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_18 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 18 < n) :
-    DenT cx (.call 18 []) env (C.d3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a2 hn)
+theorem call_17 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 : Nd} {a0 : Nat} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 17 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 17 [e0, e2]) env (C.s21 a0 cx.inp a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec17 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a2 hn)
+theorem call_18 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 18 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 18 [e1, e2]) env (C.s20 cx.inp a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec18 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_19 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 19 < n) :
-    DenT cx (.call 19 []) env (C.d4) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
+theorem call_19 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 e3 e4 e5 : Nd} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 19 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) (h4 : DenT cx e5 env a5) :
+    DenT cx (.call 19 [e1, e2, e3, e4, e5]) env (C.s22 cx.inp a1 a2 a3 a4 a5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec19 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_20 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 20 < n) :
-    DenT cx (.call 20 []) env (C.d5) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a1 a2 a3 a4 a5)
+theorem call_20 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 20 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 20 [e1, e2]) env (C.s16 cx.inp a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec20 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_22 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 22 < n) :
-    DenT cx (.call 22 []) env (C.d7) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
+theorem call_21 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 21 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
+    DenT cx (.call 21 [e0, e2, e3, e4]) env (C.s14 a0 cx.inp a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec21 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
+theorem call_22 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 : Nd} {a0 : Nat} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 22 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 22 [e0, e2]) env (C.s15 a0 cx.inp a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec22 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_24 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 24 < n) :
-    DenT cx (.call 24 []) env (C.d9) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a2 hn)
+theorem call_23 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 23 < n) (h0 : DenT cx e1 env a1) :
+    DenT cx (.call 23 [e1]) env (C.s19 cx.inp a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec23 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a1)
+theorem call_24 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 24 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 24 [e1, e2]) env (C.s18 cx.inp a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec24 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_25 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 25 < n) :
-    DenT cx (.call 25 []) env (C.d10) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
+theorem call_25 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 25 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 25 [e1, e2]) env (C.s17 cx.inp a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec25 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_26 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 26 < n) :
-    DenT cx (.call 26 []) env (C.d11) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
+theorem call_26 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 26 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 26 [e0]) env (C.s23 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec26 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_27 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 27 < n) :
-    DenT cx (.call 27 []) env (C.d12) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_27 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 27 < n) (h0 : DenT cx e1 env a1) :
+    DenT cx (.call 27 [e1]) env (C.s25 cx.inp a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec27 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_28 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 28 < n) :
-    DenT cx (.call 28 []) env (C.d13) := by
+  exact DenT.call hF (DenP.one h0) (hS a1)
+theorem call_28 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 28 < n) (h0 : DenT cx e1 env a1) :
+    DenT cx (.call 28 [e1]) env (C.s24 cx.inp a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec28 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_29 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 29 < n) :
-    DenT cx (.call 29 []) env (C.d14) := by
+  exact DenT.call hF (DenP.one h0) (hS a1)
+theorem call_29 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 : Nd} {a0 : Nat} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 29 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) :
+    DenT cx (.call 29 [e0, e2, e3]) env (C.s9 a0 cx.inp a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec29 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a2 a3 hn)
 theorem call_30 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 30 < n) :
-    DenT cx (.call 30 []) env (C.d15) := by
+    DenT cx (.call 30 []) env (C.s10 cx.inp) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec30 cx.inp) rfl
   exact DenT.call hF DenP.nil (hS )
-theorem call_31 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 31 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 31 [e0]) env (C.y15 a0) := by
+theorem call_31 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 31 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 31 [e0, e1, e2]) env (C.t1 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec31 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_32 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 32 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 32 [e0, e1, e2]) env (C.y0 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec32 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_36 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 36 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 36 [e0]) env (C.y8 a0) := by
+theorem call_32 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 32 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 32 [e0, e1]) env (C.t0 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec32 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_33 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 33 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 33 [e0, e1, e2]) env (C.t2 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec33 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_34 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 34 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 34 [e0, e1, e2]) env (C.t3 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec34 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_35 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 35 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 35 [e0, e1, e2]) env (C.t4 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec35 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_36 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 36 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 36 [e0]) env (C.t5 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec36 cx.inp) rfl
   exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_37 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 37 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 37 [e0]) env (C.y10 a0) := by
+theorem call_37 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 37 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 37 [e0, e1, e2, e3, e4]) env (C.t6 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec37 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_38 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 38 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 38 [e0, e1, e2, e3]) env (C.y14 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_38 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 38 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 38 [e0, e1, e2]) env (C.t8 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec38 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_39 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 39 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 39 [e0, e1, e2, e3]) env (C.v85 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_39 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 39 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 39 [e0, e1, e2, e3]) env (C.t7 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec39 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_40 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 40 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 40 [e0, e1, e2]) env (C.v86 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_40 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 40 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 40 [e0, e1, e2, e3, e4, e5, e6]) env (C.t9 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec40 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_41 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 41 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 41 [e0, e1]) env (C.v87 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_41 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 41 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 41 [e0, e1, e2, e3]) env (C.t14 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec41 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_42 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 42 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 42 [e0]) env (C.v91 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_42 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 42 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 42 [e0, e1, e2, e3, e4, e5]) env (C.t13 a0 a1 a2 a3 a4 a5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec42 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_43 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 43 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 43 [e0]) env (C.v92 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_43 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 43 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 43 [e0, e1, e2, e3]) env (C.t15 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec43 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_44 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 44 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 44 [e0, e1]) env (C.v90 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_44 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 44 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
+    DenT cx (.call 44 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.t12 a0 a1 a2 a3 a4 a5 a6 a7) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec44 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_45 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 45 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 45 [e0, e1]) env (C.v0 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
+theorem call_45 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 45 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 45 [e0, e1, e2]) env (C.t11 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec45 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
 theorem call_46 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 46 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 46 [e0, e1]) env (C.v94 a0 a1) := by
+    DenT cx (.call 46 [e0, e1]) env (C.t22 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec46 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_48 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 48 < n) :
-    DenT cx (.call 48 []) env (C.k40) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec48 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_49 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 49 < n) :
-    DenT cx (.call 49 []) env (C.k41) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec49 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_50 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 50 < n) :
-    DenT cx (.call 50 []) env (C.k42) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec50 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_51 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 51 < n) :
-    DenT cx (.call 51 []) env (C.k43) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec51 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_52 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 52 < n) :
-    DenT cx (.call 52 []) env (C.k44) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec52 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_53 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 53 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 53 [e0, e1, e2, e3, e4]) env (C.v205 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec53 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_54 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 54 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 54 [e0, e1, e2, e3, e4, e5, e6]) env (C.v210 a0 a1 a2 a3 a4 a5 a6) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec54 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_55 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 55 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 55 [e0, e1, e2]) env (C.v209 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec55 cx.inp) rfl
+theorem call_47 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 47 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 47 [e0, e1, e2]) env (C.t21 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec47 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_56 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 56 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 56 [e0, e1, e2, e3]) env (C.v1 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec56 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_57 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 57 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 57 [e0, e1, e2, e3, e4]) env (C.v2 a0 a1 a2 a3 a4) := by
+theorem call_48 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 48 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 48 [e0]) env (C.t20 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec48 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_49 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 49 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 49 [e0, e1, e2]) env (C.t19 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec49 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_50 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 50 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 50 [e0, e1, e2, e3, e4]) env (C.t17 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec50 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_51 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 51 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 51 [e0, e1, e2]) env (C.t18 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec51 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_52 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 52 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 52 [e0, e1, e2, e3, e4, e5, e6]) env (C.t16 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec52 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_53 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 53 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 53 [e0]) env (C.t10 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec53 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_54 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 54 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 54 [e0, e1]) env (C.y5 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec54 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
+theorem call_55 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 55 < n) :
+    DenT cx (.call 55 []) env (C.d1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec55 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_57 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 57 < n) :
+    DenT cx (.call 57 []) env (C.d3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec57 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_58 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 58 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 58 [e0, e1, e2, e3, e4, e5, e6]) env (C.v5 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_58 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 58 < n) :
+    DenT cx (.call 58 []) env (C.d4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec58 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
-theorem call_59 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 59 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 59 [e0, e1, e2, e3]) env (C.v6 a0 a1 a2 a3) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_59 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 59 < n) :
+    DenT cx (.call 59 []) env (C.d5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec59 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_60 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 60 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 60 [e0, e1, e2, e3]) env (C.v7 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec60 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_61 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 61 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 61 [e0, e1, e2, e3]) env (C.v84 a0 a1 a2 a3) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_61 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 61 < n) :
+    DenT cx (.call 61 []) env (C.d7) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec61 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_62 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 62 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 62 [e0, e1, e2, e3, e4]) env (C.v83 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec62 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_63 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 63 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 63 [e0, e1, e2]) env (C.v8 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_63 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 63 < n) :
+    DenT cx (.call 63 []) env (C.d9) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec63 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_64 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 64 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 64 [e0, e1]) env (C.v9 a0 a1) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_64 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 64 < n) :
+    DenT cx (.call 64 []) env (C.d10) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec64 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_65 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 65 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 65 [e0, e1, e2, e3, e4]) env (C.v10 a0 a1 a2 a3 a4) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_65 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 65 < n) :
+    DenT cx (.call 65 []) env (C.d11) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec65 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_66 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 66 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 66 [e0, e1, e2]) env (C.v14 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_66 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 66 < n) :
+    DenT cx (.call 66 []) env (C.d12) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec66 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_67 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 67 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 67 [e0, e1]) env (C.v15 a0 a1) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_67 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 67 < n) :
+    DenT cx (.call 67 []) env (C.d13) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec67 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_68 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 68 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 68 [e0, e1, e2]) env (C.v93 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_68 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 68 < n) :
+    DenT cx (.call 68 []) env (C.d14) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec68 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_69 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 69 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 69 [e0, e1, e2]) env (C.v100 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_69 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 69 < n) :
+    DenT cx (.call 69 []) env (C.d15) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec69 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_70 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 70 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 70 [e0, e1, e2]) env (C.v101 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_70 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 70 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 70 [e0]) env (C.y15 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec70 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_71 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 71 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 71 [e0, e1, e2]) env (C.v102 a0 a1 a2) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_71 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 71 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 71 [e0, e1, e2]) env (C.y0 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec71 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_72 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 72 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 72 [e0, e1, e2]) env (C.v103 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec72 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_73 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 73 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 73 [e0, e1, e2]) env (C.v104b a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec73 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_74 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 74 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 74 [e0, e1, e2]) env (C.v104 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec74 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_75 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 75 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 75 [e0, e1, e2]) env (C.v105 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_75 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 75 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 75 [e0]) env (C.y8 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec75 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_76 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 76 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 76 [e0, e1, e2]) env (C.v106 a0 a1 a2) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_76 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 76 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 76 [e0]) env (C.y10 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec76 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_77 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 77 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 77 [e0, e1, e2]) env (C.v107 a0 a1 a2) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_77 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 77 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 77 [e0, e1, e2, e3]) env (C.y14 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec77 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_78 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 78 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 78 [e0, e1, e2]) env (C.v108 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_78 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 78 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 78 [e0, e1, e2, e3]) env (C.v85 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec78 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_79 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 79 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 79 [e0, e1, e2]) env (C.v109 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_79 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 79 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 79 [e0, e1, e2]) env (C.v86 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec79 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_80 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 80 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 80 [e0, e1, e2]) env (C.v110 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_80 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 80 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 80 [e0, e1]) env (C.v87 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec80 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_81 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 81 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 81 [e0, e1, e2]) env (C.v111 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_81 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 81 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 81 [e0]) env (C.v91 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec81 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_82 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 82 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 82 [e0, e1, e2]) env (C.v112 a0 a1 a2) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_82 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 82 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 82 [e0]) env (C.v92 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec82 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_83 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 83 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 83 [e0, e1, e2]) env (C.v113 a0 a1 a2) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_83 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 83 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 83 [e0, e1]) env (C.v90 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec83 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_84 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 84 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 84 [e0, e1, e2]) env (C.v114 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_84 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 84 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 84 [e0, e1]) env (C.v0 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec84 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_85 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 85 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 85 [e0, e1, e2]) env (C.v115 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_85 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 85 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 85 [e0, e1]) env (C.v94 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec85 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_86 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 86 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 86 [e0, e1, e2]) env (C.v116 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec86 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_87 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 87 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 87 [e0, e1, e2]) env (C.v117 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_87 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 87 < n) :
+    DenT cx (.call 87 []) env (C.k40) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec87 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_88 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 88 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 88 [e0, e1, e2]) env (C.v118 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_88 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 88 < n) :
+    DenT cx (.call 88 []) env (C.k41) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec88 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_89 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 89 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 89 [e0, e1, e2]) env (C.v119 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_89 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 89 < n) :
+    DenT cx (.call 89 []) env (C.k42) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec89 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_90 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 90 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 90 [e0, e1, e2]) env (C.v120 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_90 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 90 < n) :
+    DenT cx (.call 90 []) env (C.k43) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec90 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_91 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 91 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 91 [e0, e1, e2]) env (C.v121 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_91 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 91 < n) :
+    DenT cx (.call 91 []) env (C.k44) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec91 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_92 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 92 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 92 [e0, e1, e2]) env (C.v122 a0 a1 a2) := by
+  exact DenT.call hF DenP.nil (hS )
+theorem call_92 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 92 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 92 [e0, e1, e2, e3, e4]) env (C.v205 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec92 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_93 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 93 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 93 [e0, e1, e2]) env (C.v123 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_93 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 93 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 93 [e0, e1, e2, e3, e4, e5, e6]) env (C.v210 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec93 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_94 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 94 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 94 [e0, e1, e2]) env (C.v124 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_94 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 94 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 94 [e0, e1, e2]) env (C.v209 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec94 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_95 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 95 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 95 [e0, e1, e2]) env (C.v125 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_95 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 95 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 95 [e0, e1, e2, e3]) env (C.v1 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec95 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_96 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 96 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 96 [e0, e1, e2]) env (C.v126 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_96 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 96 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 96 [e0, e1, e2, e3, e4]) env (C.v2 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec96 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_97 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 97 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 97 [e0, e1, e2]) env (C.v127 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_97 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 97 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 97 [e0, e1, e2, e3, e4, e5, e6]) env (C.v5 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec97 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_98 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 98 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 98 [e0, e1, e2]) env (C.v128 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
+theorem call_98 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 98 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 98 [e0, e1, e2, e3]) env (C.v6 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec98 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_99 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 99 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 99 [e0, e1, e2]) env (C.v129 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_99 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 99 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 99 [e0, e1, e2, e3]) env (C.v7 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec99 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_100 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 100 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 100 [e0, e1, e2]) env (C.v130 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_100 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 100 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 100 [e0, e1, e2, e3]) env (C.v84 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec100 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_101 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 101 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 101 [e0, e1, e2]) env (C.v131 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_101 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 101 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 101 [e0, e1, e2, e3, e4]) env (C.v83 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec101 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
 theorem call_102 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 102 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 102 [e0, e1, e2]) env (C.v132 a0 a1 a2) := by
+    DenT cx (.call 102 [e0, e1, e2]) env (C.v8 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec102 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_103 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 103 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 103 [e0, e1, e2]) env (C.v201 a0 a1 a2) := by
+theorem call_103 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 103 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 103 [e0, e1]) env (C.v9 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec103 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_104 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 104 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 104 [e0, e1, e2]) env (C.v133 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_104 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 104 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 104 [e0, e1, e2, e3, e4]) env (C.v10 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec104 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
 theorem call_105 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 105 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 105 [e0, e1, e2]) env (C.v134 a0 a1 a2) := by
+    DenT cx (.call 105 [e0, e1, e2]) env (C.v14 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec105 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_106 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 106 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 106 [e0, e1, e2, e3]) env (C.v203 a0 a1 a2 a3) := by
+theorem call_106 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 106 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 106 [e0, e1]) env (C.v15 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec106 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
 theorem call_107 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 107 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 107 [e0, e1, e2]) env (C.v200 a0 a1 a2) := by
+    DenT cx (.call 107 [e0, e1, e2]) env (C.v93 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec107 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_108 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 108 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 108 [e0, e1, e2]) env (C.v135 a0 a1 a2) := by
+    DenT cx (.call 108 [e0, e1, e2]) env (C.v100 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec108 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_109 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 109 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 109 [e0, e1, e2]) env (C.v136 a0 a1 a2) := by
+    DenT cx (.call 109 [e0, e1, e2]) env (C.v101 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec109 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_110 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 110 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 110 [e0, e1, e2]) env (C.v137 a0 a1 a2) := by
+    DenT cx (.call 110 [e0, e1, e2]) env (C.v102 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec110 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_111 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 111 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 111 [e0, e1, e2]) env (C.v138 a0 a1 a2) := by
+    DenT cx (.call 111 [e0, e1, e2]) env (C.v103 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec111 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_112 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 112 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 112 [e0, e1, e2]) env (C.v139 a0 a1 a2) := by
+    DenT cx (.call 112 [e0, e1, e2]) env (C.v104b a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec112 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_113 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 113 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 113 [e0, e1, e2]) env (C.v140 a0 a1 a2) := by
+    DenT cx (.call 113 [e0, e1, e2]) env (C.v104 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec113 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_114 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 114 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 114 [e0, e1, e2]) env (C.v141 a0 a1 a2) := by
+    DenT cx (.call 114 [e0, e1, e2]) env (C.v105 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec114 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_115 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 115 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 115 [e0, e1, e2]) env (C.v142 a0 a1 a2) := by
+    DenT cx (.call 115 [e0, e1, e2]) env (C.v106 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec115 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_116 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 116 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 116 [e0, e1, e2]) env (C.v143 a0 a1 a2) := by
+    DenT cx (.call 116 [e0, e1, e2]) env (C.v107 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec116 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_117 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 117 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 117 [e0, e1, e2]) env (C.v144 a0 a1 a2) := by
+    DenT cx (.call 117 [e0, e1, e2]) env (C.v108 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec117 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_118 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 118 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 118 [e0, e1, e2]) env (C.v204 a0 a1 a2) := by
+    DenT cx (.call 118 [e0, e1, e2]) env (C.v109 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec118 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_119 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 119 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 119 [e0, e1, e2, e3]) env (C.v96 a0 a1 a2 a3) := by
+theorem call_119 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 119 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 119 [e0, e1, e2]) env (C.v110 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec119 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_120 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 120 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 120 [e0, e1]) env (C.v97 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_120 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 120 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 120 [e0, e1, e2]) env (C.v111 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec120 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
-theorem call_121 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 121 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 121 [e0, e1, e2, e3]) env (C.v98 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_121 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 121 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 121 [e0, e1, e2]) env (C.v112 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec121 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_122 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 122 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 122 [e0, e1]) env (C.v99 a0 a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_122 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 122 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 122 [e0, e1, e2]) env (C.v113 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec122 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_124 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 124 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 124 [e0]) env (C.y16 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_123 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 123 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 123 [e0, e1, e2]) env (C.v114 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec123 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_124 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 124 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 124 [e0, e1, e2]) env (C.v115 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec124 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_125 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 125 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 125 [e0, e1, e2]) env (C.o0 a0 a1 a2) := by
+    DenT cx (.call 125 [e0, e1, e2]) env (C.v116 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec125 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_126 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 126 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 126 [e0, e1]) env (C.o1 a0 a1) := by
+theorem call_126 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 126 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 126 [e0, e1, e2]) env (C.v117 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec126 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
 theorem call_127 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 127 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 127 [e0, e1, e2]) env (C.o2 a0 a1 a2) := by
+    DenT cx (.call 127 [e0, e1, e2]) env (C.v118 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec127 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_128 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 128 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 128 [e0, e1, e2, e3, e4, e5]) env (C.o3 a0 a1 a2 a3 a4 a5) := by
+theorem call_128 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 128 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 128 [e0, e1, e2]) env (C.v119 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec128 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
-theorem call_129 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 129 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 129 [e0]) env (C.o5 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_129 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 129 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 129 [e0, e1, e2]) env (C.v120 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec129 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_130 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 130 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 130 [e0, e1, e2]) env (C.o6 a0 a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_130 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 130 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 130 [e0, e1, e2]) env (C.v121 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec130 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_131 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 131 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 131 [e0, e1, e2]) env (C.o7 a0 a1 a2) := by
+theorem call_131 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 131 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 131 [e0, e1, e2]) env (C.v122 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec131 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_132 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 132 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 132 [e0, e1]) env (C.o10 a0 a1) := by
+theorem call_132 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 132 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 132 [e0, e1, e2]) env (C.v123 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec132 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_133 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 133 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 133 [e0]) env (C.o11 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_133 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 133 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 133 [e0, e1, e2]) env (C.v124 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec133 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_134 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 134 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 134 [e0, e1, e2, e3]) env (C.o9 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_134 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 134 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 134 [e0, e1, e2]) env (C.v125 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec134 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_135 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 135 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 135 [e0, e1, e2, e3]) env (C.o12 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_135 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 135 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 135 [e0, e1, e2]) env (C.v126 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec135 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_136 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 136 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 136 [e0, e1, e2, e3, e4, e5, e6]) env (C.o13 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_136 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 136 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 136 [e0, e1, e2]) env (C.v127 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec136 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
-theorem call_137 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 137 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 137 [e0, e1, e2, e3, e4, e5, e6]) env (C.o14 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_137 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 137 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 137 [e0, e1, e2]) env (C.v128 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec137 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_138 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 138 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 138 [e0, e1, e2, e3, e4, e5]) env (C.o15 a0 a1 a2 a3 a4 a5) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_138 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 138 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 138 [e0, e1, e2]) env (C.v129 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec138 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
-theorem call_139 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 139 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 139 [e0, e1, e2, e3, e4, e5, e6]) env (C.o17 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_139 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 139 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 139 [e0, e1, e2]) env (C.v130 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec139 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_140 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 140 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 140 [e0, e1, e2, e3, e4, e5, e6]) env (C.o18 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_140 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 140 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 140 [e0, e1, e2]) env (C.v131 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec140 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_141 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 141 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 141 [e0, e1, e2, e3]) env (C.o19 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_141 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 141 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 141 [e0, e1, e2]) env (C.v132 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec141 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_142 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 142 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 142 [e0, e1, e2, e3, e4, e5, e6]) env (C.o20 a0 a1 a2 a3 a4 a5 a6) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_142 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 142 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 142 [e0, e1, e2]) env (C.v201 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec142 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_143 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 143 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 143 [e0, e1, e2, e3, e4, e5, e6]) env (C.o22 a0 a1 a2 a3 a4 a5 a6) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec143 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_144 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 144 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 144 [e0, e1, e2, e3, e4, e5]) env (C.o25 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec144 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
-theorem call_145 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 145 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 145 [e0, e1, e2, e3, e4]) env (C.o28 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec145 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_146 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 146 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
-    DenT cx (.call 146 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o26 a0 a1 a2 a3 a4 a5 a6 a7) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec146 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
-theorem call_147 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 147 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
-    DenT cx (.call 147 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o16 a0 a1 a2 a3 a4 a5 a6 a7) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec147 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
-theorem call_148 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 148 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 148 [e0, e1, e2, e3, e4, e5, e6]) env (C.o27 a0 a1 a2 a3 a4 a5 a6) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec148 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_149 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 149 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 149 [e0, e1, e2, e3]) env (C.o29 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec149 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_150 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 150 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 150 [e0, e1, e2, e3, e4]) env (C.o31 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec150 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_151 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 151 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 151 [e0, e1, e2, e3, e4]) env (C.o32 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec151 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_152 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 152 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 152 [e0, e1, e2, e3, e4]) env (C.o33 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec152 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_153 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 153 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 153 [e0, e1, e2, e3, e4]) env (C.o30 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec153 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_154 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 154 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 154 [e0, e1, e2, e3, e4, e5]) env (C.o34 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec154 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
-theorem call_155 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 155 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 155 [e0, e1, e2, e3, e4, e5]) env (C.o35 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec155 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
-theorem call_156 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 156 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 156 [e0, e1, e2, e3, e4, e5]) env (C.o36 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec156 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
-theorem call_157 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 157 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 157 [e0, e1, e2, e3, e4, e5]) env (C.o37 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec157 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
-theorem call_158 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 158 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 158 [e0, e1, e2]) env (C.o40 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec158 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_159 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 159 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 159 [e0, e1, e2, e3, e4]) env (C.o42 a0 a1 a2 a3 a4) := by
+theorem call_143 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 143 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 143 [e0, e1, e2]) env (C.v133 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec143 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_144 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 144 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 144 [e0, e1, e2]) env (C.v134 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec144 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_145 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 145 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 145 [e0, e1, e2, e3]) env (C.v203 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec145 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_146 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 146 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 146 [e0, e1, e2]) env (C.v200 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec146 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_147 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 147 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 147 [e0, e1, e2]) env (C.v135 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec147 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_148 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 148 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 148 [e0, e1, e2]) env (C.v136 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec148 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_149 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 149 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 149 [e0, e1, e2]) env (C.v137 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec149 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_150 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 150 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 150 [e0, e1, e2]) env (C.v138 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec150 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_151 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 151 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 151 [e0, e1, e2]) env (C.v139 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec151 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_152 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 152 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 152 [e0, e1, e2]) env (C.v140 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec152 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_153 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 153 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 153 [e0, e1, e2]) env (C.v141 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec153 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_154 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 154 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 154 [e0, e1, e2]) env (C.v142 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec154 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_155 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 155 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 155 [e0, e1, e2]) env (C.v143 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec155 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_156 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 156 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 156 [e0, e1, e2]) env (C.v144 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec156 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_157 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 157 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 157 [e0, e1, e2]) env (C.v204 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec157 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_158 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 158 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 158 [e0, e1, e2, e3]) env (C.v96 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec158 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_159 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 159 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 159 [e0, e1]) env (C.v97 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec159 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_160 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 160 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
-    DenT cx (.call 160 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o38 a0 a1 a2 a3 a4 a5 a6 a7) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
+theorem call_160 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 160 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 160 [e0, e1, e2, e3]) env (C.v98 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec160 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7)
-theorem call_161 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} {a8 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 161 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) :
-    DenT cx (.call 161 [e0, e1, e2, e3, e4, e5, e6, e7, e8]) env (C.o39 a0 a1 a2 a3 a4 a5 a6 a7 a8) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_161 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 161 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 161 [e0, e1]) env (C.v99 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec161 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.one h8))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 hn)
-theorem call_162 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 162 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 162 [e0]) env (C.o41 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec162 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_163 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 163 < n) :
-    DenT cx (.call 163 []) env (C.g_0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_163 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 163 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 163 [e0]) env (C.y16 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec163 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_164 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 164 < n) :
-    DenT cx (.call 164 []) env (C.g_1) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_164 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 164 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 164 [e0, e1, e2]) env (C.o0 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec164 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_165 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 165 < n) :
-    DenT cx (.call 165 []) env (C.g_3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_165 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 165 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 165 [e0, e1]) env (C.o1 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec165 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_166 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 166 < n) :
-    DenT cx (.call 166 []) env (C.g_19) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_166 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 166 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 166 [e0, e1, e2]) env (C.o2 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec166 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_167 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 167 < n) :
-    DenT cx (.call 167 []) env (C.g_16) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_167 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 167 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 167 [e0, e1, e2, e3, e4, e5]) env (C.o3 a0 a1 a2 a3 a4 a5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec167 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_168 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 168 < n) :
-    DenT cx (.call 168 []) env (C.g_31) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_168 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 168 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 168 [e0]) env (C.o5 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec168 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_169 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 169 < n) :
-    DenT cx (.call 169 []) env (C.g_35) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_169 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 169 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 169 [e0, e1, e2]) env (C.o6 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec169 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_170 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 170 < n) :
-    DenT cx (.call 170 []) env (C.g_51) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_170 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 170 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 170 [e0, e1, e2]) env (C.o7 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec170 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_171 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 171 < n) :
-    DenT cx (.call 171 []) env (C.g_63) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_171 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 171 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 171 [e0, e1]) env (C.o10 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec171 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_172 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 172 < n) :
-    DenT cx (.call 172 []) env (C.g_99) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_172 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 172 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 172 [e0]) env (C.o11 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec172 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_173 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 173 < n) :
-    DenT cx (.call 173 []) env (C.g_103) := by
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_173 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 173 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 173 [e0, e1, e2, e3]) env (C.o9 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec173 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_174 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 174 < n) :
-    DenT cx (.call 174 []) env (C.g_111) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_174 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 174 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 174 [e0, e1, e2, e3]) env (C.o12 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec174 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_175 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 175 < n) :
-    DenT cx (.call 175 []) env (C.g_127) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_175 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 175 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 175 [e0, e1, e2, e3, e4, e5, e6]) env (C.o13 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec175 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_176 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 176 < n) :
-    DenT cx (.call 176 []) env (C.g_15) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
+theorem call_176 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 176 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 176 [e0, e1, e2, e3, e4, e5, e6]) env (C.o14 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec176 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_177 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 177 < n) :
-    DenT cx (.call 177 []) env (C.g_255) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_177 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 177 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 177 [e0, e1, e2, e3, e4, e5]) env (C.o15 a0 a1 a2 a3 a4 a5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec177 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_178 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 178 < n) :
-    DenT cx (.call 178 []) env (C.g_1023) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_178 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 178 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 178 [e0, e1, e2, e3, e4, e5, e6]) env (C.o17 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec178 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_179 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 179 < n) :
-    DenT cx (.call 179 []) env (C.g_4095) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_179 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 179 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 179 [e0, e1, e2, e3, e4, e5, e6]) env (C.o18 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec179 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_180 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 180 < n) :
-    DenT cx (.call 180 []) env (C.g_901) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_180 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 180 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 180 [e0, e1, e2, e3]) env (C.o19 a0 a1 a2 a3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec180 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_181 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 181 < n) :
-    DenT cx (.call 181 []) env (C.g_902) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_181 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 181 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 181 [e0, e1, e2, e3, e4, e5, e6]) env (C.o20 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec181 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_182 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 182 < n) :
-    DenT cx (.call 182 []) env (C.g_908) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_182 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 182 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 182 [e0, e1, e2, e3, e4, e5, e6]) env (C.o22 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec182 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_183 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 183 < n) :
-    DenT cx (.call 183 []) env (C.g_999) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_183 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 183 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 183 [e0, e1, e2, e3, e4, e5]) env (C.o25 a0 a1 a2 a3 a4 a5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec183 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_184 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 184 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 184 [e0, e1, e2, e3, e4]) env (C.g1 a0 a1 a2 a3 a4) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_184 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 184 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 184 [e0, e1, e2, e3, e4]) env (C.o28 a0 a1 a2 a3 a4) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec184 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_185 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 185 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 185 [e0, e1, e2, e3, e4]) env (C.g2 a0 a1 a2 a3 a4) := by
+theorem call_185 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 185 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
+    DenT cx (.call 185 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o26 a0 a1 a2 a3 a4 a5 a6 a7) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec185 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_186 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 186 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 186 [e0, e1, e2, e3]) env (C.g3 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
+theorem call_186 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 186 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
+    DenT cx (.call 186 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o16 a0 a1 a2 a3 a4 a5 a6 a7) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec186 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_187 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 187 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 187 [e0, e1, e2, e3]) env (C.g4 a0 a1 a2 a3) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
+theorem call_187 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 187 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 187 [e0, e1, e2, e3, e4, e5, e6]) env (C.o27 a0 a1 a2 a3 a4 a5 a6) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec187 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_188 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 188 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 188 [e0, e1]) env (C.g5 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec188 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_189 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 189 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 189 [e0, e1, e2]) env (C.g10 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec189 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_190 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 190 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 190 [e0, e1, e2]) env (C.g11 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec190 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_191 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 191 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 191 [e0, e1, e2]) env (C.g12 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec191 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_192 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 192 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 192 [e0, e1, e2]) env (C.g13 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec192 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_193 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 193 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 193 [e0, e1]) env (C.g14 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec193 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_194 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 194 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 194 [e0, e1, e2]) env (C.g15 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec194 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_195 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 195 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 195 [e0]) env (C.g16 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec195 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_196 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 196 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 196 [e0, e1, e2]) env (C.g17 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec196 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_197 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 197 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 197 [e0, e1, e2, e3, e4]) env (C.g18 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec197 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_198 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 198 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 198 [e0, e1, e2, e3]) env (C.g19 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec198 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_199 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 199 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 199 [e0, e1, e2]) env (C.g20 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec199 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_200 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 200 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 200 [e0]) env (C.g21 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec200 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_201 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 201 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 201 [e0, e1]) env (C.g22 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec201 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_202 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 202 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 202 [e0, e1, e2]) env (C.g23 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec202 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_203 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 203 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 203 [e0, e1]) env (C.g24 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec203 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_204 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 204 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 204 [e0, e1, e2, e3, e4]) env (C.g25 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec204 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_205 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 205 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 205 [e0, e1, e2, e3, e4]) env (C.g26 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec205 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_206 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 206 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 206 [e0, e1, e2, e3]) env (C.g27 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec206 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_207 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : (Buf × (Buf × Buf))} (G : Good (specs cx.inp) cx.defs n) (hi : 207 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 207 [e0, e1, e2]) env (C.g28 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec207 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_208 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 208 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 208 [e0, e1, e2, e3, e4]) env (C.g29 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec208 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
-theorem call_209 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 209 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 209 [e0, e1]) env (C.g30 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec209 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_210 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 210 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 210 [e0, e1]) env (C.g31 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec210 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_211 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 211 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 211 [e0, e1, e2]) env (C.g32 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec211 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_212 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 212 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 212 [e0]) env (C.g33 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec212 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_213 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 213 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 213 [e0]) env (C.g34 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec213 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_214 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 214 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 214 [e0, e1, e2]) env (C.g35 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec214 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_215 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 215 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 215 [e0, e1, e2]) env (C.g43 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec215 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_216 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 216 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 216 [e0, e1, e2, e3, e4]) env (C.g36 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec216 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_217 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 217 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 217 [e0, e1, e2, e3, e4, e5]) env (C.g37 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec217 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
-theorem call_218 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 218 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 218 [e0, e1, e2, e3, e4]) env (C.g38 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec218 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_219 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 219 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
-    DenT cx (.call 219 [e0, e1, e2, e3, e4, e5]) env (C.g54 a0 a1 a2 a3 a4 a5) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec219 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
-theorem call_220 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 220 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 220 [e0, e1, e2]) env (C.g55 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec220 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_221 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 221 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 221 [e0, e1, e2]) env (C.g56 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec221 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_222 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 222 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
-    DenT cx (.call 222 [e0, e1, e2, e3, e4, e5, e6]) env (C.g39 a0 a1 a2 a3 a4 a5 a6) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec222 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
-theorem call_223 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : Buf} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 223 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
-    DenT cx (.call 223 [e0, e2, e3, e4]) env (Sh.g40 a0 cx.inp a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec223 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
-theorem call_224 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 224 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 224 [e0, e1]) env (C.g44 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec224 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_225 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 225 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 225 [e0, e1, e2]) env (C.g46 a0 a1 a2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec225 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_226 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 226 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
-    DenT cx (.call 226 [e0, e1, e2, e3, e4]) env (C.g47 a0 a1 a2 a3 a4) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec226 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
-theorem call_227 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 227 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 227 [e0]) env (C.g48 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec227 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_228 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 228 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 228 [e0, e1]) env (C.g49 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec228 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_229 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 229 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 229 [e0, e1, e2, e3]) env (C.g50 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec229 cx.inp) rfl
+theorem call_188 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 188 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 188 [e0, e1, e2, e3]) env (C.o29 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec188 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
-theorem call_230 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 230 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
-    DenT cx (.call 230 [e0, e1, e2]) env (C.g51 a0 a1 a2) := by
+theorem call_189 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 189 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 189 [e0, e1, e2, e3, e4]) env (C.o31 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec189 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_190 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 190 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 190 [e0, e1, e2, e3, e4]) env (C.o32 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec190 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_191 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 191 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 191 [e0, e1, e2, e3, e4]) env (C.o33 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec191 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_192 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 192 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 192 [e0, e1, e2, e3, e4]) env (C.o30 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec192 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_193 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 193 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 193 [e0, e1, e2, e3, e4, e5]) env (C.o34 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec193 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_194 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 194 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 194 [e0, e1, e2, e3, e4, e5]) env (C.o35 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec194 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_195 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 195 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 195 [e0, e1, e2, e3, e4, e5]) env (C.o36 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec195 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_196 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 196 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 196 [e0, e1, e2, e3, e4, e5]) env (C.o37 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec196 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_197 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 197 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 197 [e0, e1, e2]) env (C.o40 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec197 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_198 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 198 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 198 [e0, e1, e2, e3, e4]) env (C.o42 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec198 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_199 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 199 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
+    DenT cx (.call 199 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.o38 a0 a1 a2 a3 a4 a5 a6 a7) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec199 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7)
+theorem call_200 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} {a8 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 200 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) :
+    DenT cx (.call 200 [e0, e1, e2, e3, e4, e5, e6, e7, e8]) env (C.o39 a0 a1 a2 a3 a4 a5 a6 a7 a8) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec200 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.one h8))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 hn)
+theorem call_201 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 201 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 201 [e0]) env (C.o41 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec201 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_202 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 202 < n) :
+    DenT cx (.call 202 []) env (C.g_0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec202 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_203 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 203 < n) :
+    DenT cx (.call 203 []) env (C.g_1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec203 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_204 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 204 < n) :
+    DenT cx (.call 204 []) env (C.g_3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec204 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_205 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 205 < n) :
+    DenT cx (.call 205 []) env (C.g_19) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec205 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_206 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 206 < n) :
+    DenT cx (.call 206 []) env (C.g_16) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec206 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_207 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 207 < n) :
+    DenT cx (.call 207 []) env (C.g_31) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec207 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_208 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 208 < n) :
+    DenT cx (.call 208 []) env (C.g_35) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec208 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_209 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 209 < n) :
+    DenT cx (.call 209 []) env (C.g_51) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec209 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_210 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 210 < n) :
+    DenT cx (.call 210 []) env (C.g_63) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec210 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_211 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 211 < n) :
+    DenT cx (.call 211 []) env (C.g_99) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec211 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_212 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 212 < n) :
+    DenT cx (.call 212 []) env (C.g_103) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec212 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_213 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 213 < n) :
+    DenT cx (.call 213 []) env (C.g_111) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec213 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_214 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 214 < n) :
+    DenT cx (.call 214 []) env (C.g_127) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec214 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_215 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 215 < n) :
+    DenT cx (.call 215 []) env (C.g_15) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec215 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_216 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 216 < n) :
+    DenT cx (.call 216 []) env (C.g_255) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec216 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_217 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 217 < n) :
+    DenT cx (.call 217 []) env (C.g_1023) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec217 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_218 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 218 < n) :
+    DenT cx (.call 218 []) env (C.g_4095) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec218 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_219 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 219 < n) :
+    DenT cx (.call 219 []) env (C.g_901) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec219 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_220 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 220 < n) :
+    DenT cx (.call 220 []) env (C.g_902) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec220 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_221 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 221 < n) :
+    DenT cx (.call 221 []) env (C.g_908) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec221 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_222 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 222 < n) :
+    DenT cx (.call 222 []) env (C.g_999) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec222 cx.inp) rfl
+  exact DenT.call hF DenP.nil (hS )
+theorem call_223 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 223 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 223 [e0, e1, e2, e3, e4]) env (C.g1 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec223 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_224 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 224 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 224 [e0, e1, e2, e3, e4]) env (C.g2 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec224 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_225 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 225 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 225 [e0, e1, e2, e3]) env (C.g3 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec225 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_226 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 226 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 226 [e0, e1, e2, e3]) env (C.g4 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec226 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_227 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 227 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 227 [e0, e1]) env (C.g5 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec227 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_228 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 228 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 228 [e0, e1, e2]) env (C.g10 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec228 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_229 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 229 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 229 [e0, e1, e2]) env (C.g11 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec229 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_230 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 230 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 230 [e0, e1, e2]) env (C.g12 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec230 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
-theorem call_231 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : (Buf × (Buf × Buf))} (G : Good (specs cx.inp) cx.defs n) (hi : 231 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 231 [e0, e1]) env (C.g52 a0 a1) := by
+theorem call_231 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : UInt64} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 231 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 231 [e0, e1, e2]) env (C.g13 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec231 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
-theorem call_232 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 232 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 232 [e0]) env (C.g53 a0) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_232 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 232 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 232 [e0, e1]) env (C.g14 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec232 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
-theorem call_233 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 233 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
-    DenT cx (.call 233 [e1, e2]) env (Sh.g42 cx.inp a1 a2) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_233 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 233 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 233 [e0, e1, e2]) env (C.g15 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec233 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
-theorem call_234 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 234 < n) (h0 : DenT cx e1 env a1) :
-    DenT cx (.call 234 [e1]) env (Sh.g41 cx.inp a1) := by
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_234 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 234 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 234 [e0]) env (C.g16 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec234 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_235 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 235 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 235 [e0, e1, e2]) env (C.g17 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec235 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_236 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 236 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 236 [e0, e1, e2, e3, e4]) env (C.g18 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec236 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_237 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 237 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 237 [e0, e1, e2, e3]) env (C.g19 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec237 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_238 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 238 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 238 [e0, e1, e2]) env (C.g20 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec238 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_239 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 239 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 239 [e0]) env (C.g21 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec239 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_240 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 240 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 240 [e0, e1]) env (C.g22 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec240 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_241 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 241 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 241 [e0, e1, e2]) env (C.g23 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec241 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_242 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : UInt64} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 242 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 242 [e0, e1]) env (C.g24 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec242 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_243 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 243 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 243 [e0, e1, e2, e3, e4]) env (C.g25 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec243 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_244 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 244 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 244 [e0, e1, e2, e3, e4]) env (C.g26 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec244 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_245 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 245 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 245 [e0, e1, e2, e3]) env (C.g27 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec245 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_246 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : (Buf × (Buf × Buf))} (G : Good (specs cx.inp) cx.defs n) (hi : 246 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 246 [e0, e1, e2]) env (C.g28 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec246 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
+theorem call_247 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 247 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 247 [e0, e1, e2, e3, e4]) env (C.g29 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec247 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_248 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 248 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 248 [e0, e1]) env (C.g30 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec248 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_249 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 249 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 249 [e0, e1]) env (C.g31 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec249 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_250 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 250 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 250 [e0, e1, e2]) env (C.g32 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec250 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_251 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 251 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 251 [e0]) env (C.g33 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec251 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_252 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 252 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 252 [e0]) env (C.g34 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec252 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_253 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 253 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 253 [e0, e1, e2]) env (C.g35 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec253 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_254 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 254 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 254 [e0, e1, e2]) env (C.g43 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec254 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_255 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 255 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 255 [e0, e1, e2, e3, e4]) env (C.g36 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec255 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_256 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 256 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 256 [e0, e1, e2, e3, e4, e5]) env (C.g37 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec256 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_257 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 257 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 257 [e0, e1, e2, e3, e4]) env (C.g38 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec257 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_258 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 258 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 258 [e0, e1, e2, e3, e4, e5]) env (C.g54 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec258 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_259 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 259 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 259 [e0, e1, e2]) env (C.g55 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec259 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_260 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 260 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 260 [e0, e1, e2]) env (C.g56 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec260 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_261 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 261 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 261 [e0, e1, e2, e3, e4, e5, e6]) env (C.g39 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec261 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_262 {cx : Ctx} {env : List W} {n : Nat} {e0 e2 e3 e4 : Nd} {a0 : Nat} {a2 : Buf} {a3 : UInt64} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 262 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e2 env a2) (h2 : DenT cx e3 env a3) (h3 : DenT cx e4 env a4) :
+    DenT cx (.call 262 [e0, e2, e3, e4]) env (Sh.g40 a0 cx.inp a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec262 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a2 a3 a4 hn)
+theorem call_263 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 263 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 263 [e0, e1]) env (C.g44 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec263 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_264 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 264 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 264 [e0, e1, e2]) env (C.g46 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec264 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_265 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 265 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 265 [e0, e1, e2, e3, e4]) env (C.g47 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec265 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_266 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 266 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 266 [e0]) env (C.g48 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec266 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_267 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 267 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 267 [e0, e1]) env (C.g49 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec267 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_268 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 268 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 268 [e0, e1, e2, e3]) env (C.g50 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec268 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_269 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 269 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 269 [e0, e1, e2]) env (C.g51 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec269 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_270 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Nat} {a1 : (Buf × (Buf × Buf))} (G : Good (specs cx.inp) cx.defs n) (hi : 270 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 270 [e0, e1]) env (C.g52 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec270 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1 hn)
+theorem call_271 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 271 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 271 [e0]) env (C.g53 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec271 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_272 {cx : Ctx} {env : List W} {n : Nat} {e1 e2 : Nd} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 272 < n) (h0 : DenT cx e1 env a1) (h1 : DenT cx e2 env a2) :
+    DenT cx (.call 272 [e1, e2]) env (Sh.g42 cx.inp a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec272 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a1 a2)
+theorem call_273 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 273 < n) (h0 : DenT cx e1 env a1) :
+    DenT cx (.call 273 [e1]) env (Sh.g41 cx.inp a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec273 cx.inp) rfl
   exact DenT.call hF (DenP.one h0) (hS a1)
+theorem call_274 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 274 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 274 [e0, e1, e2]) env (C.u20 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec274 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_275 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : Buf} {a5 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 275 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 275 [e0, e1, e2, e3, e4, e5]) env (C.u64 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec275 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_276 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : Buf} {a6 : UInt64} {a7 : UInt64} {a8 : UInt64} {a9 : Buf} {a10 : Buf} {a11 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 276 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) :
+    DenT cx (.call 276 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11]) env (C.u65 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec276 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.one h11)))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11)
+theorem call_277 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 277 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 277 [e0, e1, e2, e3]) env (C.u12 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec277 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_278 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 278 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 278 [e0, e1]) env (C.u15 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec278 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_279 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 279 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 279 [e0, e1]) env (C.u34 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec279 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_280 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 280 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 280 [e0, e1, e2, e3, e4, e5]) env (C.u13 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec280 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_281 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 281 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
+    DenT cx (.call 281 [e0, e1]) env (C.u63 a0 a1) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec281 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
+theorem call_282 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 282 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 282 [e0, e1, e2, e3, e4]) env (C.u16 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec282 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_283 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 283 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 283 [e0, e1, e2, e3]) env (C.u14 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec283 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_284 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 284 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 284 [e0, e1, e2]) env (C.u17 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec284 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_285 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 285 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 285 [e0, e1, e2, e3]) env (C.u71 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec285 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_286 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 286 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 286 [e0, e1, e2]) env (C.u72 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec286 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_287 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 287 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 287 [e0, e1, e2, e3]) env (C.u18 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec287 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_288 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 288 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 288 [e0, e1, e2, e3, e4, e5, e6]) env (C.u22 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec288 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_289 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 289 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 289 [e0, e1, e2, e3]) env (C.u23 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec289 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_290 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 290 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 290 [e0, e1, e2, e3, e4, e5]) env (C.u24 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec290 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_291 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 291 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 291 [e0, e1, e2, e3, e4, e5]) env (C.u25 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec291 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_292 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 292 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 292 [e0, e1, e2, e3, e4, e5]) env (C.u26 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec292 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_293 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 293 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 293 [e0, e1, e2, e3, e4]) env (C.u27 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec293 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_294 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 294 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 294 [e0, e1, e2]) env (C.u35 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec294 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_295 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 295 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 295 [e0, e1, e2, e3]) env (C.u36 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec295 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_296 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : Buf} {a7 : UInt64} {a8 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 296 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) :
+    DenT cx (.call 296 [e0, e1, e2, e3, e4, e5, e6, e7, e8]) env (C.u29 a0 a1 a2 a3 a4 a5 a6 a7 a8) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec296 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.one h8))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8)
+theorem call_297 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : Buf} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 297 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) :
+    DenT cx (.call 297 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9]) env (C.u28 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec297 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.one h9)))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 hn)
+theorem call_298 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 298 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 298 [e0, e1, e2, e3, e4, e5, e6]) env (C.u31 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec298 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
+theorem call_299 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 299 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 299 [e0, e1, e2, e3, e4, e5, e6]) env (C.u32 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec299 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
+theorem call_300 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 300 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 300 [e0, e1, e2, e3, e4, e5, e6]) env (C.u70 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec300 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6)
+theorem call_301 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : Buf} {a6 : UInt64} {a7 : UInt64} {a8 : UInt64} {a9 : Buf} {a10 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 301 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) :
+    DenT cx (.call 301 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10]) env (C.u33 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec301 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.one h10))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 hn)
+theorem call_302 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 302 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 302 [e0, e1, e2, e3, e4]) env (C.u43 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec302 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_303 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : Buf} {a12 : Buf} {a13 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 303 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) :
+    DenT cx (.call 303 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13]) env (C.u42 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec303 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.one h13)))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13)
+theorem call_304 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : Buf} {a12 : Buf} {a13 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 304 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) :
+    DenT cx (.call 304 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13]) env (C.u41 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec304 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.one h13)))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13)
+theorem call_305 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : Buf} {a7 : UInt64} {a8 : UInt64} {a9 : Buf} {a10 : Buf} {a11 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 305 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) :
+    DenT cx (.call 305 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11]) env (C.u44 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec305 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.one h11)))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11)
+theorem call_306 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : Buf} {a11 : Buf} {a12 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 306 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) :
+    DenT cx (.call 306 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12]) env (C.u45 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec306 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.one h12))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12)
+theorem call_307 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : UInt64} {a12 : Buf} {a13 : Buf} {a14 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 307 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) (h14 : DenT cx e14 env a14) :
+    DenT cx (.call 307 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14]) env (C.u66 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec307 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.cons h13 (DenP.one h14))))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14)
+theorem call_308 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : Buf} {a12 : Buf} {a13 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 308 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) :
+    DenT cx (.call 308 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13]) env (C.u46 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec308 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.one h13)))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13)
+theorem call_309 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : UInt64} {a12 : Buf} {a13 : Buf} {a14 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 309 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) (h14 : DenT cx e14 env a14) :
+    DenT cx (.call 309 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14]) env (C.u39 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec309 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.cons h13 (DenP.one h14))))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14)
+theorem call_310 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : UInt64} {a9 : UInt64} {a10 : UInt64} {a11 : UInt64} {a12 : UInt64} {a13 : Buf} {a14 : Buf} {a15 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 310 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) (h14 : DenT cx e14 env a14) (h15 : DenT cx e15 env a15) :
+    DenT cx (.call 310 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15]) env (C.u49 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec310 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.cons h13 (DenP.cons h14 (DenP.one h15)))))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15)
+theorem call_311 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 311 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 311 [e0, e1, e2, e3, e4]) env (C.u47 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec311 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_312 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : UInt64} {a6 : UInt64} {a7 : Buf} {a8 : Buf} {a9 : UInt64} {a10 : UInt64} {a11 : Buf} {a12 : Buf} {a13 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 312 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) :
+    DenT cx (.call 312 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13]) env (C.u81 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec312 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.one h13)))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13)
+theorem call_313 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : Buf} {a6 : UInt64} {a7 : UInt64} {a8 : Buf} {a9 : Buf} {a10 : UInt64} {a11 : UInt64} {a12 : Buf} {a13 : Buf} {a14 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 313 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) (h11 : DenT cx e11 env a11) (h12 : DenT cx e12 env a12) (h13 : DenT cx e13 env a13) (h14 : DenT cx e14 env a14) :
+    DenT cx (.call 313 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14]) env (C.u40 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec313 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.cons h10 (DenP.cons h11 (DenP.cons h12 (DenP.cons h13 (DenP.one h14))))))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 hn)
+theorem call_314 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 314 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 314 [e0, e1, e2, e3, e4]) env (C.u52 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec314 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_315 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 315 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 315 [e0, e1, e2, e3]) env (C.u51 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec315 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_316 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 316 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 316 [e0, e1, e2, e3, e4, e5]) env (C.u53 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec316 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_317 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 317 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 317 [e0, e1, e2, e3, e4, e5]) env (C.u54 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec317 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_318 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 318 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 318 [e0, e1, e2, e3, e4, e5]) env (C.u55 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec318 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_319 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 319 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 319 [e0, e1, e2, e3, e4, e5, e6]) env (C.u56 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec319 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_320 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 320 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 320 [e0, e1, e2, e3]) env (C.u57 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec320 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_321 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 321 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 321 [e0, e1, e2, e3, e4]) env (C.u59 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec321 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_322 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 322 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 322 [e0, e1, e2, e3, e4]) env (C.u58 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec322 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4 hn)
+theorem call_323 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} {a3 : Buf} {a4 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 323 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) :
+    DenT cx (.call 323 [e0, e1, e2, e3, e4]) env (C.u50 a0 a1 a2 a3 a4) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec323 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.one h4))))) (hS a0 a1 a2 a3 a4)
+theorem call_324 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} {a8 : Buf} {a9 : Buf} {a10 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 324 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) :
+    DenT cx (.call 324 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10]) env (C.u48 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec324 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.one h10))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10)
+theorem call_325 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 325 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 325 [e0, e1, e2, e3]) env (C.u60 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec325 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
+theorem call_326 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Buf} {a1 : UInt64} {a2 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 326 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) :
+    DenT cx (.call 326 [e0, e1, e2]) env (C.u77 a0 a1 a2) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec326 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2)
+theorem call_327 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 327 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) :
+    DenT cx (.call 327 [e0, e1, e2, e3, e4, e5, e6]) env (C.u82 a0 a1 a2 a3 a4 a5 a6) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec327 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.one h6))))))) (hS a0 a1 a2 a3 a4 a5 a6 hn)
+theorem call_328 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 328 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 328 [e0, e1, e2, e3]) env (C.u83 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec328 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_329 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 329 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 329 [e0, e1, e2, e3, e4, e5]) env (C.u78 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec329 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_330 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 330 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 330 [e0, e1, e2, e3, e4, e5]) env (C.u85 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec330 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_331 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} {a6 : UInt64} {a7 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 331 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) :
+    DenT cx (.call 331 [e0, e1, e2, e3, e4, e5, e6, e7]) env (C.u76 a0 a1 a2 a3 a4 a5 a6 a7) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec331 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.one h7)))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 hn)
+theorem call_332 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 332 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 332 [e0, e1, e2, e3, e4, e5]) env (C.u75 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec332 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5)
+theorem call_333 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 333 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 333 [e0, e1, e2, e3]) env (C.u84 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec333 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_334 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : Buf} {a4 : UInt64} {a5 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 334 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) :
+    DenT cx (.call 334 [e0, e1, e2, e3, e4, e5]) env (C.u73 a0 a1 a2 a3 a4 a5) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec334 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.one h5)))))) (hS a0 a1 a2 a3 a4 a5 hn)
+theorem call_335 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Buf} {a1 : Buf} {a2 : Buf} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 335 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
+    DenT cx (.call 335 [e0, e1, e2, e3]) env (C.u79 a0 a1 a2 a3) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec335 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3)
+theorem call_336 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 : Nd} {a0 : Buf} {a1 : Buf} {a2 : UInt64} {a3 : Buf} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} {a8 : Buf} {a9 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 336 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) :
+    DenT cx (.call 336 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9]) env (C.u80 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec336 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.one h9)))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9)
+theorem call_337 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 : Nd} {a0 : Nat} {a1 : Buf} {a2 : Buf} {a3 : UInt64} {a4 : Buf} {a5 : Buf} {a6 : Buf} {a7 : Buf} {a8 : Buf} {a9 : Buf} {a10 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 337 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) (h4 : DenT cx e4 env a4) (h5 : DenT cx e5 env a5) (h6 : DenT cx e6 env a6) (h7 : DenT cx e7 env a7) (h8 : DenT cx e8 env a8) (h9 : DenT cx e9 env a9) (h10 : DenT cx e10 env a10) :
+    DenT cx (.call 337 [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10]) env (C.u61 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec337 cx.inp) rfl
+  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.cons h3 (DenP.cons h4 (DenP.cons h5 (DenP.cons h6 (DenP.cons h7 (DenP.cons h8 (DenP.cons h9 (DenP.one h10))))))))))) (hS a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 hn)
+theorem call_338 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 338 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 338 [e0]) env (C.u11 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec338 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
+theorem call_339 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 339 < n) (h0 : DenT cx e0 env a0) :
+    DenT cx (.call 339 [e0]) env (C.u10 a0) := by
+  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec339 cx.inp) rfl
+  exact DenT.call hF (DenP.one h0) (hS a0)
 end Cert

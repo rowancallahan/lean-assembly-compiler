@@ -58,7 +58,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call I.code x)
     (hld : T.loader s call I.code x)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
-    (hS : ∀ Tb, semAtF (pcOf 524288 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
+    (hS : ∀ Tb, semAtF (pcOf 2097152 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
       (NanoMain.inpW x) Tb) p (p.length - 1) [] ((call.workAddress.toNat + call.workLength) / 8 * 8)
       ⟨call.workAddress.toNat + 16, fun _ => none⟩ = .error .room) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
