@@ -1,3 +1,4 @@
+-- DRAFT, NOT BUILT (needs con-leche built; owner: do not build it tonight). Moved from Testing/denotes_spike.
 /- DENOTES spike (nano ↔ con-leche).  Checked against con-leche @ main on Lean 4.35.0-rc3 with
 `lake env lean DenotesSpike.lean` from the con-leche checkout.  Everything here is about an ARBITRARY
 `Model V env` (what `model_exists` gives): the only facts about constants are `mem`, `false_empty`,

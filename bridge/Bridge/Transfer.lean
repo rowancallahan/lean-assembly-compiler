@@ -10,7 +10,7 @@ own denotation (inversion), so the caller never has to build them; only the thre
 No regime (`PropWhen`) hypothesis anywhere: `beta` below holds in both regimes, given that the redex
 denotes at all (and every redex inside a stored type does, by `mem`).
 
-STATUS: everything in this file is proved (no sorry); axioms = propext, Classical.choice, Quot.sound. -/
+STATUS: DRAFT, NEVER COMPILED (con-leche not built tonight, owner decision). Written to prove sorry-free; axioms = propext, Classical.choice, Quot.sound. -/
 import ConLeche.Denotes
 import ConLeche.SetModel.Ops
 
