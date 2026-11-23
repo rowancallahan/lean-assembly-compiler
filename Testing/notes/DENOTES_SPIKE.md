@@ -379,6 +379,6 @@ All in `bridge/Bridge/Main.lean`, same shape as `nano_input`. Hypotheses: accept
 `lean4export Bridge.Main -- Bridge.nano_tiny … Bridge.nano_sub Bridge.Real.LamDemo.lam_regime_g` (all top
 theorems with their whole dependency closure: con-leche's own checker, model and soundness proof, nano's Expr spec
 and the bridge). Output: 579 MB, 10.6 M lines, export ~32 s. `con-leche` (--verified) **accepts** it:
-32044 declarations, ~59 s wall (parse 2.5 s, install 5.8 s, check 50 s), 1.6 GiB peak RSS. So the bridge
+32044 declarations, ~59 s wall (parse 2.5 s, install 5.8 s, check 50 s), 1.6 GiB peak RSS. With `nano_sub` added (after the S6 merge): 32137 declarations, ~49 s, accepted. So the bridge
 theorems are checked by Lean's kernel and by con-leche.
 Script: `Testing/denotes_real/selfcheck.sh`. Rerun after each growth step.
