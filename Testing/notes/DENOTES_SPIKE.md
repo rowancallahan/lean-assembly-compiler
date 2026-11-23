@@ -277,8 +277,9 @@ weakening lemma for Denotes. C has no such ite, and `Wf` now excludes them (see 
 
 **What is open.** Everything below lies outside the trimmed-model theorem:
 1. Real-model swap: `Mini.*` → `ConLeche.*`. It is mechanical (Transfer.lean already compiles there), but con-leche
-   was not built tonight (owner's call). The blocker is finding (a), the level-assignment φ, which needs a con-leche
-   `Model` field or the alias trick. It must be settled with the con-leche owner.
+   could not be built tonight (first by the owner's call, later the build was denied by the permission classifier).
+   Finding (a), the level-assignment φ: the draft `model_exists'` (`CvalParams` from the internal `acval_params`)
+   should settle it without an upstream change. It is unchecked until con-leche builds.
 2. Export: the bridge prelude (types of ~40 heads), the ~70 stored equations and C's 341 `f = value` theorems must be
    written as a Lean file, exported, and ACCEPTED by con-leche (acceptance and performance are untested). Then
    `Env9` must be instantiated from the accepted env (`HasTy` by `decide` on the stored types). The stored statements'
