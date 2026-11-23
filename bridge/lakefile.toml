@@ -35,3 +35,8 @@ globs = ["Nano.Expr.CExpr", "Nano.Expr.CData", "Nano.SelfHost.Cert.PC"]
 [[lean_lib]]
 name = "BridgeC"
 roots = ["Bridge.CheckC", "Bridge.CheckForm", "Bridge.TopC"]
+
+# DENOTES-3: the bridge against REAL con-leche (its Expr, Denotes, Model, model_exists)
+[[lean_lib]]
+name = "BridgeReal"
+roots = ["Bridge.Transfer", "Bridge.ModelExists2", "Bridge.Real.Stored", "Bridge.Real.Tiny", "Bridge.Real.Levels"]

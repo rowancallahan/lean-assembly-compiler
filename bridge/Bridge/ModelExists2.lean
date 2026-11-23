@@ -11,7 +11,9 @@ Risk to check when building: `Model.ofEnvModelM` lives in a `Model/*` module, wh
 (CLAUDE.md, "The module system"). If `(Model.ofEnvModelM m).cval` does not unfold here, then either (i) add a
 one-line exposed lemma `ofEnvModelM_cval` upstream (owner decision), or (ii) build the `Model` in the bridge itself
 by copying `ofEnvModelM`'s three fields (mem / eq_equality / false_empty, ~60 lines that call only public lemmas). -/
-import ConLeche
+import ConLeche.MainTheorem
+import ConLeche.Verify.Cached.MainC
+import ConLeche.Model.Denotes
 
 namespace Bridge.ModelExists2
 open ConLeche SetTheory
