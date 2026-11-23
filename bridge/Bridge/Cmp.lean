@@ -143,3 +143,115 @@ theorem blt_set (H : EncEnv env) (HC : CmpEnv env) (ρ : Nat → S) (a b : Nat) 
   exact (ble_set L H HC ρ (a + 1) b).trans (by simp [Nat.lt_iff_add_one_le])
 
 end Bridge.Cmp
+
+namespace Bridge.Cmp
+open ExprSpec ParSpec Bridge.Typed Bridge.Mini Bridge.EvM Bridge.TT Bridge.HT Bridge.Iota2 Bridge.Asm Bridge.Add
+
+variable {S : Type} {O : SetOps S} {env : List Const} {M : Model O env}
+
+def nLit : E := litNat UInt64.size
+/-- the emitted UInt64 `==`: `@BEq.beq UInt64 (instBEqOfDecidableEq UInt64 instDecidableEqUInt64) a b` -/
+def beqU (a b : E) : E :=
+  .app (.app (.app (.app (.const "BEq.beq" [0]) tU)
+    (.app (.app (.const "instBEqOfDecidableEq" [0]) tU) (.const "instDecidableEqUInt64" []))) a) b
+def guard (a : E) : E := eqE 1 tB (bin2 "Nat.blt" a nLit) tt
+
+structure BeqEnv (env : List Const) : Prop where
+  beqC : HasTy env "BEq" [0] (.forallE (.sort 1) (.sort 1) false)
+  deq : HasTy env "DecidableEq" [1] (.forallE (.sort 1) (.sort 1) false)
+  beqH : HasTy env "BEq.beq" [0] (.forallE (.sort 1) (.forallE (.app (.const "BEq" [0]) (.bvar 0))
+    (.forallE (.bvar 1) (.forallE (.bvar 2) tB false) false) false) false)
+  ofDec : HasTy env "instBEqOfDecidableEq" [0] (.forallE (.sort 1) (.forallE (.app (.const "DecidableEq" [1]) (.bvar 0))
+    (.app (.const "BEq" [0]) (.bvar 1)) false) false)
+  decU : HasTy env "instDecidableEqUInt64" [] (.app (.const "DecidableEq" [1]) tU)
+  brBeq : HasTy env "br_beq" [] (piN [(tNat, false), (tNat, false), (guard (.bvar 1), false), (guard (.bvar 1), false)]
+    (eqE 1 tB (beqU (ofN (.bvar 3)) (ofN (.bvar 2))) (bin2 "Nat.beq" (.bvar 3) (.bvar 2))))
+
+variable (L : SetLaws O)
+include L
+
+/-- `BEq.beq UInt64 inst X Y ∈ Bool` -/
+theorem beqU_mem (H : EncEnv env) (_HC : CmpEnv env) (HB : BeqEnv env) {ρ : Nat → S} {X Y : S}
+    (hX : O.mem X (M.cval "UInt64" [])) (hY : O.mem Y (M.cval "UInt64" [])) :
+    O.mem (O.app (O.app (O.app (O.app (M.cval "BEq.beq" [0]) (M.cval "UInt64" []))
+      (O.app (O.app (M.cval "instBEqOfDecidableEq" [0]) (M.cval "UInt64" [])) (M.cval "instDecidableEqUInt64" []))) X) Y)
+      (M.cval "Bool" []) := by
+  have hUu := univ1 (M := M) (L := L) H H.u64 ρ
+  have dD : D O M.cval ρ (.app (.const "DecidableEq" [1]) tU) _ := .app .const .const
+  have hDec := mem_ty M L HB.decU dD
+  have dI : D O M.cval ρ (.forallE (.sort 1) (.forallE (.app (.const "DecidableEq" [1]) (.bvar 0))
+      (.app (.const "BEq" [0]) (.bvar 1)) false) false)
+      (O.piR 1 (O.univ 1) fun a => O.piR 1 (O.app (M.cval "DecidableEq" [1]) a) fun _ => O.app (M.cval "BEq" [0]) a) :=
+    .pi .sort (fun _ _ => .pi (.app .const .bvar) (fun _ _ => .app .const .bvar) (np rfl)) (np rfl)
+  have hI := L.app_mem_piR (L.app_mem_piR (mem_ty M L HB.ofDec dI) hUu (np rfl)) hDec (np rfl)
+  have dH : D O M.cval ρ (.forallE (.sort 1) (.forallE (.app (.const "BEq" [0]) (.bvar 0))
+      (.forallE (.bvar 1) (.forallE (.bvar 2) tB false) false) false) false)
+      (O.piR 1 (O.univ 1) fun a => O.piR 1 (O.app (M.cval "BEq" [0]) a) fun _ => O.piR 1 a fun _ =>
+        O.piR 1 a fun _ => M.cval "Bool" []) :=
+    .pi .sort (fun _ _ => .pi (.app .const .bvar) (fun _ _ => .pi .bvar (fun _ _ => .pi .bvar (fun _ _ => .const)
+      (np rfl)) (np rfl)) (np rfl)) (np rfl)
+  exact L.app_mem_piR (L.app_mem_piR (L.app_mem_piR (L.app_mem_piR (mem_ty M L HB.beqH dH) hUu (np rfl)) hI (np rfl))
+    hX (np rfl)) hY (np rfl)
+
+/-- the literal `18446744073709551616` denotes `natEnc 2^64` -/
+theorem nLit_D (H : EncEnv env) (HL : LitEnv env) (HN : InstN env)
+    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+      (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
+      (.bvar 0)))) (ρ : Nat → S) : D O M.cval ρ nLit (natEnc M UInt64.size) := by
+  obtain ⟨R, hR⟩ : ∃ R, D O M.cval ρ nLit R :=
+    ⟨_, .app (.app (.app .const .const) (lit_denotes M ρ _)) (.app .const (lit_denotes M ρ _))⟩
+  have := litN_field (M := M) (ρ := ρ) L H HL HN hb (k := UInt64.size) (R := R) hR
+  rwa [this] at hR
+
+/-- **the guard's proof element**: for `a < 2^64`, `pt` inhabits `⟦Nat.blt a 2^64 = true⟧` -/
+theorem guard_mem (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpEnv env)
+    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+      (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
+      (.bvar 0)))) {ρ : Nat → S} {i a : Nat} (hi : ρ i = natEnc M a) (ha : a < UInt64.size) :
+    ∃ G, D O M.cval ρ (guard (.bvar i)) G ∧ O.mem O.pt G := by
+  have hBu := univ1 (M := M) (L := L) H HC.bool ρ
+  have hlt := blt_set (M := M) L H HC ρ a UInt64.size
+  rw [show decide (a < UInt64.size) = true by simpa using ha] at hlt
+  have hblt : O.mem (O.app (O.app (M.cval "Nat.blt" []) (natEnc M a)) (natEnc M UInt64.size)) (M.cval "Bool" []) := by
+    rw [hlt]; exact bool_mem L HC ρ true
+  refine ⟨_, .app (.app (.app .const .const) (.app (.app .const .bvar) (nLit_D L H HL HN hb ρ))) .const, ?_⟩
+  rw [hi, M.eq_equality 1 ρ _ _ _ _ .const hBu hblt (mem_ty M L HC.btrue (ρ := ρ) .const)]
+  exact L.pt_mem_eqv (by rw [hlt]; rfl)
+
+/-- **UInt64 `==` on encodings** -/
+theorem beqU_set (H : EncEnv env) (HL : LitEnv env) (HN : InstN env) (HC : CmpEnv env) (HB : BeqEnv env)
+    (hb : HasTy env "br_litN" [] (piN [(tNat, false)] (eqE 1 tNat
+      (.app (.app (.app (.const "OfNat.ofNat" [0]) tNat) (.bvar 0)) (.app (.const "instOfNatNat" []) (.bvar 0)))
+      (.bvar 0)))) (ρ : Nat → S) (x y : UInt64) :
+    O.app (O.app (O.app (O.app (M.cval "BEq.beq" [0]) (M.cval "UInt64" []))
+      (O.app (O.app (M.cval "instBEqOfDecidableEq" [0]) (M.cval "UInt64" [])) (M.cval "instDecidableEqUInt64" [])))
+      (encM M (.w x))) (encM M (.w y)) = boolEnc M (x == y) := by
+  have hBu := univ1 (M := M) (L := L) H HC.bool ρ
+  have hn := natEnc_mem' (M := M) (L := L) H ρ
+  have dOF : D O M.cval ρ (.forallE tNat tU false) _ := .pi .const (fun _ _ => .const) (np rfl)
+  have ofMem : ∀ a, O.mem a (M.cval "Nat" []) → O.mem (O.app (M.cval "UInt64.ofNat" []) a) (M.cval "UInt64" []) :=
+    fun a ha => mem_app' L dOF (mem_ty M L H.ofNat dOF) .const ha .const
+  let ρ2 := push (natEnc M y.toNat) (push (natEnc M x.toNat) ρ)
+  obtain ⟨G1, hG1, hp1⟩ := guard_mem (ρ := ρ2) (i := 1) L H HL HN HC hb rfl x.toNat_lt_size
+  obtain ⟨G2, hG2, hp2⟩ := guard_mem (ρ := push O.pt ρ2) (i := 1) L H HL HN HC hb rfl y.toNat_lt_size
+  obtain ⟨ty, hc, hty⟩ := HB.brBeq
+  have key := transferN L M hc (ls := []) hty ρ
+    (.cons .const (hn _) (.cons .const (hn _) (.cons hG1 hp1 (.cons hG2 hp2 .nil)))) .const
+    (.app (.app (.app (.app .const .const) (.app (.app .const .const) .const)) (.app .const .bvar)) (.app .const .bvar))
+    (.app (.app .const .bvar) .bvar) hBu
+    (beqU_mem (ρ := ρ) L H HC HB (ofMem _ (hn _)) (ofMem _ (hn _)))
+    (nnb_app (ρ := ρ) L H HC HC.beq (hn _) (hn _))
+  simp only [push] at key
+  show O.app (O.app _ (O.app (M.cval "UInt64.ofNat" []) (natEnc M x.toNat)))
+    (O.app (M.cval "UInt64.ofNat" []) (natEnc M y.toNat)) = _
+  rw [key, beq_set L H HC ρ]
+  have : (x.toNat == y.toNat) = (x == y) := by
+    cases h : x == y
+    · have : x ≠ y := by simpa using h
+      have : x.toNat ≠ y.toNat := fun e => this (UInt64.toNat_inj.mp e)
+      simpa using this
+    · have : x = y := by simpa using h
+      subst this; simp
+  rw [this]
+
+end Bridge.Cmp
