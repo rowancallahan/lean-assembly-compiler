@@ -68,7 +68,7 @@ def defHeadsL : List (Name × Head) :=
    (nm "instMulUInt64", ⟨[], [], .app (.const (nm "Mul") [.zero]) u64C⟩),
    (nm "instAddUInt64", ⟨[], [], .app (.const (nm "Add") [.zero]) u64C⟩),
    (nm "instMulNat", ⟨[], [], .app (.const (nm "Mul") [.zero]) natC⟩),
-   (nm "f", ⟨[], [u64C], u64C⟩)]
+   (nm "f", ⟨[], [u64C], u64C⟩), (nm "len", ⟨[], [LU8c], u64C⟩)]
 
 /-- the inductive blocks used: List, UInt8, UInt64, Bool -/
 def blocksL : List ((Name × Head) × List (Name × Head)) :=
@@ -128,11 +128,14 @@ def addModRight : Thm := ⟨nm "add_mod_right'", [natC, natC], L1, natC, natModC
   natModC (.bvar 1) (.bvar 0)⟩
 def u8Mod : Thm := ⟨nm "u8_mod", [natC], L1, u8C, u8ofC (.bvar 0), u8ofC (natModC (.bvar 0) (ofNatNatC (litC 256)))⟩
 
+def lenC (x : Expr) : Expr := .app (.const (nm "len") []) x
+def lenNil : Thm := ⟨nm "len_nil", [], L1, u64C, lenC nilC, u64ofC (ofNatNatC (litC 0))⟩
+def lenCons : Thm := ⟨nm "len_cons", [u8C, LU8c], L1, u64C, lenC (consC (.bvar 1) (.bvar 0)), add64C (lenC (.bvar 0)) (litUC 1)⟩
 def fEq : Thm := ⟨nm "f_eq", [u64C], L1, u64C, .app (.const (nm "f") []) (.bvar 0), add64C (.bvar 0) (litUC 1)⟩
 
 /-- the shared prelude's equations -/
 def thmsP : List Thm := [rdNil0, rdCons0, u8u64, lit64, iteLt, condT, condF, bleZ, bleSZ, bleSS, zeroAdd,
-  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod, fEq]
+  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod, fEq, lenNil, lenCons]
 def thms : List Thm := mEqL :: thmsP
 
 /-- the records the stream must hold (decidable) -/
@@ -534,6 +537,28 @@ theorem conv_modG : ∀ k : Nat, C (natModC (litC k) (ofNatNatC (litC 256))) (li
       exact .trans c1 (.trans c2 (.trans c3 (conv_modG j)))
 termination_by k => k
 decreasing_by omega
+
+
+theorem hty_len {x : Expr} (hx : HasTy tab eqs [] x LU8c) : HasTy tab eqs [] (lenC x) u64C :=
+  HasTy.head (n := nm "len") (us := []) (h := ⟨[], [LU8c], u64C⟩) (as := [x]) (by decide +kernel) rfl (.cons hx .nil)
+
+/-- `len` of the encoded input, by induction on the input list -/
+theorem conv_len : ∀ inp : List UInt8, C (lenC (encL inp)) (u64ofC (litC inp.length)) u64C
+  | [] => by
+    have c1 : C (lenC nilC) (u64ofC (ofNatNatC (litC 0))) u64C := .inst (t := lenNil) (as := []) (by simp [thmsP]) .nil
+    have c2 : C (ofNatNatC (litC 0)) (litC 0) natC :=
+      .inst (t := NanoDen.brLitN) (as := [litC 0]) (by simp [thmsP]) (.cons .lit .nil)
+    exact .trans c1 (cong_u64of (hty_ofNatNat .lit) c2)
+  | b :: rest => by
+    have hr := hty_encL rest
+    have c1 : C (lenC (consC (u8ofC (litC b.toNat)) (encL rest))) (add64C (lenC (encL rest)) (litUC 1)) u64C :=
+      .inst (t := lenCons) (as := [u8ofC (litC b.toNat), encL rest]) (by simp [thmsP]) (.cons (hty_u8of .lit) (.cons hr .nil))
+    have c2 : C (litUC 1) (u64ofC (litC 1)) u64C := .inst (t := lit64) (as := [litC 1]) (by simp [thmsP]) (.cons .lit .nil)
+    have c3 := cong_add64 (hty_len hr) (hty_litU 1) (conv_len rest) c2
+    have c4 : C (add64C (u64ofC (litC rest.length)) (u64ofC (litC 1))) (u64ofC (natAddC (litC rest.length) (litC 1))) u64C :=
+      .inst (t := brAdd64) (as := [litC _, litC 1]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
+    have c5 := cong_u64of (hty_natAdd .lit .lit) (conv_add rest.length 1)
+    exact .trans c1 (.trans c3 (.trans c4 c5))
 
 /-! ## the semantic side -/
 

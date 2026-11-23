@@ -3,6 +3,10 @@
 def rd (xs : List UInt8) (i : UInt64) : UInt64 := (xs.getD i.toNat 0).toUInt64
 def put (o : List UInt8) (b : UInt64) : List UInt8 := o ++ [b.toUInt8]
 def f (a : UInt64) : UInt64 := a + 1
+def len (xs : List UInt8) : UInt64 := xs.length.toUInt64
+theorem len_nil : len [] = UInt64.ofNat 0 := rfl
+theorem len_cons : ∀ (a : UInt8) (l : List UInt8), len (a :: l) = len l + 1 := by
+  intro a l; apply UInt64.toNat_inj.mp; simp [len, Nat.add_mod]
 theorem f_eq : ∀ a : UInt64, f a = a + 1 := fun _ => rfl
 def m (x : List UInt8) : List UInt8 := put [] (rd x 0 * 3 + 7)
 theorem m_eq : ∀ x : List UInt8, m x = put [] (rd x 0 * 3 + 7) := fun _ => rfl
