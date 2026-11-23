@@ -145,66 +145,68 @@ Files: `Testing/denotes_spike/BridgeOps.lean` (core Lean only, exported) and `Br
 * Not done: `Denotes`-level (transfer-instantiated) versions; the per-def `f = body` theorems; Array prelude.
 
 ## 11. Overnight integration (DENOTES-2, branch `keep_round1_denotes-2`)
-Package `bridge/` (Lake, Lean 4.35.0-rc3; nano's main toolchain NOT bumped). Build: `cd bridge && lake build Bridge`.
-It rebuilds nano's Expr closure (24 modules, unchanged) as lib `NanoExpr`. It `require`s con-leche @3b37939 but
-imports nothing from it: the owner ruled that con-leche is not built tonight (the build was stopped at 536/550). So all
-compiled work runs against TRIMMED COPIES of con-leche's `Denotes`/`Model` (every copied item cites its file:line).
-The set lemmas used are hypotheses (`Mini.SetLaws`), each a cited con-leche theorem.
-Everything below is sorry-free. Axioms are ⊆ {propext, Classical.choice, Quot.sound}.
-* `Testing/denotes_spike/MiniDenotes.lean` (lead's request; plain `lean`, no imports): `tiny_denotes`, for a tiny
-  language (lit, +, ite on ==): `tinyEval e = v → Denotes … (tr e) (enc v)`. Literals use con-leche's `natLit` rule.
-* `Bridge/Typed.lean` (task 3, nano half): `Wf sig Γ e s` = the EMITTED terms with shapes. Every constant's
-  type/instance arguments are pinned to what `emit` writes (`lit`, `binX`, `iteX`/`condX`, Prod.mk/casesOn,
-  Nat.casesOn, List.nil, prims, calls); `PWf` = the program's defs are well formed. `ev_shape`: subject reduction
-  for Ev. WHY this matters: Ev's rules accept ANY type/instance argument (e.g. `litU` accepts any instance `i`). For those
-  arguments no model fact can hold, so the bridge facts must be stated for canonical arguments only.
-* `Bridge/EvSkeleton.lean`: first skeleton (all 14 Ev rules + EvL; plumbing for spines, `ρE`, binders, calls,
-  `strip`/`vs.reverse`). Its `Facts` are unrestricted, so they cannot all hold; it is SUPERSEDED by the files below.
-  Kept: the per-op splits `PrimFacts` (9 ops) and `BinFacts`.
-* `Bridge/EvBridge.lean` / `Bridge/EvMini.lean`: **`ev_denotes`**: `Ev P env e v → Wf sig Γ e s → env has shapes Γ →
-  ∀ R, Denotes (ρE env) (tr e) R → R = enc v`. It is stated in "uniqueness" form: EXISTENCE of the denotation comes
-  from `Model.mem` (the stored `f = body` theorem's type denotes, so all its subterms do). Its hypotheses are `FactsW`/`FactsM`,
-  one field per constant rule, canonical arguments only. EvMini states it over the trimmed model, where these fields are
-  DISCHARGED: `litU` (from `br_lit` by transfer + typing through the stored types of OfNat.ofNat / UInt64.instOfNat /
-  UInt64.ofNat), `nil`, `pair` (constructor terms are their own encoding), `letβ` (regime-free beta + typing).
-  Open fields: litN, bin, ite, cases, natZ/natS, prim, call.
-* `Bridge/MiniModel.lean` (task 2): trimmed con-leche model. In it: `transferN` (n binders, telescope `Tele`, any binder
-  type including Prop), `Inhab.eq` (denotations of S, a, b come out of the stored type itself), `beta` (BOTH regimes,
-  no `PropWhen` hypothesis), `mem_app` (application typing, both regimes), `litU_fact` (worked example).
-* `Bridge/EvMini.lean` (task 3, model half): encoding `encM` (canonical constructor terms over `ofNat` numerals;
-  `Buf` via a stored `Buf = List UInt64`) and **`encM_mem`**: `enc v ∈ ⟦ty v⟧` for every value, with the constructors'
-  Lean types as the env hypotheses (`EncEnv`).
-* `Bridge/Transfer.lean`, `Bridge/Spike.lean`: the same transfer kit written against the REAL con-leche API. DRAFT,
-  NEVER COMPILED. Sent to S2, who has con-leche built, with a request to typecheck it.
-* Task 4: merged S2 (`keep_round1_denotes-s2`, 34 equations exported and accepted by con-leche, set-level op lemmas).
-  S1 never started (setup script failed, apt 504), reported to the lead at 09:0x.
+**Setup.** `bridge/` is a separate Lake package on 4.35.0-rc3. Build: `cd bridge && lake build Bridge BridgeC` (~4 min
+from scratch). Nano's main toolchain is NOT bumped. The package rebuilds nano's Expr closure UNCHANGED from `../Nano`
+(lib `NanoExpr`, 24 modules; lib `NanoC` adds C's emitted Expr `oC`). It `require`s con-leche @3b37939 but imports
+none of it: the owner ruled that con-leche is not built tonight (the first build was stopped at 536/550). All compiled
+proofs therefore run against a TRIMMED COPY of con-leche's `Denotes`/`Model` (`Bridge/MiniModel.lean`; each copied
+item cites file:line). The set lemmas used are hypotheses (`Mini.SetLaws`), each a cited con-leche theorem.
+The same kit written against the REAL con-leche API (`Bridge/Transfer.lean`) was compiled unchanged by DENOTES-S2 in
+its con-leche checkout (cdc2cf8, merged). Everything listed below is sorry-free; axioms ⊆ {propext, Classical.choice, Quot.sound}.
+
+**What is proved.**
+* `Testing/denotes_spike/MiniDenotes.lean` (lead's request; plain `lean`): `tiny_denotes`, for lit/+/ite.
+* Ev side (`Typed.lean`, `Check*.lean`). `Wf sig Γ e s` = the EMITTED terms with shapes: every constant's
+  type/instance arguments are pinned to what `emit` writes. `ev_shape` is subject reduction.
+  `Check.chk`/`pwfChk` is a decidable checker with soundness (`chk_sound`, `pwfChk_sound`). It accepts exSum/exPair,
+  and **C's own emitted program (341 defs) is `PWf`, kernel-checked** (`CheckC.cPWf`, `decide +kernel`, 104 s).
+  `CheckForm.cDefForm` also checks that every def value has the λ-chain form.
+* The induction (`EvMini.lean`): `ev_denotes`: `Ev P env e v → Wf → env shaped → ∀ R, Denotes (ρE env) (tr e) R →
+  R = enc v` (uniqueness form; existence comes from `Model.mem`). One `FactsM` field per constant rule.
+* Transfer kit (`MiniModel.lean`): `transferN` (n binders, any binder type including Prop), `Inhab.eq`/`eq_ex` (the
+  denotations of S, a, b come out of the stored type), `beta` (BOTH regimes, no `PropWhen` hypothesis), `mem_app`.
+* Typing (task 3): `EvMini.encM_mem` (`enc v ∈ ⟦ty v⟧` for every value, `Buf` via a stored `Buf = List UInt64`).
+  `TermTyping.wf_mem` gives typing soundness for well-formed TERMS (λ branches typed at all arguments, by `lamR_mem`).
+  Per-head typings come through the declared Lean types (`HeadTyping`, `Iota2`, `Add`, `Call`), including `outParam`.
+* Discharged fields, each by transfer from ONE named stored theorem plus typing: `litU` (`br_lit`), `litN` (`br_litN`),
+  `nil`/`pair` (constructors), `letβ` (beta), `natZ`/`natS` (`nat_z`/`nat_s`), `cases` (`prod_c`), `call` (stored `f =
+  <emitted λ-value>`), and `.bin` for `+` (`br_add`, `br_wrap`, `add0`, `addS`, `outParam_eq`; the spike's wrap algebra).
+* Assembled: `Assembly.ev_denotes_assembled`. Only `Asm.Open` remains: `.bin` for −,×,&,|,<<,>>; `ite` conditions
+  (value and head typing); the 9 prelude ops.
+  `Top.sem_denotes`: `Sem κ p inp = .ok out → ⟦m⟧ (enc inp) = enc out` for any emitted program.
+  **`TopC.C_denotes`: for the compiler itself, `Sem κC C inp = .ok (mC inp) → ⟦m⟧ (enc inp) = enc (mC inp)`.**
+  With `self_expr_C` (CExprTop, needs Sail) this reaches C's RISC-V code. In the trimmed model, modulo `Open`.
+* Task 4: merged S2 twice (its 34 equations + set lemmas; Transfer.lean compiled vs real con-leche). S1 never
+  started: its setup script failed (apt 504). Reported to the lead.
 
 **Findings.**
-(a) LEVEL ASSIGNMENTS (real con-leche, hidden by the trimmed copy). `Denotes.const` reads `cval n (Level.substFn φ ps us)`.
-`substFn` falls back to `φ` outside `ps`. So inside a level-polymorphic head (`ite.{1}`, `Nat.casesOn.{1}`, `Prod.casesOn`),
-the level-free constants in its TYPE (`Decidable`, `Nat`, `Nat.zero/succ`) are read at `φ[u↦1]`. The program reads them at `φ`.
-An arbitrary `Model` does not relate `cval c φ` and `cval c φ'`, so typing through those heads does not go through as is.
-No single `φ` fixes it: `ite.{u}` needs u=1, while `OfNat.ofNat.{u}`/`List.{u}` need u=0 and carry `Nat` in their types.
-Fixes: (i) ask con-leche for a `Model` field "cval c depends only on φ restricted to c's level params" (its concrete
-model has it); or (ii) shift theorems: an alias `K'.{u} := K` plus a stored `K'.{1} = K` for each such `K`. Two
-instances of that theorem (at φ and at φ[u↦1]) give `⟦K⟧φ = ⟦K⟧φ[u↦1]`. This is not proved.
-(b) Transfer needs `⟦a⟧ ∈ ⟦S⟧` for BOTH sides of every equation. Typing therefore goes through the declared types of all
-heads, including `outParam` (HAdd's γ) and instance types. This is now the bulk of the remaining work.
-(c) Iota facts (natZ/natS/cases) bind the branch functions, so they need typing of λ-terms for ALL arguments (`lamR_mem`).
-That is a typing lemma for well-formed TERMS (`Wf → ⟦e⟧ρ ∈ ⟦shTy s⟧` for typed ρ), not just for values. It is the next piece.
-(d) `iteX` gives `<`'s decidability instance the operands with leading unused `have`s dropped (`dropHead`).
-Typing it needs a weakening lemma for Denotes (a body not using its binder denotes the same).
-(e) `emit ⇒ Wf` is open. One subtlety: a CONTINUE (`.cont`) returns no shape, and `ite` takes `r = exp <|> ts <|> es`.
-A cont branch therefore has the loop's result shape only when `exp = some res` (tail position). This needs the
-tail-position invariant from the parser/annot, which eval_emit's `Kont` machinery uses.
+(a) LEVEL ASSIGNMENTS. Real con-leche has this problem; the trimmed copy hides it.
+`Denotes.const` reads `cval n (Level.substFn φ ps us)`. `substFn` falls back to `φ` outside `ps`. So inside a
+level-polymorphic head (`ite.{1}`, `Nat.casesOn.{1}`, `Prod.casesOn.{1,0,0}`), the level-free constants in its type
+(`Decidable`, `Nat`, `Nat.zero/succ`) are read at `φ[u↦1]`, while the program reads them at `φ`. An arbitrary `Model`
+does not relate the two. No single `φ` fixes it: `ite.{u}` needs u=1, but `OfNat.ofNat.{u}` needs u=0 and carries `Nat`
+in its type. Two fixes: (i) a con-leche `Model` field "cval c depends only on φ restricted to c's level params"
+(true of its concrete model); or (ii) per affected `K`, an alias `K'.{u} := K` plus a stored `K'.{1} = K`. Its two
+instances (at φ and at φ[u↦1]) give `⟦K⟧φ = ⟦K⟧φ[u↦1]`. NOT PROVED; this is the main risk of the real-model swap.
+(b) Transfer needs `⟦a⟧ ∈ ⟦S⟧` for both sides of every equation. Typing therefore goes through the declared types
+of all heads, including `outParam` and instances. It is routine but voluminous (Add.lean is the template).
+(c) Ev's rules accept ANY type/instance arguments, and for those no model fact holds. The bridge therefore needs `Wf`
+(canonical arguments only).
+(d) `emit ⇒ Wf` is FALSE in general. `emit` accepts a CONTINUE inside a `let` value (as an `ite` branch); Sem rejects
+it at run time (`ev_let` needs `.inl`) and Lean would not typecheck it. So `Wf` is checked PER PROGRAM (`pwfChk`, done
+for C).
+(e) `iteX` gives `<`'s `decLt` the operands with leading unused `have`s dropped (`dropHead`). Typing it needs a
+weakening lemma for Denotes.
+(f) Facts for the exported prelude: iota and add theorems must be stated with `Nat.zero`/`Nat.succ`, not `0`/`n+1`.
+`OfNat` literals need `br_litN`. Asked S2 to export the exact shapes and check acceptance (pending at the time of writing).
 
-**Next steps (in order).** 1. Typing lemma for Wf terms in the trimmed model (finding c), including the heads' types
-(outParam theorem, instances, Eq/LT conditions, weakening for dropHead). 2. Remaining FactsM fields: bin/ite/natZ/natS/cases via
-transfer from S2's equations (set-level lemmas exist: `nat_cases`, `prod_cases`, `ite_bool`, ops) and S1's arithmetic
-(not done: S1 never ran). 3. `emit ⇒ Wf` + `PWf` for emitted programs (finding e). 4. Swap the trimmed model for real
-con-leche (build allowed): replace `Mini.*` by `ConLeche.*`, settle finding (a). 5. Top statement: compose with
-`eval_emit` (`Ev P [.l inp] (m x) (.l o)`) to get `Denotes (m inp) = enc o`.
-**Revised estimate.** Remaining: typing of terms + heads 3-4 days; FactsM fields 3-4 days (with S1's arithmetic);
-emit ⇒ Wf 2 days; real-con-leche swap + level issue (a) 1-3 days (depends on con-leche's answer). Spike §7 estimated
-2-3 weeks. The Ev induction, transfer kit and value typing are done (in the trimmed model), so the remainder is about
-**2-2.5 weeks**. The risk has moved from "does it go through" to finding (a) and the volume of head typing.
+**Next steps.** 1. The remaining `Open` facts: S1's arithmetic for −,×,&,|,<<,>> and comparisons (`Nat.beq/ble`
+recursion), then ite (condition value + head typing, finding e), then the 9 prelude ops (port S2's `BridgeOpsSet` to
+the transfer kit). 2. Swap the trimmed model for real con-leche: `Mini.*` → `ConLeche.*` is mechanical
+(Transfer.lean already compiles there). Settle finding (a) with the con-leche owner first. 3. Export the bridge prelude
++ C's `f = value` theorems (341, `rfl`/`funext`) and check con-leche acceptance and performance. 4. Instantiate
+`Env` from the accepted env (`HasTy` facts by `decide` on the stored types).
+**Revised estimate.** Remaining: `Open` arithmetic + ite + ops 4-6 days; real-model swap 1-2 days plus finding (a)
+(depends on con-leche's answer, 1-3 days); export/acceptance at scale 1-2 days, with performance risk. Total about
+**1.5-2 weeks**. Spike §7 estimated 2-3 weeks; the Ev induction, transfer kit, typing (values and terms), iota/call and
+the per-program Wf check are done, in the trimmed model.
