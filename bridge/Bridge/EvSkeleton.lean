@@ -218,4 +218,58 @@ end
 
 end
 
+
+/-! ## `Facts.prim` and `Facts.bin` split per op (the form of DENOTES-S2's `BridgeOpsSet` lemmas: `len'_set`,
+`len64_set`, `rd_set`, `put_set`, `bget_set`, `bset_set`, `bpush_set`; `bnew` is the constructor encoding) -/
+
+structure PrimFacts (sapp : S → S → S) (cval : String → List Nat → S) (enc : ExprSpec.V → S) : Prop where
+  rd : ∀ x i, sapp (sapp (cval "rd" []) (enc (.l x))) (enc (.w i)) = enc (.w (x.getD i.toNat 0).toUInt64)
+  len : ∀ x, sapp (cval "len" []) (enc (.l x)) = enc (.w x.length.toUInt64)
+  len' : ∀ x, sapp (cval "len'" []) (enc (.l x)) = enc (.n x.length)
+  put : ∀ o v, sapp (sapp (cval "put" []) (enc (.l o))) (enc (.w v)) = enc (.l (o ++ [v.toUInt8]))
+  bnew : cval "bnew" [] = enc (.b [])
+  bsize : ∀ b, sapp (cval "bsize" []) (enc (.b b)) = enc (.w b.length.toUInt64)
+  bget : ∀ b i, sapp (sapp (cval "bget" []) (enc (.b b))) (enc (.w i)) = enc (.w (b.getD i.toNat 0))
+  bset : ∀ b i v, sapp (sapp (sapp (cval "bset" []) (enc (.b b))) (enc (.w i))) (enc (.w v)) =
+    enc (.b (b.set i.toNat v))
+  bpush : ∀ b v, sapp (sapp (cval "bpush" []) (enc (.b b))) (enc (.w v)) = enc (.b (b ++ [v]))
+
+theorem PrimFacts.prim {enc : ExprSpec.V → S} (F : PrimFacts sapp cval enc) :
+    ∀ {n : String} {vs : List ExprSpec.V} {r : ExprSpec.V}, ExprSpec.prim n vs = some r →
+      (vs.map enc).foldl sapp (cval n []) = enc r := by
+  intro n vs r h
+  unfold ExprSpec.prim at h
+  split at h <;> (try cases h) <;> simp only [List.map, List.foldl]
+  · exact F.rd _ _
+  · exact F.len _
+  · exact F.len' _
+  · exact F.put _ _
+  · exact F.bnew
+  · exact F.bsize _
+  · exact F.bget _ _
+  · exact F.bset _ _ _
+  · exact F.bpush _ _
+
+/-- one field per `.bin` op: the head (with its type and instance arguments) acts as the UInt64 op -/
+structure BinFacts (sapp : S → S → S) (mem : S → S → Prop) (lamS : S → (S → S) → S)
+    (cval : String → List Nat → S) (enc : ExprSpec.V → S) : Prop where
+  op : ∀ {n ρ ls t1 t2 t3 i H} (f : UInt64 → UInt64 → UInt64), (∀ x y, binV n x y = some (f x y)) →
+    D sapp mem lamS cval ρ (tr (apps (.c n ls) [t1, t2, t3, i])) H →
+    ∀ x y, sapp (sapp H (enc (.w x))) (enc (.w y)) = enc (.w (f x y))
+
+theorem binV_some {n : String} {x y z : UInt64} (h : binV n x y = some z) :
+    ∃ f : UInt64 → UInt64 → UInt64, (∀ a b, binV n a b = some (f a b)) ∧ z = f x y := by
+  unfold binV at h ⊢
+  split at h <;> first
+    | (cases h; exact ⟨_, fun _ _ => rfl, rfl⟩)
+    | cases h
+
+theorem BinFacts.bin {enc : ExprSpec.V → S} (F : BinFacts sapp mem lamS cval enc) :
+    ∀ {ρ n ls t1 t2 t3 i H x y z}, binV n x y = some z →
+      D sapp mem lamS cval ρ (tr (apps (.c n ls) [t1, t2, t3, i])) H →
+      sapp (sapp H (enc (.w x))) (enc (.w y)) = enc (.w z) := by
+  intro ρ n ls t1 t2 t3 i H x y z hz hH
+  obtain ⟨f, hf, rfl⟩ := binV_some hz
+  exact F.op f hf hH x y
+
 end Bridge.Skel
