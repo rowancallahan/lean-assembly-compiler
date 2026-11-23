@@ -10,7 +10,7 @@ own denotation (inversion), so the caller never has to build them; only the thre
 No regime (`PropWhen`) hypothesis anywhere: `beta` below holds in both regimes, given that the redex
 denotes at all (and every redex inside a stored type does, by `mem`).
 
-STATUS: DRAFT, NEVER COMPILED (con-leche not built tonight, owner decision). Written to prove sorry-free; axioms = propext, Classical.choice, Quot.sound. -/
+STATUS: COMPILES unchanged (checked by DENOTES-S2 in its con-leche checkout, commit cdc2cf8; not part of this package's build, which does not build con-leche) (0 errors, 0 warnings, no sorry) with `lake env lean` in con-leche @3b37939, Lean 4.35.0-rc3; `#print axioms Bridge.transferN` = propext, Classical.choice, Quot.sound. -/
 import ConLeche.Denotes
 import ConLeche.SetModel.Ops
 
