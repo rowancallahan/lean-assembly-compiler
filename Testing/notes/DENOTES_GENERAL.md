@@ -212,3 +212,23 @@ the library lemmas.
   prove it by induction on `Ev` alongside `R`.
 * Typing of `N e` instances: `HasTy` of `substB (env.map encV) (N e)` from a per-def Bool `infer` on `N e` in the
   static context (inside `GenOk`), plus `TySubst.hasTy_subst` (binder-free case).
+
+### 5.4 Which `Expr` the theorem certifies, and why lifting is sound
+* **The conclusion's `Denotes` is about `tr mainX`**, i.e. `m` applied to the input variable (`m (bvar 0)`), the
+  original emitted main expression, unchanged. This is the same as every per-step theorem (`nano_input` …).
+* **Each emitted def is stored with its ORIGINAL value**: `defnDecl n (tr ty) (tr val)`, with lets as
+  emitted (`.lt` ↦ redex), `Prod.casesOn`, `Nat.casesOn` and λs. The aux defs `kᵢ` are extra constants. They do not
+  replace anything.
+* **Lifting is justified by con-leche, not by our own lemma.** `n_eq : ∀ xs, n xs = <lifted rhs>` is stored with
+  the proof `Eq.refl`, so con-leche checks by its definitional-equality check (δβι, and η for `Prod`) that the
+  ORIGINAL `tr val` unfolds to the lifted form. Acceptance then gives, through `Model.mem` + `eq_equality`, that
+  the model's `⟦n⟧` satisfies the lifted equation. The model has no δ clause of its own (DENOTES_SPIKE §1):
+  *every* link between `⟦n⟧` and its body goes through such a checked equation, lifted or not. So the certified
+  object is the original stream's `n`. Lifting only chooses which (checked) equations we read back.
+* **No regime facts are needed on this path.** The conclusion never mentions the denotation of a λ: `tr mainX`
+  is λ-free, and every equation we read is λ-free.
+* **A stronger optional corollary does need regime facts:** `Denotes (tr val) ⟦n⟧`, the def's λ-term itself
+  denotes `⟦n⟧`. It would read a stored `n = tr val` (by `rfl`) through `eq_equality`, which needs `⟦tr val⟧` to
+  exist and lie in the type. That means a `Denotes.lam` derivation for each binder at its stored annotation,
+  i.e. `regime ≠ 0` for each data λ (`LamRegime` + separators, or `den_reset`/`Reg1`). It is not needed for the
+  `Ev ↔ Denotes (tr mainX)` statement.
