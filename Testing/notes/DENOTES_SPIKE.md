@@ -369,3 +369,16 @@ All in `bridge/Bridge/Main.lean`, same shape as `nano_input`. Hypotheses: accept
   - `lam_regime_g`: the data λ in the accepted `TinyLam.g_eq` is in regime 1 at every φ.
   - This is needed only for pairs / `Prod.casesOn` and for a mechanically generated `m_eq = tr body`. The per-step
     equations above avoid it.
+* `nano_pair` (`let (u, v) := (rd x 0, 3); put [] (u * v + u)`): nano's `Prod.mk`/`Prod.casesOn` on the Ev side. The
+  stored `m_eq` has the match reduced. It is proved by `rfl`, and con-leche checks that `rfl`, including the match and
+  `Prod.casesOn` iota. It is the same equation as the `let` step's, so the model side is `NanoLetDen` unchanged.
+* `nano_sub` (S6, `rd x 0 - 3`): `br_sub64` plus `Nat.sub` recursion in the prelude. Merged; the prelude carries `lp`
+  and the sub theorems. All 8 prelude exports (L/A/C/N/T/F/P/S) are accepted (1537 decls; P 1538, its matcher).
+
+### 12.4 con-leche checks the bridge itself
+`lean4export Bridge.Main -- Bridge.nano_tiny … Bridge.nano_sub Bridge.Real.LamDemo.lam_regime_g` (all top
+theorems with their whole dependency closure: con-leche's own checker, model and soundness proof, nano's Expr spec
+and the bridge). Output: 579 MB, 10.6 M lines, export ~32 s. `con-leche` (--verified) **accepts** it:
+32044 declarations, ~59 s wall (parse 2.5 s, install 5.8 s, check 50 s), 1.6 GiB peak RSS. So the bridge
+theorems are checked by Lean's kernel and by con-leche.
+Script: `Testing/denotes_real/selfcheck.sh`. Rerun after each growth step.
