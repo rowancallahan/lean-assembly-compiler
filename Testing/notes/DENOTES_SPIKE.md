@@ -350,3 +350,15 @@ Not yet ported: the `.bin` ops (`+ - * <<< >>> &&& |||`) and ites; they use the 
   `v4.35.0-rc3`, `lake build lean4export` in `/tmp/claude-0/l4e/lean4export`, a toolchain-matching tag since master needs 4.36) was DENIED
   by the permission classifier; not worked around. `accept.sh` (S5, branch `keep_round1_denotes-s5`) needs both binaries.
   Steps (a)–(d) and the negative test are not run.
+
+**S6 update 2: `+` ported** (`bridge/Bridge/RealAdd.lean`, lib `BridgeReal`; no sorry; axioms propext, Classical.choice, Quot.sound).
+| trimmed (`Bridge.Add`) | real (`Bridge.Real`) | statement change |
+|---|---|---|
+| `AddEnv` (`HasTy`) | `AddEnv` (`Stored`/`HasLv`: `find?` + `levelParams` + exact type) + `AddThms` (`add0`,`addS`,`br_add`,`br_wrap`, `Nat` sort) | level params named `u,v,w` (`uP`,`vP`,`wP`); `outParam.{u}`; `HAdd.hAdd.{u,v,w}` types spelled with `Sort (succ (param u))` |
+| `outParam_type` | `Real.outParam_type` | reads `outParam` at `substFn (φA φ) [u] [succ (succ (param w))]`, equated to the `outParam_eq` instance at `φ[u↦2]` by `CvalParams` (2nd and last use) |
+| `hAdd_mem` | `Real.hAdd_mem M HA hφ φ ρ hT hI` | heads at `φA φ = substFn φ [u,v,w] [0,0,0]` (HAdd.hAdd) and `φ0 φ` (instHAdd, Add); lemmas `φA_self`, `φ0_hadd` collapse the `.param` self-reads |
+| `add_field` | `Real.add_fact M H HA HT hφ φ ρ hlit hH x y` | `∀ ρ', Denotes … litNatE (natEnc M φ 2^64)` (`br_litN` for `2^64`) is a HYPOTHESIS `hlit` (litN not ported; copy `litU_fact`); conclusion `app (app Hv (encU x)) (encU y) = encU (x+y)` |
+| `transferN` | `Stored.eq1`, `Stored.eq2` | 1- and 2-binder transfers |
+| `add_nat` | `Real.add_nat` | without `SetLaws` |
+Elaboration note: the final `app_mem_piR` chain must be written step by step (`have e1 … e4`); the nested one hit a `whnf` heartbeat timeout.
+Remaining u64 ops: `-`,`*` (Arith), `<<<`,`>>>` (Shift), `&&&`,`|||` (Bits), ites (Ite, IteLt, IteNat). Same pattern as `+`; the `Bridge.Asm`-level wiring (`Open.bin` structures, `tyS`, `EncEnv`) is not ported.
