@@ -44,6 +44,17 @@ the size of u10: days); Ev = Denotes using con-leche's lemmas (several days; spi
 List.cons); the Denotes copy + Expr-identity check (days; Lean 4.35 vs 4.34.1 toolchain gap); restating the top
 theorems around Expr (days).
 
+## OWNER NOTES (2026-11-23): Expr is the semantic interface
+- Expr is how meaning is defined from now on, because that is what Lean does. We copy Lean's approach.
+- REUSE CON-LECHE MAXIMALLY (its term type, Denotes, lemmas). Show our meaning is literally theirs.
+- Ev is internal. It may be rewritten (and renamed, e.g. ExprRun) freely, as long as self-hosting is kept.
+- The most important check: nano's elaboration of ITSELF equals Lean's (C_lean_all). Per-program checks for other
+  programs are optional extra assurance.
+- Back-end-only self-hosting is possible: the compiler compiles the Expr of its own source, exported from Lean's
+  elaborator, so no nano front end is needed for the proof. The nano front end stays useful for running
+  standalone (no Lean needed) and is still proved against Lean as far as possible, but it is not on the critical
+  path of the main theorem.
+
 ## SIMPLIFICATIONS (owner, 2026-11-23)
 - Reuse con-leche maximally: emit con-leche's own term type (a subset of it) as nano's Expr, so no translation step.
 - Ev is internal, so rewrite it to mirror Denotes rule by rule (same environment / bvar / app / lam / let structure;
