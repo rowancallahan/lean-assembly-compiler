@@ -293,3 +293,32 @@ replace `Mini.SetLaws` with the cited lemmas, keep the `HasTy` interface. (3) Ge
 answer); export, acceptance and `Env9` instantiation 2-3 days, with performance risk on 341 defs. The trimmed-model
 side (induction, typing, all ops, ites, prelude, the per-program Wf check on C) is done. Spike §7 estimated 2-3 weeks
 in total.
+
+## 12. DENOTES-3: the bridge against REAL con-leche (branch `keep_round1_denotes-3`, `bridge/Bridge/Real/*`)
+Con-leche @3b37939 built in the bridge package (`lake build ConLeche.MainTheorem`, binary `con-leche`);
+lean4export v4.35.0-rc3 built. All results below: no sorry, axioms propext/Classical.choice/Quot.sound.
+* `ModelExists2.model_exists'`: `model_exists` + `CvalParams` (from `EnvModel.acval_params`) COMPILES.
+* `Real.Stored.stored_tele`: an accepted def/thm record is stored with its declared telescope up to binder
+  data (from con-leche's `checkDecls_consts`/`AnnotOf`).
+* Tiny: `Real.Main.tiny_main` — for every env the verified fold returns on `dsTiny` (the parsed export of
+  `def f x := x + 1` + `f_eq`), in con-leche's model, `⟦f v⟧ = ⟦v+1⟧`. Records proved present by kernel decide.
+  Export accepted by the binary (29 decls with the later additions).
+* Step 3a `Real.AddOne.addOne_model`: same through the real body `x + 1` (HAdd.hAdd/instHAdd/instAddNat/
+  OfNat.ofNat/instOfNatNat/outParam); finding (a) handled by `CvalParams` (`Real.Levels.const_agree`).
+* Engine (`Real.Engine`, `Engine2`): typing judgment for binder-free terms over declared head telescopes,
+  with level instantiation, `Sort` and conversion by stored type equations; SOUND vs real Denotes; Bool checker
+  (kernel-decidable). `Real.Conv`: equational evaluation (refl/symm/trans/congruence/instances of stored
+  equations), sound. `Real.EngineAdd` (3a via engine), `Real.Calls` (step 3b, `g x = f (f x)`).
+**Open / blockers.**
+1. `natLitSupported env` is a hypothesis (true by #eval). Deriving it from acceptance needs a con-leche lemma
+   about the pinned Nat basis install (a trace like `installRun_thmDecl_const`). `checkDecls` and the parser do not
+   reduce in the kernel (tested), so neither acceptance nor "dsTiny = parse of the file" can be `decide`d.
+2. Inductive members (List.cons/nil, UInt64/UInt8 ctors, Prod.mk, Bool, Decidable): con-leche's
+   `checkDecls_consts` excludes `indDecl`, so their stored types are not available as theorems. Every nano program
+   takes/returns `List UInt64`, so the nano tie (`emit` + `eval_emit` + `expr_rv`) is blocked here. Wanted
+   upstream: `checkDecls_ind_consts` (constructor stored type = annotation of declared; type former too when its
+   declared type is a Π-telescope ending in a sort). With it, `headSem_rec` covers inductives unchanged.
+3. Binders in stored statements (let-redexes, casesOn motives/minors): the engine is binder-free; lambdas in stored
+   theorems carry annotation data whose regime is not exposed. Plan: lambda-lift into aux defs, or derive
+   regime 1 for data lambdas from inhabitation of the stored type.
+4. The Ev → Denotes induction (trimmed `EvMini`) is not yet ported; `Conv` is the intended target.
