@@ -136,4 +136,71 @@ theorem put_field (E : Env4 env sig P) (HB : ByteEnv env) (hbl : HasTy env "br_l
   show O.app (O.app (M.cval "put" []) (listEnc M _ f o)) (encM M (.w v)) = listEnc M _ f (o ++ [v.toUInt8])
   rw [key, hb8, ← append_set L H E.push ρ hU8u f hf o [v.toUInt8]]; rfl
 
+/-- **`rd`** -/
+theorem rd_field (E : Env4 env sig P) (HI : IdxEnv env) (HB : ByteEnv env) (hbl : HasTy env "br_litN" [] brLitNTy)
+    (ρ : Nat → S) (x : List UInt8) (i : UInt64) :
+    O.app (O.app (M.cval "rd" []) (encM M (.l x))) (encM M (.w i)) = encM M (.w (x.getD i.toNat 0).toUInt64) := by
+  have H := E.enc
+  have hU8u := univ1 (M := M) (L := L) H H.u8 ρ
+  have hUu := univ1 (M := M) (L := L) H H.u64 ρ
+  have hBu := univ1 (M := M) (L := L) H E.cmp.bool ρ
+  have hn := natEnc_mem' (M := M) (L := L) H ρ
+  let f : UInt8 → S := fun b => O.app (M.cval "UInt8.ofNat" []) (natEnc M b.toNat)
+  have hf : ∀ b : UInt8, O.mem (f b) (M.cval "UInt8" []) := fun b => of8_mem L H (ρ := ρ) (hn _)
+  have hl := listEnc_mem (M := M) (L := L) H ρ hU8u f hf
+  have hi := (encM_mem (M := M) (L := L) H ρ (.w i)).1
+  have dOF : D O M.cval ρ (.forallE tNat tU false) _ := .pi .const (fun _ _ => .const) (np rfl)
+  have ofMem : ∀ a, O.mem a (M.cval "Nat" []) → O.mem (O.app (M.cval "UInt64.ofNat" []) a) (M.cval "UInt64" []) :=
+    fun a ha => mem_app' L dOF (mem_ty M L H.ofNat dOF) .const ha .const
+  -- the default `(0 : UInt8)`
+  have dI8 : D O M.cval ρ (.forallE tNat (.app (.app (.const "OfNat" [0]) tU8) (.bvar 0)) false) _ :=
+    .pi .const (fun _ _ => .app (.app .const .const) .bvar) (np rfl)
+  have hlit8 : ∀ ρ', D O M.cval ρ' (lit8 0) (f 0) := by
+    intro ρ'
+    have hI0 := mem_app' L dI8 (mem_ty M L HB.inst8 dI8) .const (hn 0) (.app (.app .const .const) .bvar)
+    obtain ⟨ty, hc, hty⟩ := HB.brLit8
+    have key := transferN L M hc (ls := []) hty ρ (.cons .const (hn 0) .nil) .const
+      (.app (.app (.app .const .const) .bvar) (.app .const .bvar)) (.app .const .bvar) hU8u
+      (ofNat_mem (ρ := ρ) L E.lit hU8u (hn 0) hI0) (hf 0)
+    simp only [push] at key
+    have hD := (D.app (D.app (D.app .const .const) (lit_denotes M ρ' 0)) (D.app .const (lit_denotes M ρ' 0)) :
+      D O M.cval ρ' (lit8 0) _)
+    rw [key] at hD; exact hD
+  have dTN : D O M.cval ρ (.forallE tU tNat false) _ := .pi .const (fun _ _ => .const) (np rfl)
+  have hK : O.mem (O.app (M.cval "UInt64.toNat" []) (encM M (.w i))) (M.cval "Nat" []) :=
+    mem_app' L dTN (mem_ty M L HI.toNatH dTN) .const hi .const
+  have d64 : D O M.cval ρ (.forallE tU8 tU false) _ := .pi .const (fun _ _ => .const) (np rfl)
+  have hty2 := app_piS L .uw (mem_ty M L (E.primTy (p := 2) rfl (by decide) (by decide) (by decide)) (ρ := ρ)
+    (piPs_D .uw _)) (.cons (hl x) (.cons hi .nil))
+  obtain ⟨ty, hc, hty⟩ := HB.boRd
+  have key := transferN L M hc (ls := []) hty ρ (.cons (.app .const .const) (hl x) (.cons .const hi .nil)) .const
+    (.app (.app .const .bvar) .bvar)
+    (.app .const (.app (.app (.app (.app .const .const) .bvar) (.app .const .bvar)) (hlit8 _))) hUu hty2
+    (mem_app' L d64 (mem_ty M L HB.to64H d64) .const (getD_mem L HI (ρ := ρ) hU8u (hl x) hK (hf 0)) .const)
+  simp only [push] at key
+  show O.app (O.app (M.cval "rd" []) (listEnc M _ f x)) (encM M (.w i)) = _
+  rw [key, show encM M (.w i) = O.app (M.cval "UInt64.ofNat" []) (natEnc M i.toNat) from rfl, toNat_set L H E.lit E.instN E.cmp HI hbl ρ i.toNat_lt_size, getD_set L H HI ρ hU8u f hf (hf 0) x i.toNat]
+  -- `(UInt8.ofNat k).toUInt64 = UInt64.ofNat k` for the byte `k < 256`
+  have h64 : ∀ b : UInt8, O.app (M.cval "UInt8.toUInt64" []) (f b) = O.app (M.cval "UInt64.ofNat" []) (natEnc M b.toNat) := by
+    intro b
+    have hb := b.toNat_lt
+    have hblt := blt_set (M := M) L H E.cmp ρ b.toNat 256
+    rw [show decide (b.toNat < 256) = true by simpa using hb] at hblt
+    have hbltm : O.mem (O.app (O.app (M.cval "Nat.blt" []) (natEnc M b.toNat)) (natEnc M 256)) (M.cval "Bool" []) := by
+      rw [hblt]; exact bool_mem L E.cmp ρ true
+    have hg : O.mem O.pt (O.app (O.app (O.app (M.cval "Eq" [1]) (M.cval "Bool" []))
+        (O.app (O.app (M.cval "Nat.blt" []) (natEnc M b.toNat)) (natEnc M 256))) (M.cval "Bool.true" [])) := by
+      rw [M.eq_equality 1 ρ _ _ _ _ .const hBu hbltm (mem_ty M L E.cmp.btrue (ρ := ρ) .const)]
+      exact L.pt_mem_eqv (by rw [hblt]; rfl)
+    obtain ⟨ty, hc, hty⟩ := HB.u8to64
+    have key := transferN L M hc (ls := []) hty ρ (.cons .const (hn b.toNat)
+      (.cons (.app (.app (.app .const .const) (.app (.app .const .bvar) (litNat_D L E.toEnv hbl _ 256))) .const) hg .nil))
+      .const (.app .const (.app .const .bvar)) (.app .const .bvar) hUu
+      (mem_app' L d64 (mem_ty M L HB.to64H d64) .const (hf b) .const) (ofMem _ (hn _))
+    simpa [push] using key
+  rw [List.getD_eq_getElem?_getD]
+  cases hx : x[i.toNat]? with
+  | none => simp only [Option.getD_none]; rw [h64]; rfl
+  | some b => simp only [Option.getD_some]; rw [h64]; rfl
+
 end Bridge.Bytes
