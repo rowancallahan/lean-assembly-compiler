@@ -38,3 +38,10 @@ Not checked: that `Model.cval` is built from `acval` in a way that transports it
 With it: `cval_levelFree` (level-free constants are φ-independent) and `Denotes.shift`
 (denotation depends on φ only through the values of the term's own levels) — proved for the
 bvar/sort/const/app fragment; `lam`/`pi` would additionally need `regime φ pw` to agree.
+
+**Correction (after the typing-lemma work, MiniTyping.lean).** The φ₁ workaround does NOT cover the real
+slice. The same parameter name `u` is needed at 0 (`List.cons.{0}`, `OfNat.ofNat.{0}`, `HAdd.hAdd.{0,0,0}`,
+`BEq.beq.{0}`) and at 1 (`ite.{1}`, `Nat.casesOn.{1}`), so no single assignment is fixed by every
+instantiation. Parameter names are from memory of Lean core, not read from an exported env. For the slice,
+`cval_params` (or an equivalent export from con-leche) is needed; φ₁ only serves terms whose instantiations
+are all at one value per name.
