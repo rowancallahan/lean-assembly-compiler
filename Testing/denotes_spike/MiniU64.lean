@@ -212,3 +212,89 @@ theorem u64_ite_lt_denotes {tt te : Expr} {T E : V}
   rw [h, ← br_lt64] at this
   exact this
 end ops
+
+/-! ## 5. everything together: a UInt64 language, evaluator = emitted-term denotation -/
+inductive T
+  | lit (x : UInt64)
+  | add (a b : T) | sub (a b : T) | mul (a b : T) | land (a b : T) | lor (a b : T) | xor (a b : T)
+  | shl (a b : T) | shr (a b : T)
+  | iteBeq (a b t e : T) | iteLt (a b t e : T)
+
+def eval : T → UInt64
+  | .lit x => x
+  | .add a b => eval a + eval b
+  | .sub a b => eval a - eval b
+  | .mul a b => eval a * eval b
+  | .land a b => eval a &&& eval b
+  | .lor a b => eval a ||| eval b
+  | .xor a b => eval a ^^^ eval b
+  | .shl a b => eval a <<< eval b
+  | .shr a b => eval a >>> eval b
+  | .iteBeq a b t e => if (eval a == eval b) = true then eval t else eval e
+  | .iteLt a b t e => if eval a < eval b then eval t else eval e
+
+def bin (n : String) (a b : Expr) : Expr := .app (.app (.const n) a) b
+def tr : T → Expr
+  | .lit x => lit64 x.toNat
+  | .add a b => bin "UInt64.add" (tr a) (tr b)
+  | .sub a b => bin "UInt64.sub" (tr a) (tr b)
+  | .mul a b => bin "UInt64.mul" (tr a) (tr b)
+  | .land a b => bin "UInt64.land" (tr a) (tr b)
+  | .lor a b => bin "UInt64.lor" (tr a) (tr b)
+  | .xor a b => bin "UInt64.xor" (tr a) (tr b)
+  | .shl a b => bin "UInt64.shiftLeft" (tr a) (tr b)
+  | .shr a b => bin "UInt64.shiftRight" (tr a) (tr b)
+  | .iteBeq a b t e => .app (.app (bin "iteBeq64" (tr a) (tr b)) (tr t)) (tr e)
+  | .iteLt a b t e => .app (.app (bin "iteLt64" (tr a) (tr b)) (tr t)) (tr e)
+
+/-- the model facts, Nat-level shapes as in BridgeU64 -/
+structure Facts (cval : String → V) : Prop where
+  add : ∀ a b : Nat, app (app (cval "UInt64.add") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a + b))
+  sub : ∀ a b : Nat, app (app (cval "UInt64.sub") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a + (U * b - b)))
+  mul : ∀ a b : Nat, app (app (cval "UInt64.mul") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a * b))
+  land : ∀ a b : Nat, app (app (cval "UInt64.land") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a &&& b))
+  lor : ∀ a b : Nat, app (app (cval "UInt64.lor") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a ||| b))
+  xor : ∀ a b : Nat, app (app (cval "UInt64.xor") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a ^^^ b))
+  shl : ∀ a b : Nat, app (app (cval "UInt64.shiftLeft") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat (a <<< (b % 64)))
+  shr : ∀ a b : Nat, app (app (cval "UInt64.shiftRight") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) = encU app cval (UInt64.ofNat ((a % U) >>> (b % 64)))
+  iteBeq : ∀ (a b : Nat) (t e : V), app (app (app (app (cval "iteBeq64") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b))) t) e = cond (Nat.beq (a % U) (b % U)) t e
+  iteLt : ∀ (a b : Nat) (t e : V), app (app (app (app (cval "iteLt64") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b))) t) e = cond (Nat.ble (a % U + 1) (b % U)) t e
+
+/-- **UInt64 theorem**: the evaluator's value is what the emitted term denotes. -/
+theorem u64_denotes (cval : String → V) (ρ : Nat → V) (F : Facts app cval) :
+    ∀ e, Denotes app cval ρ (tr e) (encU app cval (eval e)) := by
+  intro e
+  induction e with
+  | lit x => exact u64_lit_denotes app cval ρ x
+  | add a b iha ihb => exact u64_add_denotes app cval ρ iha ihb F.add
+  | sub a b iha ihb => exact u64_sub_denotes app cval ρ iha ihb F.sub
+  | mul a b iha ihb => exact u64_mul_denotes app cval ρ iha ihb F.mul
+  | land a b iha ihb => exact u64_and_denotes app cval ρ iha ihb F.land
+  | lor a b iha ihb => exact u64_or_denotes app cval ρ iha ihb F.lor
+  | xor a b iha ihb => exact u64_xor_denotes app cval ρ iha ihb F.xor
+  | shl a b iha ihb => exact u64_shl_denotes app cval ρ iha ihb F.shl
+  | shr a b iha ihb => exact u64_shr_denotes app cval ρ iha ihb F.shr
+  | iteBeq a b t e iha ihb iht ihe =>
+    have := u64_ite_beq_denotes app cval ρ iha ihb F.iteBeq iht ihe
+    simp only [eval]
+    split <;> rename_i hc <;> simp only [hc, ite_true, ite_false] at this <;> exact this
+  | iteLt a b t e iha ihb iht ihe =>
+    have := u64_ite_lt_denotes app cval ρ iha ihb F.iteLt iht ihe
+    simp only [eval]
+    split <;> rename_i hc <;> simp only [hc, ite_true, ite_false] at this <;> exact this
+
+end MiniU64
+
+#print axioms MiniU64.u64_lit_denotes
+#print axioms MiniU64.u64_add_denotes
+#print axioms MiniU64.u64_sub_denotes
+#print axioms MiniU64.u64_mul_denotes
+#print axioms MiniU64.u64_and_denotes
+#print axioms MiniU64.u64_or_denotes
+#print axioms MiniU64.u64_xor_denotes
+#print axioms MiniU64.u64_shl_denotes
+#print axioms MiniU64.u64_shr_denotes
+#print axioms MiniU64.u64_beq_denotes
+#print axioms MiniU64.u64_ite_beq_denotes
+#print axioms MiniU64.u64_ite_lt_denotes
+#print axioms MiniU64.u64_denotes
