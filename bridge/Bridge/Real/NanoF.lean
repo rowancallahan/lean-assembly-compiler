@@ -31,6 +31,9 @@ macro "spine_absurd" he:ident : tactic =>
     | exact absurd (apps_c_inj $he).1 (by simp)
     | exact absurd (apps_c_inj $he).2.1 (by simp)
     | exact absurd (apps_c_inj $he).2.2 (by simp)
+    | exact absurd (apps_c_inj $he).1 (by decide)
+    | exact absurd (apps_c_inj $he).2.1 (by decide)
+    | exact absurd (congrArg List.length (apps_c_inj $he).2.2) (by simp)
     | exact absurd ($he).symm apps_ne_bv)
 
 theorem ev_bv {P : Prog} {env : List V} {i : Nat} {r : V} (h : Ev P env (.bv i) r) : env[i]? = some r := by
