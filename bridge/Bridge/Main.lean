@@ -17,10 +17,10 @@ con-leche's `Denotes` gives the same answer: the con-leche term `tr mainX` (`m` 
 with the input variable bound to the denotation of the input bytes `encL inp`, denotes what `encL out` denotes.
 `Ev`, `Denotes`, `Model`, `checkDecls` are imported unchanged from nano and con-leche.
 
-Two NAMED hypotheses on `env` remain (no Lean `axiom`; both are true of the env by `#eval`,
+`natLitSupported env` (the checker's guard that `Nat`, `Nat.zero`, `Nat.succ` are stored with their usual
+types) is PROVED from acceptance (`NatLit.natLit_of_accepted`: the stream's Nat block is the pinned one).
+One NAMED hypothesis on `env` remains (no Lean `axiom`; true of the env by `#eval`,
 Testing/denotes_real/CheckNano.lean):
-* `H_natLit : natLitSupported env` — the checker's own guard that `Nat`, `Nat.zero`, `Nat.succ` are stored with
-  their usual types;
 * `H_indTypes : IndStored env indHeads` — `List`, `List.nil`, `List.cons`, `UInt8`, `UInt64` are stored with
   their declared types. (con-leche proves this for defs and theorems, `checkDecls_consts`, not for inductives.)
 
@@ -31,6 +31,7 @@ on different toolchains (4.34.1 + Sail vs con-leche's 4.35.0-rc3), and `o = oM` 
 -/
 import Bridge.Real.NanoDen
 import Bridge.Real.Data.DsM
+import Bridge.Real.NatLit
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
@@ -40,16 +41,26 @@ universe w
 /-- the program's records (defs with their declared types, the three equations) are in the parsed stream -/
 theorem recs_dsM : recsOk dsM = true := by decide +kernel
 
+/-- the parsed stream holds a record con-leche recognises as its pinned `Nat` block -/
+theorem natPin_dsM : (dsM.any fun | .indDecl b _ => basisPinHit b == some .natK | _ => false) = true := by
+  decide +kernel
+
+theorem natPin_mem : ∃ b nP, Declaration.indDecl b nP ∈ dsM ∧ basisPinHit b = some .natK := by
+  obtain ⟨d, hd, hp⟩ := Array.any_eq_true'.mp natPin_dsM
+  match d, hp with
+  | .indDecl b nP, hp => exact ⟨b, nP, hd, by simpa using hp⟩
+
 /-- **The tiny nano program, end to end at the Expr level, in con-leche's model.** -/
 theorem nano_tiny (V : Type w) [SetTheory V] {env : Env}
     (accepted : Cached.checkDecls .verified natOpPinSets dsM = .ok env)
-    (H_natLit : natLitSupported env = true)
     (H_indTypes : IndStored env indHeads) :
     ∃ M : Model V env, CvalParams M ∧
       ∀ (inp out : List UInt8), Ev (progOf NanoTiny.oM) [.l inp] NanoTiny.mainX (.l out) →
         ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
           Denotes M.cval env φ ρ (encL inp) x ∧
           ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
+  obtain ⟨b, nP, hb, hpin⟩ := natPin_mem
+  have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin
   obtain ⟨M, hP⟩ := model_exists' V natOpPinSets dsM env accepted
   refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
   have hout : out = [1] := by have := NanoTiny.ev_main hev; cases this; rfl
