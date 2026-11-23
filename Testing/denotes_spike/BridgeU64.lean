@@ -157,6 +157,10 @@ structure NatEqs (V : Type w) where
   DIV : V
   BT : V
   BF : V
+  LAND : V
+  LOR : V
+  SHL : V
+  SHR : V
   COND : V → V → V → V           -- cond applied to its type argument `Nat`: COND c t e
   pred0 : app PRED Z = Z
   predS : ∀ x, app PRED (app S x) = x
@@ -256,5 +260,59 @@ theorem nat_div : ∀ n m, N.app (N.app N.DIV (N.nat n)) (N.nat m) = N.nat (n / 
     have hm : m ≠ 0 := fun h => by simp [h] at h2
     have hle : m ≤ n := by simpa [Nat.ble_eq] using h1
     rw [ih (n - m) (by omega)]; rfl
+
+/-- bit operations, shifts: the set-level image of `br_land0/br_land_rec/br_lor0/br_lor_rec/br_shl*/br_shr*` -/
+structure BitRec (N : NatEqs V) : Prop where
+  land0 : ∀ m, N.app (N.app N.LAND N.Z) (N.nat m) = N.Z
+  landR : ∀ n m, N.app (N.app N.LAND (N.nat n)) (N.nat m) =
+    N.app (N.app N.ADD (N.app (N.app N.MUL (N.nat 2)) (N.app (N.app N.LAND (N.app (N.app N.DIV (N.nat n)) (N.nat 2))) (N.app (N.app N.DIV (N.nat m)) (N.nat 2)))))
+      (N.app (N.app N.MUL (N.app (N.app N.MOD (N.nat n)) (N.nat 2))) (N.app (N.app N.MOD (N.nat m)) (N.nat 2)))
+  lor0 : ∀ m, N.app (N.app N.LOR N.Z) (N.nat m) = N.nat m
+  lorR : ∀ n m, N.app (N.app N.LOR (N.nat n)) (N.nat m) =
+    N.app (N.app N.ADD (N.app (N.app N.MUL (N.nat 2)) (N.app (N.app N.LOR (N.app (N.app N.DIV (N.nat n)) (N.nat 2))) (N.app (N.app N.DIV (N.nat m)) (N.nat 2)))))
+      (N.app (N.app N.SUB (N.app (N.app N.ADD (N.app (N.app N.MOD (N.nat n)) (N.nat 2))) (N.app (N.app N.MOD (N.nat m)) (N.nat 2))))
+        (N.app (N.app N.MUL (N.app (N.app N.MOD (N.nat n)) (N.nat 2))) (N.app (N.app N.MOD (N.nat m)) (N.nat 2))))
+  shl0 : ∀ n, N.app (N.app N.SHL (N.nat n)) N.Z = N.nat n
+  shlS : ∀ n m, N.app (N.app N.SHL (N.nat n)) (N.app N.S (N.nat m)) = N.app (N.app N.MUL (N.nat 2)) (N.app (N.app N.SHL (N.nat n)) (N.nat m))
+  shr0 : ∀ n, N.app (N.app N.SHR (N.nat n)) N.Z = N.nat n
+  shrS : ∀ n m, N.app (N.app N.SHR (N.nat n)) (N.app N.S (N.nat m)) = N.app (N.app N.DIV (N.app (N.app N.SHR (N.nat n)) (N.nat m))) (N.nat 2)
+
+variable (B : BitRec N)
+include B
+
+omit R B in
+theorem nat_two : N.nat 2 = N.app N.S (N.app N.S N.Z) := rfl
+
+theorem nat_shl : ∀ n k, N.app (N.app N.SHL (N.nat n)) (N.nat k) = N.nat (n <<< k) := by
+  intro n k
+  induction k with
+  | zero => exact B.shl0 n
+  | succ k ih => rw [NatEqs.nat, B.shlS, ih, nat_mul R, Nat.shiftLeft_succ]
+
+theorem nat_shr : ∀ n k, N.app (N.app N.SHR (N.nat n)) (N.nat k) = N.nat (n >>> k) := by
+  intro n k
+  induction k with
+  | zero => exact B.shr0 n
+  | succ k ih => rw [NatEqs.nat, B.shrS, ih, nat_div R, Nat.shiftRight_succ]
+
+theorem nat_land : ∀ n m, N.app (N.app N.LAND (N.nat n)) (N.nat m) = N.nat (n &&& m) := by
+  intro n m
+  induction n using Nat.strongRecOn generalizing m with
+  | _ n ih =>
+    by_cases h : n = 0
+    · subst h; rw [show N.nat 0 = N.Z from rfl, B.land0, Nat.zero_and]; rfl
+    · rw [B.landR]
+      simp only [nat_div R, nat_mod R, ih (n / 2) (by omega), nat_mul R, nat_add R]
+      exact congrArg N.nat (br_land_rec n m).symm
+
+theorem nat_lor : ∀ n m, N.app (N.app N.LOR (N.nat n)) (N.nat m) = N.nat (n ||| m) := by
+  intro n m
+  induction n using Nat.strongRecOn generalizing m with
+  | _ n ih =>
+    by_cases h : n = 0
+    · subst h; rw [show N.nat 0 = N.Z from rfl, B.lor0, Nat.zero_or]
+    · rw [B.lorR]
+      simp only [nat_div R, nat_mod R, ih (n / 2) (by omega), nat_mul R, nat_add R, nat_sub R]
+      exact congrArg N.nat (br_lor_rec n m).symm
 
 end SetLevel
