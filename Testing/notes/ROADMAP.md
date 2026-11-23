@@ -29,6 +29,110 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## STRUCTURE DECISION (owner, 2026-11-23): back end carries meaning, front end is checked
+- BACK END (Expr → machine code) carries ALL the meaning. The main theorem: for every Expr e in the slice, the
+  machine code writes the bytes of con-leche's Denotes(e). Sem and Ev are internal lemmas, not part of the statement.
+- FRONT END (text → Expr) claims no meaning. Its output is checked per program against Lean's elaborated Expr
+  (kernel-checked for the compiler itself). Nano's parser keeps its own semantics as a helpful side definition and
+  is still proved against Lean's parser as far as possible (leaves, LEAN-EQUIV, harvest), but the main theorem does
+  not depend on it.
+- SELF-HOSTING: the compiler's text → its Expr (= Lean's, kernel-checked) → its machine code computes Denotes of
+  that Expr. So when the Expr matches, the compiler provably compiles itself correctly (binary identity: fixpoint,
+  later kernel evaluation).
+Work, estimated: per-machine corollaries (hours, in progress); the Expr entry point (decoder in nano + proof, about
+the size of u10: days); Ev = Denotes using con-leche's lemmas (several days; spike first on UInt64.add / ite /
+List.cons); the Denotes copy + Expr-identity check (days; Lean 4.35 vs 4.34.1 toolchain gap); restating the top
+theorems around Expr (days).
+
+## OWNER NOTES (2026-11-23): Expr is the semantic interface
+- Expr is how meaning is defined from now on, because that is what Lean does. We copy Lean's approach.
+- REUSE CON-LECHE MAXIMALLY (its term type, Denotes, lemmas). Show our meaning is literally theirs.
+- Ev is internal. It may be rewritten (and renamed, e.g. ExprRun) freely, as long as self-hosting is kept.
+- The most important check: nano's elaboration of ITSELF equals Lean's (C_lean_all). Per-program checks for other
+  programs are optional extra assurance.
+- Back-end-only self-hosting is possible: the compiler compiles the Expr of its own source, exported from Lean's
+  elaborator, so no nano front end is needed for the proof. The nano front end stays useful for running
+  standalone (no Lean needed) and is still proved against Lean as far as possible, but it is not on the critical
+  path of the main theorem.
+
+## SIDE PROJECT, maybe, next time the owner has time (2026-11-23): the "natural hybrid"
+Keep today's nano front end (Lean-syntax elaborator) as the user-facing compiler: people compile real Lean code and
+can check per file that its Expr matches Lean's. Separately, bootstrap the compiler itself from its Expr file (E's
+output) through a tiny Expr-text parser plus the Expr entry point. The compiler's own trusted path is then: tiny
+parser → Expr → back end → Denotes. The main line stays as it is now (owner decision: the elaborator stays part of
+the compiler).
+
+## SIMPLIFICATIONS (owner, 2026-11-23)
+- Reuse con-leche maximally: emit con-leche's own term type (a subset of it) as nano's Expr, so no translation step.
+- Ev is internal, so rewrite it to mirror Denotes rule by rule (same environment / bvar / app / lam / let structure;
+  constants through the same table). The Ev = Denotes bridge is then an induction whose cases are con-leche's own
+  lemmas (WellDenotedV_inst, beta, app, literals) plus the value-to-set encoding.
+- LATER: reduce the IRs to Expr → one pre-assembly layer (J) → thin per-target encoders (RISC-V, ARM, x86).
+
+## THE HOLY GRAIL (owner, 2026-11-23): meaning = con-leche's Denotes, computed by self-hosted, proven code
+1. Meaning: con-leche's `Denotes` (ConLeche/Denotes.lean), copied verbatim or imported once nano moves to its
+   Lean version (4.35). Check the copy's elaborated Expr is identical to con-leche's (C_lean-style tooling).
+   Denotes is a definition, not a program, so it stays in Lean, not in nano.
+2. Proof: machine code → Sem (have) → Ev of the Expr (eval_emit; for ANY Expr via the entry point) → Denotes of
+   the Expr (new: Ev agrees with Denotes on the slice). Needs the slice-to-con-leche-term map, the set encoding of
+   UInt64/Bool/Nat/lists/pairs, the ~50 constants via their definitional equations in con-leche's model, and an
+   induction over the slice. The boundary: the output bytes = the byte list that Denotes assigns to f(input).
+3. Self-hosting: the compiler is an Expr in the slice, so (2) applies to itself; the binary identity comes from the
+   fixpoint, later from kernel evaluation.
+This replaces the "standard meaning" route. Keep the per-program certificates Ev(e) = f as a cross-check.
+Trust at the end: one initial kernel check (bootstrap), then re-checks with nano-compiled con-leche; the ISA models
+(Sail RV, Sail ARM, DeepMind ARM) + hardware; propext/Choice/Quot.sound + ZFC with inaccessibles; the Spec I/O boundary.
+
+## MAIN THEOREM PLAN (owner, 2026-11-23): Expr is the central IR
+Theorem A, the main theorem: for every Expr e in nano's slice and every input, the compiled machine code (RISC-V
+Sail, ARM DeepMind, ARM Sail) writes the encoding of Lean's value of e to the output location.
+Ingredients:
+- have: ExprSpec (the slice and Ev); the compiler theorems (machine code = Sem) on all three machines;
+  eval_emit (Ev(emit p) = Sem p); C_lean_all / C_expr (the compiler's Expr = Lean's, and Ev of it = mC).
+- new 1: the Expr ENTRY POINT. A decoder from serialized Expr to nano's AST, written in nano (self-hosted), with
+  Sem(decode e) = Ev e for EVERY e in the slice. Composed with the compiler theorems, this gives Theorem A with
+  "Ev" in place of "Lean's value".
+- new 2: Ev = Lean's value. Per program, an auto-generated certificate Ev(e) = f, proved symbolically (by
+  unfolding, not by enumerating inputs; cost scales with program size). In general: a standard meaning, then
+  con-leche's model.
+- self-application: the compiler is total (fuel, no partial), so it is an Expr in the slice and A applies to
+  itself. The binary = compiled code comes from the fixpoint now, and from kernel evaluation later.
+Theorem B (front end) stays a per-program check: nano accepts + Expr matches ⇒ by A, output = Lean's value.
+Programs with partial defs (e.g. parts of con-leche) must be rewritten in total, fuel style with a proved equation
+(the "friendly track") before they are Exprs in the slice.
+
+## TRUST CHAIN FOR SELF-HOSTING (owner, 2026-11-21) — what is proved, what is trusted, what is next
+Status (keep_round1_expr; EXPR.md is the detailed report):
+- E (Expr emitter) is written in bootstrap nano and compiled by B2. Its output = emitSpec byte for byte.
+- Check: C's emitted Expr = Lean's elaborated Expr, 234/236 defs. o32/o38 are representation only
+  (k ∈ {0,1}, used only in `k == 1`). Nat step 1 (numOkP, Lean's numeral default) targets 236/236.
+  Big-number Nat is deferred.
+- Proved: eval_emit (Ev of emitted Expr = nano's Sem, all programs); C_expr (mC = Ev of C's Expr);
+  self_expr_C (C's RISC-V code writes that value). The fixpoint B2 = B3 is checked.
+- LONG-TERM (owner, 2026-11-22): Ev in general. (a) Define the standard meaning of the emitted Expr slice and prove
+  Ev = that meaning for every Expr. (b) Then prove Ev = con-leche's model meaning for every Expr in the slice.
+  Composed with the compiler theorems on RISC-V (Sail) and ARM (DeepMind + Sail), this gives: for every program
+  whose Expr matches Lean's, the machine code computes con-leche's meaning of Lean's Expr. Applied to C compiled
+  by itself, the B2 identity comes from the fixpoint / kernel evaluation. TODO soon: the ARM analogue of
+  self_expr_C, which only composes C_expr with C_correct_native_release.
+- NEXT (owner, 2026-11-22): prove the SELF-HOSTED emitter E itself. Restate the chain over E's own definitions
+  (a SrcLink-style cert for E), or prove E = emitSpec. Until then, E is checked byte-equal to emitSpec.
+- In progress: make "emitted Expr = Lean's Expr" kernel-checked (generated literal + decide/rfl), not a script check.
+Trusted: Lean kernel + propext/Choice/Quot.sound; the ISA models (Sail RV, Sail ARM, DeepMind ARM) and
+hardware = model; Spec/ (loader, encodings); the Expr generator reading the environment; Ev's faithfulness
+to Lean for programs other than C; Lean's toolchain once, for B1.
+Next, to remove trust (owner wants all three on the roadmap):
+1. Kernel proof that B2 = mC(C's source), which removes the B1/toolchain trust (see "remove trust in the bootstrap toolchain").
+2. A general proof of Ev against a formal model of Lean's Expr semantics (e.g. con-leche's set-theoretic model).
+3. Re-check all nano proofs with con-leche (an independent verified kernel).
+
+## LONG-TERM (owner, 2026-11-21): kernel as trusted execution for the bootstrap binary
+Theorem `mC source = B2bytes`, proved by kernel evaluation, split into stages with intermediate literals
+(lex → tokens → AST → … → bytes). It is checked by Lean's kernel (removes the Lean-toolchain/B1 trust) and
+re-checked by con-leche (an independent verified kernel). This is diverse double compiling with a proven route.
+Step 1: kernel-evaluate the lexer stage on C's source and time it in both kernels, then extrapolate.
+Feasibility is unmeasured.
+
 ## LONG-TERM (owner, 2026-11-21): Expr side output + Expr entry point (all self-hosted)
 1. Side output: nano also emits, for each def, the Expr it means, together with the computed value.
 2. Spot check: nano's Expr = Lean's elaborated Expr (up to generated names/helpers). Theorem: if they match, nano's
