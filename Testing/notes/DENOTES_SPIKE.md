@@ -362,3 +362,12 @@ Not yet ported: the `.bin` ops (`+ - * <<< >>> &&& |||`) and ites; they use the 
 | `add_nat` | `Real.add_nat` | without `SetLaws` |
 Elaboration note: the final `app_mem_piR` chain must be written step by step (`have e1 … e4`); the nested one hit a `whnf` heartbeat timeout.
 Remaining u64 ops: `-`,`*` (Arith), `<<<`,`>>>` (Shift), `&&&`,`|||` (Bits), ites (Ite, IteLt, IteNat). Same pattern as `+`; the `Bridge.Asm`-level wiring (`Open.bin` structures, `tyS`, `EncEnv`) is not ported.
+
+**S6 update 3: `*` ported** (`bridge/Bridge/RealArith.lean`; `RealAdd.lean` refactored: `add_fact` = `add_core` + tail; new `wrap_mod`). No sorry; axioms propext, Classical.choice, Quot.sound.
+| trimmed | real | statement change |
+|---|---|---|
+| `Arith.OpEnv`, `opS`, `opE`, `opS_D` | `Real.OpEnv` (`Stored`/`HasLv`), `Real.opS M φ f hi T I`, `opHead`, `Real.opS_D` | `opHead nHAddH nInstHAdd = hAddE` (`hAddE_eq`, `rfl`) |
+| `op_mem` | `Real.op_mem M HA HO hφ φ ρ hT hI hX hY` | generic over `f H hi K`; `outParam` from `AddEnv` |
+| `Len.wrap_mod` | `Real.wrap_mod M H HA HT hφ φ ρ hlit` | `hlit` hypothesis (br_litN for 2^64) as in `add_fact` |
+| `Arith.mul_set` + `mul_field` | `Real.mul_field M H HA HT HM hφ φ ρ hlit hH x y` | `MulThms` = `OpEnv HMul…` + `mul_n0`,`mul_ns`,`br_mul`; `mul_set` is a `have` inside |
+Not ported: `-` (needs `guard_mem`: `Bool`, `Nat.blt`, `CmpEnv`, the `br_sub` guard binder), `<<<`,`>>>`,`&&&`,`|||`, ites.

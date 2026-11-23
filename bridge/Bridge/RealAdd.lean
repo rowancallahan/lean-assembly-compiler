@@ -261,11 +261,17 @@ theorem succ_mem (M : Model V env) (H : NatTypes env) (φ : LevelParam → Nat) 
 
 /-- **`Open.bin` for `+` (`Add.add_field`), ported.**  `hlit` is the `br_litN` fact for `2^64` (`Mini.litN_field`), as a
 hypothesis until `litN` is ported (same pattern as `litU_fact`). -/
-theorem add_fact (M : Model V env) (H : LitEnv env) (HA : AddEnv env) (HT : AddThms env) (hφ : CvalParams M)
+theorem add_core (M : Model V env) (H : LitEnv env) (HA : AddEnv env) (HT : AddThms env) (hφ : CvalParams M)
     (φ : LevelParam → Nat) (ρ : BVarIdx → V)
-    (hlit : ∀ ρ', Denotes M.cval env φ ρ' litNatE (natEnc M φ UInt64.size)) {Hv : V}
-    (hH : Denotes M.cval env φ ρ (hAddE tU nInstAddU) Hv) (x y : UInt64) :
-    app (app Hv (encU M φ x)) (encU M φ y) = encU M φ (x + y) := by
+    (hlit : ∀ ρ', Denotes M.cval env φ ρ' litNatE (natEnc M φ UInt64.size)) :
+    ∃ ADD ADD64 : V, (∀ ρ', Denotes M.cval env φ ρ' (hAddE tN nInstAddN) ADD) ∧
+      (∀ ρ', Denotes M.cval env φ ρ' (hAddE tU nInstAddU) ADD64) ∧
+      (∀ a b, a ∈ˢ M.cval natName φ → b ∈ˢ M.cval natName φ → app (app ADD a) b ∈ˢ M.cval natName φ) ∧
+      (∀ a b, app (app ADD (natEnc M φ a)) (natEnc M φ b) = natEnc M φ (a + b)) ∧
+      (∀ a b, a ∈ˢ M.cval natName φ → b ∈ˢ M.cval natName φ →
+        app (app ADD64 (app (M.cval nUOf φ) a)) (app (M.cval nUOf φ) b) = app (M.cval nUOf φ) (app (app ADD a) b)) ∧
+      (∀ a, a ∈ˢ M.cval natName φ →
+        app (M.cval nUOf φ) (app (app ADD a) (natEnc M φ UInt64.size)) = app (M.cval nUOf φ) a) := by
   obtain ⟨cn, hn, pn⟩ := H.nt.nat
   have dN : ∀ ρ', Denotes M.cval env φ ρ' tN (M.cval natName φ) := fun _ => Denotes_const' hn pn rfl
   have dU : ∀ ρ', Denotes M.cval env φ ρ' tU (M.cval nU φ) := fun _ => H.u64.const M rfl φ _
@@ -338,7 +344,35 @@ theorem add_fact (M : Model V env) (H : LitEnv env) (HA : AddEnv env) (HT : AddT
   -- algebra
   have hAdd := add_nat (M.cval natZeroName φ) (M.cval natSuccName φ) ADD (M.cval natName φ) (natEnc M φ) rfl
     (fun _ => rfl) hnat hz hs
-  rw [Denotes_functional hH (dAddUE ρ)]
+  exact ⟨ADD, ADD64, dAddNE, dAddUE, addMem, hAdd, hadd, hwrap⟩
+
+/-- the 2^64 wrap on canonical numerals: `ofNat k = ofNat (k % 2^64)` (`Len.wrap_mod`) -/
+theorem wrap_mod (M : Model V env) (H : LitEnv env) (HA : AddEnv env) (HT : AddThms env) (hφ : CvalParams M)
+    (φ : LevelParam → Nat) (ρ : BVarIdx → V)
+    (hlit : ∀ ρ', Denotes M.cval env φ ρ' litNatE (natEnc M φ UInt64.size)) :
+    ∀ k, app (M.cval nUOf φ) (natEnc M φ k) = app (M.cval nUOf φ) (natEnc M φ (k % UInt64.size)) := by
+  obtain ⟨ADD, ADD64, -, -, -, hAdd, -, hwrap⟩ := add_core M H HA HT hφ φ ρ hlit
+  have hnat := natEnc_mem M H.nt φ ρ
+  intro k
+  induction k using Nat.strongRecOn with
+  | ind k ih =>
+    by_cases h : k < UInt64.size
+    · rw [Nat.mod_eq_of_lt h]
+    · have hk : k = (k - UInt64.size) + UInt64.size := by omega
+      have := ih (k - UInt64.size) (by have : 0 < UInt64.size := by decide
+                                       omega)
+      rw [hk, ← hAdd, hwrap _ (hnat _), this, Nat.add_mod_right]
+
+/-- **`Open.bin` for `+` (`Add.add_field`), ported.**  `hlit` is the `br_litN` fact for `2^64` (`Mini.litN_field`), as a
+hypothesis until `litN` is ported (same pattern as `litU_fact`). -/
+theorem add_fact (M : Model V env) (H : LitEnv env) (HA : AddEnv env) (HT : AddThms env) (hφ : CvalParams M)
+    (φ : LevelParam → Nat) (ρ : BVarIdx → V)
+    (hlit : ∀ ρ', Denotes M.cval env φ ρ' litNatE (natEnc M φ UInt64.size)) {Hv : V}
+    (hH : Denotes M.cval env φ ρ (hAddE tU nInstAddU) Hv) (x y : UInt64) :
+    app (app Hv (encU M φ x)) (encU M φ y) = encU M φ (x + y) := by
+  obtain ⟨ADD, ADD64, dN', dU', -, hAdd, hadd, hwrap⟩ := add_core M H HA HT hφ φ ρ hlit
+  have hnat := natEnc_mem M H.nt φ ρ
+  rw [Denotes_functional hH (dU' ρ)]
   show app (app ADD64 (app (M.cval nUOf φ) (natEnc M φ x.toNat))) (app (M.cval nUOf φ) (natEnc M φ y.toNat)) =
     app (M.cval nUOf φ) (natEnc M φ (x + y).toNat)
   rw [hadd _ _ (hnat _) (hnat _), hAdd, UInt64.toNat_add, show (2:Nat) ^ 64 = UInt64.size from rfl]
