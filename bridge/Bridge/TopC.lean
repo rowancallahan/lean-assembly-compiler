@@ -7,7 +7,7 @@ conditions, prelude ops) and swapping the trimmed model for con-leche's.  With `
 text writes `mC a`, and `⟦m⟧ (enc a) = enc (mC a)`.
 
 STATUS: proved, no sorry. -/
-import Bridge.Final7
+import Bridge.Final8
 import Bridge.CheckForm
 
 namespace Bridge.TopC
@@ -101,5 +101,18 @@ theorem C_denotes_final7 (L : SetLaws O) {junk : S} (E : Final7.Env7 env (sigOf 
   have hD : D O M.cval (ρE (encM M) junk [.l inp]) (trM (.app (.c "m" []) (.bv 0)))
       (O.app (M.cval "m" []) (encM M (.l inp))) := .app .const .bvar
   exact Final7.ev_denotes_final7 L E Op hbl cPWf hev hw (.cons (.ls _) .nil) _ hD
+
+/-- **the current headline**: all seven bin ops `+ - * &&& ||| <<< >>>`, UInt64 `==`/`<`, all nine prelude ops
+discharged; what remains is `Final8.Open8`: the 3 Nat-operand ites of C -/
+theorem C_denotes_final8 (L : SetLaws O) {junk : S} (E : Final8.Env8 env (sigOf oC) (ExprSpec.progOf oC))
+    (Op : Final8.Open8 M (sigOf oC) (ExprSpec.progOf oC) junk) (hbl : HasTy env "br_litN" [] Final.brLitNTy)
+    (inp : List UInt8) (hin : inp.length < 2 ^ 64) (hs : Sem κC Cert.PC.all inp = .ok (mC inp)) :
+    O.app (M.cval "m" []) (encM M (.l inp)) = encM M (.l (mC inp)) := by
+  have hev := C_expr inp hin hs
+  have hw : Wf (sigOf oC) [.ls] (.app (.c "m" []) (.bv 0)) .ls :=
+    .call (n := "m") (as := [.bv 0]) rfl (by simp [Typed.reserved]) c_sig_m (.cons (.bv rfl rfl) .nil)
+  have hD : D O M.cval (ρE (encM M) junk [.l inp]) (trM (.app (.c "m" []) (.bv 0)))
+      (O.app (M.cval "m" []) (encM M (.l inp))) := .app .const .bvar
+  exact Final8.ev_denotes_final8 L E Op hbl cPWf hev hw (.cons (.ls _) .nil) _ hD
 
 end Bridge.TopC
