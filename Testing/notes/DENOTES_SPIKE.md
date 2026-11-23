@@ -326,3 +326,12 @@ In `OfNat.ofNat.{u}`'s stored type `∀ {α : Type u} (n : Nat) [OfNat α n], α
 `hφ : ∀ n ci φ₁ φ₂, env.find? n = some ci → (∀ p ∈ ci.toConstantVal.levelParams, φ₁ p = φ₂ p) → M.cval n φ₁ = M.cval n φ₂`,
 the port is the Mini proof with `substFn` rewriting at each `const` and `Level.eval` in the `sort` cases. No other
 obstacle seen. The remaining u64 ops (`+ - * <<< >>> &&& |||`, ites) all go through the same `OfNat`/instance typings.
+
+**S6 update: `litU_fact` ported** (`bridge/Bridge/RealLit.lean`, in lib `BridgeReal`; no sorry; axioms propext, Classical.choice, Quot.sound).
+| trimmed | real | statement change |
+|---|---|---|
+| `Mini.litU_fact` | `Real.litU_fact M (H : LitEnv env) (hφ : CvalParams M) φ ρ k hR` | adds `φ`, `hφ`; conclusion `R = app (cval UInt64.ofNat φ) (natEnc M φ k)` |
+| `Mini.LitEnv` (list membership) | `Real.LitEnv` over `Stored env n ps ty` (`find?` + `levelParams` + exact stored `type`) | all data binders carry `dm := ⟨.never⟩` (regime 1); `OfNat.ofNat`'s type uses `Sort (succ (param u))`, level param name `uP = "u"` |
+| level handling | `CvalParams M` (= `ModelExists2.CvalParams`), used ONCE: `cval Nat (φ0 φ) = cval Nat φ` where `φ0 φ = substFn φ [u] [0]` | the only place finding (a) bites for `litU`; `OfNat` itself needs no hypothesis (`substFn (φ0 φ) [u] [param u] = φ0 φ`, `Real.φ0_self`) |
+| `transferN` (n binders) | one binder inlined (`inhab_const` + `Inhab.pi` + `Inhab.eq`) | — |
+Not yet ported: the `.bin` ops (`+ - * <<< >>> &&& |||`) and ites; they use the same pattern (stored types read at `φ0`-style assignments, `CvalParams` for level-free constants inside polymorphic heads).
