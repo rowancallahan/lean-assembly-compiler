@@ -46,6 +46,8 @@ inductive Conv (tab : Tab) (eqs : List (Expr × Expr)) (thms : List Thm) (Γ : L
   /-- congruence in the arguments of a typed head spine -/
   | cong {h : Expr} {as bs : List Expr} {Ts : List Expr} {T : Expr} :
       HasTy tab eqs Γ (apps h as) T → ConvL tab eqs thms Γ as bs Ts → Conv tab eqs thms Γ (apps h as) (apps h bs) T
+  /-- con-leche reads a literal `k+1` as `Nat.succ k` (`Denotes.natLit`) -/
+  | litS {k : Nat} : Conv tab eqs thms Γ (.lit (.natVal (k + 1))) (.app Tiny.succC (.lit (.natVal k))) Tiny.natC
   /-- an instance of a stored equation at typed arguments (outermost binder first) -/
   | inst {t : Thm} {as : List Expr} : t ∈ thms → ArgsC tab eqs Γ t.Ts as →
       Conv tab eqs thms Γ (substB as.reverse t.lhs) (substB as.reverse t.rhs) t.S
@@ -134,6 +136,10 @@ theorem conv_sound : ∀ {a b T : Expr}, Conv tab eqs thms Γ a b T →
     obtain ⟨F, ys, dF, dys, rfl⟩ := apps_inv dX
     obtain rfl := DenL.functional dys ha
     exact den_apps dF hb
+  | _, _, _, .litS (k := k) => by
+    have hd := Tiny.lit_den M hnat φ ρ (k + 1)
+    refine ⟨_, _, hd, ?_, Tiny.nat_den M hnat φ ρ, Tiny.natV_mem M hnat φ ρ (k + 1)⟩
+    cases hd with | natLit h => exact h
   | _, _, _, .inst (t := t) (as := as) hmem hargs => by
     obtain ⟨hrec, k, hok⟩ := hthms t hmem
     simp only [Thm.ok, Bool.and_eq_true, beq_iff_eq] at hok

@@ -20,3 +20,16 @@ def main' : IO Unit := do
   | .ok env => IO.println s!"(3) accepted; (4) natLitSupported = {natLitSupported env}, IndStored = {indOk env}"
   | .error _ => IO.println "(3) REJECTED"
 #eval main'
+
+/-! the input-dependent program (Bridge.nano_input) -/
+def mainR : IO Unit := do
+  IO.println s!"(R1) emitXs srcR = oR: {(ExprSpec.emitXs NanoR.srcR).toOption == some NanoR.oR}"
+  let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tinyr.ndjson"
+  let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
+  let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
+  let ds := preparePrelude pre r.decls
+  IO.println s!"(R2) recsOkR = {NanoRDen.recsOkR ds}, natPin = {Bridge.natPin ds}"
+  match Cached.checkDecls .verified natOpPinSets ds with
+  | .ok env => IO.println s!"(R3) accepted; IndStored = {indOk env}"
+  | .error _ => IO.println "(R3) REJECTED"
+#eval mainR
