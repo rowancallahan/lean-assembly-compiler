@@ -97,7 +97,8 @@ variable {S : Type} {O : SetOps S} {cval : String → List Nat → S}
 
 /-- the open per-constant lemmas, canonical arguments only.  `ρ` is any variable environment; `ρE env` the one
 of an Ev environment. -/
-structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (P : Prog) (enc : ExprSpec.V → S) (junk : S) : Prop where
+structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (P : Prog) (enc : ExprSpec.V → S) (junk : S)
+    (tyS' : Sh → S) : Prop where
   /-- `have x : shTy s := v; b` as `(λ (shTy s). b) v`: beta + `enc a ∈ ⟦shTy s⟧` -/
   letβ : ∀ {env Γ s v b a R}, Typed.Fa2 VSh Γ env → Wf sig Γ v s → Ev P env v a → VSh s a →
     (∀ X, D O cval (ρE enc junk env) (trM v) X → X = enc a) →
@@ -115,19 +116,25 @@ structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (
   /-- `ite` with the emitted condition/instance; the condition's truth value comes from its `EvB` -/
   ite : ∀ {env r n cmp a b c d bc H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) → EvB P env c bc →
     D O cval (ρE enc junk env) (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
+    O.mem Xt (tyS' r) → O.mem Xe (tyS' r) →
     O.app (O.app H Xt) Xe = if bc then Xt else Xe
   pair : ∀ {ρ A B H x y}, VSh A x → VSh B y →
     D O cval ρ (trM (apps (.c "Prod.mk" [0, 0]) [shTy A, shTy B])) H →
     O.app (O.app H (enc x)) (enc y) = enc (.p x y)
   cases : ∀ {ρ l r Rs body H L x y R}, VSh l x → VSh r y →
     D O cval ρ (trM (apps (.c "Prod.casesOn" [1, 0, 0]) [shTy l, shTy r, .lam (shTy (.p l r)) (shTy Rs)])) H →
-    D O cval ρ (trM (.lam (shTy l) (.lam (shTy r) body))) L → R = O.app (O.app H (enc (.p x y))) L →
+    D O cval ρ (trM (.lam (shTy l) (.lam (shTy r) body))) L →
+    O.mem L (O.piR 1 (tyS' l) fun _ => O.piR 1 (tyS' r) fun _ => tyS' Rs) →
+    R = O.app (O.app H (enc (.p x y))) L →
     D O cval (push (enc y) (push (enc x) ρ)) (trM body) R
   natZ : ∀ {ρ Rs H Z L}, D O cval ρ (trM (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy Rs)])) H →
+    O.mem Z (tyS' Rs) → O.mem L (O.piR 1 (tyS' .nt) fun _ => tyS' Rs) →
     O.app (O.app (O.app H (enc (.n 0))) Z) L = Z
   natS : ∀ {ρ Rs s H Z L k R},
     D O cval ρ (trM (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy Rs)])) H →
-    D O cval ρ (trM (.lam (.c "Nat" []) s)) L → R = O.app (O.app (O.app H (enc (.n (k + 1)))) Z) L →
+    D O cval ρ (trM (.lam (.c "Nat" []) s)) L →
+    O.mem Z (tyS' Rs) → O.mem L (O.piR 1 (tyS' .nt) fun _ => tyS' Rs) →
+    R = O.app (O.app (O.app H (enc (.n (k + 1)))) Z) L →
     D O cval (push (enc (.n k)) ρ) (trM s) R
   nil : ∀ {ρ R}, D O cval ρ (trM (apps (.c "List.nil" [0]) [.c "UInt8" []])) R → R = enc (.l [])
   prim : PrimFactsM O cval enc
@@ -137,13 +144,37 @@ structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (
     (∀ R, D O cval (ρE enc junk vs.reverse) (trM b) R → R = enc v) →
     (vs.map enc).foldl O.app (cval n []) = enc v
 
+/-- what the term typing gives (`TermTyping.wf_mem` discharges `wt`; `EvMini.encM_mem` discharges `encTy`) -/
+structure TypingW (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (enc : ExprSpec.V → S)
+    (tyS' : Sh → S) : Prop where
+  laws : SetLaws O
+  wt : ∀ {Γ e s ρ}, Wf sig Γ e s → (∀ i s, Γ[i]? = some s → O.mem (ρ i) (tyS' s)) →
+    ∀ R, D O cval ρ (trM e) R → O.mem R (tyS' s)
+  encTy : ∀ {s v}, VSh s v → O.mem (enc v) (tyS' s)
+  shD : ∀ {ρ} s, D O cval ρ (trM (shTy s)) (tyS' s)
+
+theorem tenv_of {enc : ExprSpec.V → S} {junk : S} {tyS' : Sh → S} (encTy : ∀ {s v}, VSh s v → O.mem (enc v) (tyS' s)) :
+    ∀ {Γ env}, Typed.Fa2 VSh Γ env → ∀ i s, Γ[i]? = some s → O.mem (ρE enc junk env i) (tyS' s)
+  | _, _, .nil, i, s, h => by simp at h
+  | _, _, .cons hv _, 0, s, h => by simp at h; subst h; exact encTy hv
+  | _, _, .cons _ t, i + 1, s, h => tenv_of encTy t i s (by simpa using h)
+
+theorem lam_ty {sig enc} {tyS' : Sh → S} (T : TypingW O cval sig enc tyS') {ρ : Nat → S} {s : Sh} {body : X}
+    {B : S → S} {Lv : S} (h : D O cval ρ (trM (.lam (shTy s) body)) Lv)
+    (hb : ∀ x, O.mem x (tyS' s) → ∀ R, D O cval (push x ρ) (trM body) R → O.mem R (B x)) :
+    O.mem Lv (O.piR 1 (tyS' s) B) := by
+  obtain ⟨A, F, hA, hF, -, rfl⟩ := lam_inv h
+  obtain rfl := D_functional T.laws hA (T.shD s)
+  exact T.laws.lamR_mem fun x hx => hb x hx _ (hF x hx)
+
 theorem fa2_map_tr {ρ : Nat → S} {as : List X} {Xs : List S}
     (h : Fa2D (D O cval ρ) (as.map trM) Xs) :
     Fa2D (fun a X => D O cval ρ (trM a) X) as Xs := Fa2D_map h
 
 /-- **Ev agrees with Denotes on well-formed terms** (uniqueness form: whatever `tr e` denotes is `enc v`). -/
-theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
-    (F : FactsM O cval sig P enc junk) (hP : PWf sig P) {env e v} (h : Ev P env e v) :
+theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S} {tyS' : Sh → S}
+    (F : FactsM O cval sig P enc junk tyS') (T : TypingW O cval sig enc tyS') (hP : PWf sig P) {env e v}
+    (h : Ev P env e v) :
     ∀ {Γ s}, Wf sig Γ e s → Typed.Fa2 VSh Γ env →
       ∀ R, D O cval (ρE enc junk env) (trM e) R → R = enc v := by
   refine Ev.rec
@@ -191,7 +222,8 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
     | ite h1 h2 h3 _ _ h5 _ =>
       unif
       obtain ⟨H, A, B, hH, hA, hB, rfl⟩ := two_args (l := [_, _, _]) hR
-      rw [F.ite h2 h3 hc hH]; exact iht h5 he A hA
+      rw [F.ite h2 h3 hc hH (T.wt h5 (tenv_of T.encTy he) A hA) (T.wt ‹_› (tenv_of T.encTy he) B hB)]
+      exact iht h5 he A hA
     | _ => kill
   case iteF =>
     intro env ls T c d t e r hc _ _ ihe Γ s hw he R hR
@@ -199,7 +231,8 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
     | ite h1 h2 h3 _ _ _ h6 =>
       unif
       obtain ⟨H, A, B, hH, hA, hB, rfl⟩ := two_args (l := [_, _, _]) hR
-      rw [F.ite h2 h3 hc hH]; exact ihe h6 he B hB
+      rw [F.ite h2 h3 hc hH (T.wt ‹_› (tenv_of T.encTy he) A hA) (T.wt h6 (tenv_of T.encTy he) B hB)]
+      exact ihe h6 he B hB
     | _ => kill
   case mk =>
     intro env ls A B a b x y ha hb iha ihb Γ s hw he R hR
@@ -221,7 +254,17 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
         obtain ⟨H, X1, L, hH, h1', hL, rfl⟩ := two_args (l := [_, _, _]) hR
         rw [ihv h2 he X1 h1'] at *
         refine ihb h3 (.cons hy (.cons hx he)) _ ?_
-        rw [ρE_cons, ρE_cons]; exact F.cases hx hy hH hL rfl
+        have hLt := lam_ty T hL fun x hx R1 hR1 => by
+          obtain ⟨A2, F2, hA2, hF2, -, rfl⟩ := lam_inv hR1
+          obtain rfl := D_functional T.laws hA2 (T.shD _)
+          exact T.laws.lamR_mem fun y hy => T.wt h3 (by
+            intro i s0 hi
+            cases i with
+            | zero => simp at hi; subst hi; exact hy
+            | succ i => cases i with
+              | zero => simp at hi; subst hi; exact hx
+              | succ i => exact tenv_of T.encTy he i s0 (by simpa using hi)) _ (hF2 y hy)
+        rw [ρE_cons, ρE_cons]; exact F.cases hx hy hH hL hLt rfl
     | _ => kill
   case natZ =>
     intro env ls M d z T sx r hd hz ihd ihz Γ s' hw he R hR
@@ -231,7 +274,13 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
       rw [show [X.lam (.c "Nat" []) (shTy _), _, _, _] = [X.lam (.c "Nat" []) (shTy _), _] ++ [_, _] from rfl] at hR
       obtain ⟨H1, Z, L, hH1, hZ, hL, rfl⟩ := two_args hR
       obtain ⟨H, X1, hH, h1', rfl⟩ := app_inv hH1
-      rw [ihd h2 he X1 h1', F.natZ hH]; exact ihz h3 he Z hZ
+      have hZt := T.wt h3 (tenv_of T.encTy he) Z hZ
+      have hLt := lam_ty (s := .nt) T hL fun x hx R1 hR1 => T.wt h4 (by
+        intro i s0 hi
+        cases i with
+        | zero => simp at hi; subst hi; exact hx
+        | succ i => exact tenv_of T.encTy he i s0 (by simpa using hi)) R1 hR1
+      rw [ihd h2 he X1 h1', F.natZ hH hZt hLt]; exact ihz h3 he Z hZ
     | _ => kill
   case natS =>
     intro env ls M d z T sx k r hd hs ihd ihs Γ s' hw he R hR
@@ -243,7 +292,13 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
       obtain ⟨H, X1, hH, h1', rfl⟩ := app_inv hH1
       rw [ihd h2 he X1 h1']
       refine ihs h4 (.cons (.nt _) he) _ ?_
-      rw [ρE_cons]; exact F.natS hH hL rfl
+      have hZt := T.wt h3 (tenv_of T.encTy he) Z hZ
+      have hLt := lam_ty (s := .nt) T hL fun x hx R1 hR1 => T.wt h4 (by
+        intro i s0 hi
+        cases i with
+        | zero => simp at hi; subst hi; exact hx
+        | succ i => exact tenv_of T.encTy he i s0 (by simpa using hi)) R1 hR1
+      rw [ρE_cons]; exact F.natS hH hL hZt hLt rfl
     | _ => kill
   case nil =>
     intro env ls T Γ s hw he R hR
