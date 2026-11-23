@@ -143,3 +143,20 @@ Files: `Testing/denotes_spike/BridgeOps.lean` (core Lean only, exported) and `Br
   level, but that needs a transfer with a Prop-typed binder (`Eq Bool (blt ..) true`, proof element = `pt`), i.e. an n-binder
   transfer that DENOTES-2 is supplying; not attempted. Alternative: make the index encoding avoid `toNat` (no).
 * Not done: `Denotes`-level (transfer-instantiated) versions; the per-def `f = body` theorems; Array prelude.
+
+### 10.1 S2 follow-up for DENOTES-2: stored-theorem shapes (`Testing/denotes_spike/BridgeStored.lean`)
+All 10 theorems stated as requested, sorry-free (br_wrap uses propext only). lean4export → 1.0 MB, `con-leche` → `accepted 441 declarations (--verified)`.
+pp.all shapes (as elaborated, `Nat.zero` stays `Nat.zero`, never `OfNat.ofNat 0`; `Nat.succ n` stays `Nat.succ n`, not `n+1`):
+* `nat_z : ∀ (R:Type) (z:R) (s:Nat→R), @Eq.{1} R (@Nat.casesOn.{1} (fun (x:Nat) => R) Nat.zero z s) z`
+* `nat_s : ∀ R z s (n:Nat), @Eq.{1} R (@Nat.casesOn.{1} (fun (x:Nat) => R) (Nat.succ n) z s) (s n)`
+* `prod_c : ∀ (A B R:Type) (f:A→B→R) (a:A) (b:B), @Eq.{1} R (@Prod.casesOn.{1,0,0} A B (fun (x:Prod.{0,0} A B) => R) (@Prod.mk.{0,0} A B a b) f) (f a b)`
+* `br_litN : ∀ n, @Eq.{1} Nat (@OfNat.ofNat.{0} Nat n (instOfNatNat n)) n`
+* `add0 : ∀ n, @Eq.{1} Nat (@HAdd.hAdd.{0,0,0} Nat Nat Nat (@instHAdd.{0} Nat instAddNat) n Nat.zero) n`; `addS` same head, RHS `Nat.succ (n + m)`.
+* `outParam_eq : @Eq.{3} (Type 1) (outParam.{2} Type) Type`; `buf_eq : @Eq.{2} Type Buf (List.{0} UInt64)`. Both get Lean's automatic `@[defeq]` attribute (harmless; the proof is `rfl`). `Buf` is an `abbrev` (a `def` in the export).
+* Motive lambda: non-dependent, binder name `x`, body = the bound variable `R` (a bvar under the λ), type `Nat` / `Prod.{0,0} A B`.
+Stored TYPES in the export (level-param NAMES differ from what `#check` prints):
+* `ite` : levelParams `[u]` (type `{α : Sort u} → (c:Prop) → [h : Decidable c] → α → α → α`).
+* `Nat.casesOn` : `[u]`.  `Prod.casesOn` : `[u_1, u, v]` (motive level FIRST, then α's `u`, β's `v`; `#check` shows `u_1,u_2,u_3` but the stored names are these).
+* `HAdd.hAdd` : `[u, v, w]` (γ : `outParam.{w+2} (Type w)`, so at `w=0` it is `outParam.{2} Type`, which `outParam_eq` rewrites).
+* `OfNat.ofNat` : `[u]`.
+* `instDecidableEqBool` : `[]`, a `def`, type is exactly `@DecidableEq.{1} Bool` (const `DecidableEq` applied to `Bool`, NOT unfolded to `(a b : Bool) → Decidable (a = b)`).
