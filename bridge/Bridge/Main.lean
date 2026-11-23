@@ -53,6 +53,7 @@ import Bridge.Real.NanoADen
 import Bridge.Real.NanoCDen
 import Bridge.Real.NanoNDen
 import Bridge.Real.NanoLetDen
+import Bridge.Real.NanoFDen
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
@@ -220,5 +221,26 @@ theorem nano_let (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Arra
   have hout : out = [NanoLet.outT inp] := by have := NanoLet.ev_mainT hev; cases this; rfl
   subst hout
   exact NanoLetDen.den_mT accepted H_natLit H_ind hrec M hP φ ρ inp
+
+/-- **Growth step `fuel loop`**: a structural loop `lp : Nat → List UInt8 → UInt64 → UInt64` (`lp 0 x a = a`,
+`lp (n+1) x a = lp n x (a + 1)`) and `def m (x : List UInt8) : List UInt8 := put [] (lp 3 x (rd x 0))`, same shape.
+nano emits `Nat.casesOn` on the fuel; the model runs the stored structural equations, by induction on the fuel. -/
+theorem nano_loop (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Array Declaration} {env : Env}
+    (accepted : Cached.checkDecls .verified pins ds = .ok env)
+    (hrec : NanoFDen.recsOkF ds = true) (hpin : natPin ds = true)
+    (hind : IndHeads.blocksOk ds NanoLDen.blocksL = true) :
+    ∃ M : Model V env, CvalParams M ∧
+      ∀ (inp out : List UInt8), Ev (progOf NanoF.oF) [.l inp] NanoTiny.mainX (.l out) →
+        ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
+          Denotes M.cval env φ ρ (encL inp) x ∧
+          ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
+  obtain ⟨b, nP, hb, hpin'⟩ := natPin_of hpin
+  have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin'
+  have H_ind := IndHeads.indStored_blocks V accepted hind (by decide +kernel)
+  obtain ⟨M, hP⟩ := model_exists' V pins ds env accepted
+  refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
+  have hout : out = [NanoF.outF inp] := by have := NanoF.ev_mainF hev; cases this; rfl
+  subst hout
+  exact NanoFDen.den_mF accepted H_natLit H_ind hrec M hP φ ρ inp
 
 end Bridge

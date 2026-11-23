@@ -7,6 +7,11 @@ def len (xs : List UInt8) : UInt64 := xs.length.toUInt64
 theorem len_nil : len [] = UInt64.ofNat 0 := rfl
 theorem len_cons : ∀ (a : UInt8) (l : List UInt8), len (a :: l) = len l + 1 := by
   intro a l; apply UInt64.toNat_inj.mp; simp [len, Nat.add_mod]
+def lp : Nat → List UInt8 → UInt64 → UInt64
+  | 0, _, a => a
+  | n + 1, x, a => lp n x (a + 1)
+theorem lp_zero : ∀ (x : List UInt8) (a : UInt64), lp Nat.zero x a = a := fun _ _ => rfl
+theorem lp_succ : ∀ (n : Nat) (x : List UInt8) (a : UInt64), lp (Nat.succ n) x a = lp n x (a + 1) := fun _ _ _ => rfl
 theorem f_eq : ∀ a : UInt64, f a = a + 1 := fun _ => rfl
 def m (x : List UInt8) : List UInt8 := let y := rd x 0; put [] (y * 3 + y)
 theorem m_eq : ∀ x : List UInt8, m x = put [] (rd x 0 * 3 + rd x 0) := fun _ => rfl

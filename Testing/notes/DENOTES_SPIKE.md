@@ -352,3 +352,20 @@ lean4export v4.35.0-rc3 built. All results below: no sorry, axioms propext/Class
   `decide` on `dsM`). `Bridge.nano_input` (input-dependent `put [] (rd x 0 + 1)`): acceptance + three Bool checks
   on the stream (`recsOkR`, `natPin`, `indOkBlocks`), true of tinyr.ndjson by `#eval`.
 * Std axioms only, no sorry. Not covered: multi-member (mutual) blocks; types not syntactically Π-telescopes.
+
+### 12.3 Growth steps and the λ regime (DENOTES-3)
+All in `bridge/Bridge/Main.lean`, same shape as `nano_input`. Hypotheses: acceptance, plus Bool stream checks
+(`recsOk*`, `natPin`, `blocksOk`). All checks are true on the exports (`Testing/denotes_real/CheckNano.lean`); std axioms only.
+* `nano_ite` (`if rd x 0 < 5 then 1 else 2`), `nano_arith` (`rd x 0 * 3 + 7`), `nano_calls` (a call to `f`),
+  `nano_len` (`len x`, by induction on the input).
+* `nano_let` (`let y := rd x 0; put [] (y * 3 + y)`): nano's `.lt` on the Ev side. con-leche stores a statement's `let`
+  zeta-inlined (`AnnotOf`), so `m_eq` states the inlined body and the model side has no binder.
+* `nano_loop`: a structural fuel loop `lp` (nano's `Nat.casesOn`). `NanoF.ev_lp` and `NanoLDen.conv_lp` both go by
+  induction on the fuel. The model side uses the stored structural equations `lp_zero`/`lp_succ` (λ-free).
+* The shared prelude (TinyL/A/C/N/T/F) carries `f`, `len`, `lp`. Every prelude export is accepted (1526 decls).
+* λ regime (`LamRegime`, `LamDemo`), from the public `Denotes`/`Model` only:
+  - `Denotes.lam`'s premise `hP` forces regime ≠ 0 once the body takes two different values on the domain.
+  - A stored `a = b → False` separates ⟦a⟧ and ⟦b⟧.
+  - `lam_regime_g`: the data λ in the accepted `TinyLam.g_eq` is in regime 1 at every φ.
+  - This is needed only for pairs / `Prod.casesOn` and for a mechanically generated `m_eq = tr body`. The per-step
+    equations above avoid it.

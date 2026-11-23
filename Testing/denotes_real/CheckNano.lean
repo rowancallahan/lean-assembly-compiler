@@ -98,3 +98,16 @@ def mainT : IO Unit := do
   | .ok _ => IO.println "(T3) accepted"
   | .error _ => IO.println "(T3) REJECTED"
 #eval mainT
+
+/-! growth step `fuel loop` (Bridge.nano_loop) -/
+def mainF : IO Unit := do
+  IO.println s!"(F1) emitXs srcF = oF: {(ExprSpec.emitXs NanoF.srcF).toOption == some NanoF.oF}"
+  let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tinyf.ndjson"
+  let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
+  let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
+  let ds := preparePrelude pre r.decls
+  IO.println s!"(F2) recsOkF = {NanoFDen.recsOkF ds}, natPin = {Bridge.natPin ds}, blocksOk = {IndHeads.blocksOk ds NanoLDen.blocksL}"
+  match Cached.checkDecls .verified natOpPinSets ds with
+  | .ok _ => IO.println "(F3) accepted"
+  | .error _ => IO.println "(F3) REJECTED"
+#eval mainF
