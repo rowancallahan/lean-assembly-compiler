@@ -78,7 +78,16 @@ Estimate ~60 small theorems plus one per def. All of these are ordinary Lean fac
 ACCEPTING the exported file (§5).
 
 ## 5. Open items checked by helpers (filled in below when they report)
-* H1: Lean-side theorems on 4.35 + lean4export + con-leche accept: _pending_
+* H1 (`Testing/denotes_spike/Bridge.lean`): br_add (core `UInt64.ofNat_add`), br_wrap, br_lit (`rfl`, instance
+  `@UInt64.instOfNat n`), br_ite_t/f (`rfl`), Nat add recursion (`rfl`) all proved on 4.35.0-rc3. Exported with
+  lean4export @ v4.35.0-rc3 (3.1.0); `con-leche bridge.ndjson` → `accepted 458 declarations (--verified)` in 0.23 s
+  (the closure includes `UInt64.ofNat_add`, `Nat.mod/div`, `f._f`). Rejection was not tested (not shown discriminating).
+  The beta-redex SURVIVES elaboration in a theorem type (`(fun y => y + y) x`), so `let` → redex works.
+  The pp.all shapes match nano's emitted spelling (`@HAdd.hAdd UInt64 UInt64 UInt64 (instHAdd UInt64 instAddUInt64)`,
+  `ite R (@Eq Bool Bool.true Bool.true) (instDecidableEqBool ..)`).
+  Surprise: `f = fun n x => Nat.casesOn n x (fun k => f k (x+1))` for a structural fuel loop is NOT accepted by `rfl`
+  in the elaborator; `funext n x; cases n <;> rfl` works. So per-def theorems should be stated pointwise
+  (`∀ n x, f n x = ...`, or `f 0 x = ..` / `f (n+1) x = ..`), which also fits transfer with binders.
 * H2: nano's Expr files on 4.35.0-rc3: ExprSpec, Correct and EvalEmit closures (24 modules, none needs Sail)
   build UNCHANGED on 4.35.0-rc3, 0 errors, 1m10s. Only warnings: deprecated `if_pos/if_neg/if_true/if_false`
   (192 rename hints) and unused simp args. Rest of the repo (Sail/Arm/Codegen/SelfHost) not tested.
