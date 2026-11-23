@@ -126,3 +126,32 @@ Risks:
    ~1 min. The general proof adds engine lemmas but no data, so this should stay small.
 5. **Toolchain split**: the bridge is on 4.35.0-rc3 and `expr_rv` on nano's toolchain. Composition is at the `Ev`
    interface (statement-level), as before.
+
+## 5. Progress on the λ piece (engine)
+
+Done (all std axioms, no sorry):
+* `Bridge/Real/Scope.lean`:
+  - `wfk` (scope), `substD` (substitution under binders), `den_move`;
+  - `regime_never`: binder data `.never` is regime 1.
+* `Bridge/Real/EngineLam.lean`:
+  - `den_substD`: substitution commutes with `Denotes`;
+  - `beta_den`: β is sound in either regime, whatever binder data is stored;
+  - `den_reset` + `Reg1`: once every binder is in regime 1, a term denotes what its `resetMeta` does. So a stored
+    statement can be used through its declared (`.never`) form, given a `Reg1` fact.
+* `Conv.beta`: a rule from a reached redex to `substD [a] 0 b`, covered by `conv_sound`.
+* `HasTy.lam`/`HasTy.app`:
+  - non-dependent λ and application at `.never`;
+  - `sound` is extended (`Γ` is now an index of `HasTy`);
+  - λs are built in regime 1 from `Classical.choose` over the body's soundness at each domain point.
+
+Next, in order:
+1. **Typing invariant.** β on a `let` needs the body typed under its binder. Carry `HasTy Γ (tr e) T` in `R`
+   (`Γ` = the env values' types), with a `HasTy` substitution lemma for closed values. Its source is a Bool `infer`
+   (extended to `lam`/`app`) on each stored `n_eq` rhs, run inside `GenOk`.
+2. **`instL`.** An instance rule for stored equations with λs. Soundness: `transferN` on the stored statement, with
+   the λ side's denotation moved by `den_reset` from the declared `.never` form. Needs `Reg1 φ (stored type)`
+   per equation, from `LamRegime` plus prelude separators.
+3. **`casesOn`.** A head with binder-carrying telescope types (the minors `∀ a b, motive (mk a b)`). Either
+   generalize `head` to `substD`/`wfk`, or use per-result-type iota equations with closed binder types
+   (`∀ (z : R) (s : Nat → R) (n : Nat), Nat.casesOn (fun _ => R) (succ n) z s = s n`). The motive λ needs a
+   `Reg1` fact (`⟦R⟧ ≠ pt`, one-point `lam_regime`).
