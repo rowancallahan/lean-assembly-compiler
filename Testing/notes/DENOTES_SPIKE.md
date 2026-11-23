@@ -79,7 +79,9 @@ ACCEPTING the exported file (§5).
 
 ## 5. Open items checked by helpers (filled in below when they report)
 * H1: Lean-side theorems on 4.35 + lean4export + con-leche accept: _pending_
-* H2: nano's Expr files on 4.35.0-rc3: _pending_
+* H2: nano's Expr files on 4.35.0-rc3: ExprSpec, Correct and EvalEmit closures (24 modules, none needs Sail)
+  build UNCHANGED on 4.35.0-rc3, 0 errors, 1m10s. Only warnings: deprecated `if_pos/if_neg/if_true/if_false`
+  (192 rename hints) and unused simp args. Rest of the repo (Sail/Arm/Codegen/SelfHost) not tested.
 
 ## 6. Toolchain: copy Denotes vs bump
 * Copy `Denotes.lean` into nano (4.34.1): it imports con-leche's `Kernel.Core` (`Expr` with computed fields,
