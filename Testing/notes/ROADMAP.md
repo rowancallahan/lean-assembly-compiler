@@ -29,6 +29,21 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## STRUCTURE DECISION (owner, 2026-11-23): back end carries meaning, front end is checked
+- BACK END (Expr → machine code) carries ALL the meaning. The main theorem: for every Expr e in the slice, the
+  machine code writes the bytes of con-leche's Denotes(e). Sem and Ev are internal lemmas, not part of the statement.
+- FRONT END (text → Expr) claims no meaning. Its output is checked per program against Lean's elaborated Expr
+  (kernel-checked for the compiler itself). Nano's parser keeps its own semantics as a helpful side definition and
+  is still proved against Lean's parser as far as possible (leaves, LEAN-EQUIV, harvest), but the main theorem does
+  not depend on it.
+- SELF-HOSTING: the compiler's text → its Expr (= Lean's, kernel-checked) → its machine code computes Denotes of
+  that Expr. So when the Expr matches, the compiler provably compiles itself correctly (binary identity: fixpoint,
+  later kernel evaluation).
+Work, estimated: per-machine corollaries (hours, in progress); the Expr entry point (decoder in nano + proof, about
+the size of u10: days); Ev = Denotes using con-leche's lemmas (several days; spike first on UInt64.add / ite /
+List.cons); the Denotes copy + Expr-identity check (days; Lean 4.35 vs 4.34.1 toolchain gap); restating the top
+theorems around Expr (days).
+
 ## THE HOLY GRAIL (owner, 2026-11-23): meaning = con-leche's Denotes, computed by self-hosted, proven code
 1. Meaning: con-leche's `Denotes` (ConLeche/Denotes.lean), copied verbatim or imported once nano moves to its
    Lean version (4.35). Check the copy's elaborated Expr is identical to con-leche's (C_lean-style tooling).
