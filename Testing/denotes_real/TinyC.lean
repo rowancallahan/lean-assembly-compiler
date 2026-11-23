@@ -7,6 +7,11 @@ def len (xs : List UInt8) : UInt64 := xs.length.toUInt64
 theorem len_nil : len [] = UInt64.ofNat 0 := rfl
 theorem len_cons : ∀ (a : UInt8) (l : List UInt8), len (a :: l) = len l + 1 := by
   intro a l; apply UInt64.toNat_inj.mp; simp [len, Nat.add_mod]
+def lp : Nat → List UInt8 → UInt64 → UInt64
+  | 0, _, a => a
+  | n + 1, x, a => lp n x (a + 1)
+theorem lp_zero : ∀ (x : List UInt8) (a : UInt64), lp Nat.zero x a = a := fun _ _ => rfl
+theorem lp_succ : ∀ (n : Nat) (x : List UInt8) (a : UInt64), lp (Nat.succ n) x a = lp n x (a + 1) := fun _ _ _ => rfl
 theorem f_eq : ∀ a : UInt64, f a = a + 1 := fun _ => rfl
 def m (x : List UInt8) : List UInt8 := put [] (f (rd x 0) * 2)
 theorem m_eq : ∀ x : List UInt8, m x = put [] (f (rd x 0) * 2) := fun _ => rfl
@@ -53,3 +58,12 @@ theorem mul_succ' : ∀ n m : Nat, n * Nat.succ m = n * m + n := fun _ _ => rfl
 theorem add_mod_right' : ∀ n m : Nat, (n + m) % m = n % m := Nat.add_mod_right
 theorem u8_mod : ∀ n : Nat, UInt8.ofNat n = UInt8.ofNat (n % 256) := by
   intro n; apply UInt8.toNat_inj.mp; simp
+-- subtraction prelude (UInt64 `-` through `ofNat` and the 2^64 complement, `Nat.sub` recursion)
+theorem br_sub64 : ∀ a b : Nat, UInt64.ofNat a - UInt64.ofNat b
+    = UInt64.ofNat (a + Nat.sub 18446744073709551616 (b % 18446744073709551616)) := by
+  intro a b; apply UInt64.toNat_inj.mp
+  simp [UInt64.toNat_sub, Nat.sub_eq]
+  omega
+theorem nsub_n0 : ∀ n : Nat, Nat.sub n Nat.zero = n := fun _ => rfl
+theorem nsub_ss : ∀ n m : Nat, Nat.sub (Nat.succ n) (Nat.succ m) = Nat.sub n m := fun n m => Nat.succ_sub_succ n m
+theorem nsub_zs : ∀ m : Nat, Nat.sub Nat.zero (Nat.succ m) = Nat.zero := fun m => Nat.zero_sub (Nat.succ m)
