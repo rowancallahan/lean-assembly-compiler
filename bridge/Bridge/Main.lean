@@ -55,6 +55,7 @@ import Bridge.Real.NanoNDen
 import Bridge.Real.NanoLetDen
 import Bridge.Real.NanoFDen
 import Bridge.Real.NanoP
+import Bridge.Real.LamDemo
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
