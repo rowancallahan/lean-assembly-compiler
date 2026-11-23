@@ -100,6 +100,7 @@ of an Ev environment. -/
 structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (P : Prog) (enc : ExprSpec.V → S) (junk : S) : Prop where
   /-- `have x : shTy s := v; b` as `(λ (shTy s). b) v`: beta + `enc a ∈ ⟦shTy s⟧` -/
   letβ : ∀ {env Γ s v b a R}, Typed.Fa2 VSh Γ env → Wf sig Γ v s → Ev P env v a → VSh s a →
+    (∀ X, D O cval (ρE enc junk env) (trM v) X → X = enc a) →
     D O cval (ρE enc junk env) (trM (.lt true (shTy s) v b)) R →
     D O cval (ρE enc junk (a :: env)) (trM b) R
   litU : ∀ {ρ k R}, k < UInt64.size → D O cval ρ
@@ -158,12 +159,12 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S}
     intro env i v hi Γ s _ _ R hR
     cases hR; simp [ρE, hi]
   case lt =>
-    intro env nd t vx b a r hv _ _ ihb Γ s hw he R hR
+    intro env nd t vx b a r hv _ ihv ihb Γ s hw he R hR
     cases hw with
     | lt h1 h2 h3 =>
       unif
       have ha := ev_shape hP hv h2 he
-      exact ihb h3 (.cons ha he) R (F.letβ he h2 hv ha hR)
+      exact ihb h3 (.cons ha he) R (F.letβ he h2 hv ha (ihv h2 he) hR)
     | _ => kill
   case litU =>
     intro env ls k i Γ s hw he R hR
@@ -353,5 +354,145 @@ theorem pair_field {ρ : Nat → S} {A B : Sh} {x y : ExprSpec.V} {H : S} (hx : 
   rw [D_functional L hA (shTy_denotes M hx), D_functional L hB (shTy_denotes M hy)]; rfl
 
 end Enc
+
+/-! ## typing of the encoding (task 3, the con-leche half, in the trimmed model) -/
+
+section Typing
+variable {S : Type} {O : SetOps S} {env : List Const} (M : Model O env) (L : SetLaws O)
+
+/-- the stored constant `n`, used at levels `ls`, has the type `T` there -/
+def HasTy (env : List Const) (n : String) (ls : List Nat) (T : E) : Prop := ∃ ty, (n, ty) ∈ env ∧ ty ls = T
+
+include L in
+theorem mem_ty {n : String} {ls : List Nat} {T : E} (h : HasTy env n ls T) {ρ : Nat → S} {Tv : S}
+    (hT : D O M.cval ρ T Tv) : O.mem (M.cval n ls) Tv := by
+  obtain ⟨ty, hc, rfl⟩ := h
+  exact mem_closed L M hc hT
+
+/-- the constructors' Lean types (level 0), and `Buf = List UInt64` (a stored theorem, `rfl`) -/
+structure EncEnv (env : List Const) : Prop where
+  nat : HasTy env "Nat" [] (.sort 1)
+  zero : HasTy env "Nat.zero" [] tNat
+  succ : HasTy env "Nat.succ" [] (.forallE tNat tNat false)
+  u64 : HasTy env "UInt64" [] (.sort 1)
+  ofNat : HasTy env "UInt64.ofNat" [] (.forallE tNat tU false)
+  u8 : HasTy env "UInt8" [] (.sort 1)
+  ofNat8 : HasTy env "UInt8.ofNat" [] (.forallE tNat (.const "UInt8" []) false)
+  list : HasTy env "List" [0] (.forallE (.sort 1) (.sort 1) false)
+  nil : HasTy env "List.nil" [0] (.forallE (.sort 1) (.app (.const "List" [0]) (.bvar 0)) false)
+  cons : HasTy env "List.cons" [0] (.forallE (.sort 1) (.forallE (.bvar 0)
+    (.forallE (.app (.const "List" [0]) (.bvar 1)) (.app (.const "List" [0]) (.bvar 2)) false) false) false)
+  prod : HasTy env "Prod" [0, 0] (.forallE (.sort 1) (.forallE (.sort 1) (.sort 1) false) false)
+  pmk : HasTy env "Prod.mk" [0, 0] (.forallE (.sort 1) (.forallE (.sort 1) (.forallE (.bvar 1) (.forallE (.bvar 1)
+    (.app (.app (.const "Prod" [0, 0]) (.bvar 3)) (.bvar 2)) false) false) false) false)
+  buf : HasTy env "Buf" [] (.sort 1)
+  bufEq : HasTy env "buf_eq" [] (eqE 2 (.sort 1) (.const "Buf" []) (.app (.const "List" [0]) tU))
+
+variable {M} {L}
+
+theorem np {pw : Bool} (h : pw = false) {P : Prop} : regime pw = 0 → P := by
+  subst h; intro h; simp [regime] at h
+
+include L in
+theorem natEnc_mem' (H : EncEnv env) (ρ : Nat → S) : ∀ k, O.mem (natEnc M k) (M.cval "Nat" []) := by
+  intro k
+  induction k with
+  | zero => exact mem_ty M L H.zero (ρ := ρ) .const
+  | succ k ih =>
+    have dP : D O M.cval ρ (.forallE tNat tNat false) _ := .pi .const (fun _ _ => .const) (np rfl)
+    exact mem_app' L dP (mem_ty M L H.succ dP) .const ih .const
+
+include L in
+theorem univ1 (_H : EncEnv env) {n : String} (h : HasTy env n [] (.sort 1)) (ρ : Nat → S) :
+    O.mem (M.cval n []) (O.univ 1) := mem_ty M L h (ρ := ρ) .sort
+
+include L in
+/-- canonical lists are in `List T` -/
+theorem listEnc_mem (H : EncEnv env) (ρ : Nat → S) {α : Type} {T : S} (hT : O.mem T (O.univ 1)) (f : α → S)
+    (hf : ∀ a, O.mem (f a) T) :
+    ∀ l, O.mem (listEnc M T f l) (O.app (M.cval "List" [0]) T) := by
+  intro l
+  induction l with
+  | nil =>
+    have dP : D O M.cval ρ (.forallE (.sort 1) (.app (.const "List" [0]) (.bvar 0)) false)
+        (O.piR (regime false) (O.univ 1) fun a => O.app (M.cval "List" [0]) a) :=
+      .pi .sort (fun _ _ => .app .const .bvar) (np rfl)
+    exact mem_app' L dP (mem_ty M L H.nil dP) .sort hT (.app .const .bvar)
+  | cons a l ih =>
+    have dP : D O M.cval ρ (.forallE (.sort 1) (.forallE (.bvar 0)
+        (.forallE (.app (.const "List" [0]) (.bvar 1)) (.app (.const "List" [0]) (.bvar 2)) false) false) false)
+        (O.piR (regime false) (O.univ 1) fun t => O.piR (regime false) t fun _ =>
+          O.piR (regime false) (O.app (M.cval "List" [0]) t) fun _ => O.app (M.cval "List" [0]) t) :=
+      .pi .sort (fun t _ => .pi .bvar (fun _ _ => .pi (.app .const .bvar) (fun _ _ => .app .const .bvar) (np rfl))
+        (np rfl)) (np rfl)
+    have h1 := L.app_mem_piR (mem_ty M L H.cons dP) hT (np rfl)
+    have h2 := L.app_mem_piR h1 (hf a) (np rfl)
+    exact L.app_mem_piR h2 ih (np rfl)
+
+include L in
+/-- `⟦Buf⟧ = ⟦List UInt64⟧` from the stored `buf_eq : Buf = List UInt64` (transfer, no binder) -/
+theorem buf_eq (H : EncEnv env) (ρ : Nat → S) :
+    M.cval "Buf" [] = O.app (M.cval "List" [0]) (M.cval "UInt64" []) := by
+  obtain ⟨ty, hc, hty⟩ := H.bufEq
+  have dL : D O M.cval ρ (.forallE (.sort 1) (.sort 1) false) (O.piR (regime false) (O.univ 1) fun _ => O.univ 1) :=
+    .pi .sort (fun _ _ => .sort) (np rfl)
+  have hLU : O.mem (O.app (M.cval "List" [0]) (M.cval "UInt64" [])) (O.univ 1) :=
+    mem_app' L dL (mem_ty M L H.list dL) .sort (univ1 (L := L) H H.u64 ρ) .sort
+  exact transferN L M hc (ls := []) (ts := []) hty ρ .nil .sort .const (.app .const .const)
+    (L.univ_mem_univ 1) (univ1 (L := L) H H.buf ρ) hLU
+
+include L in
+/-- **the typing lemma**: every encoded value is in its type's set -/
+theorem encM_mem (H : EncEnv env) (ρ : Nat → S) : ∀ v, O.mem (encM M v) (tyE M v) ∧ O.mem (tyE M v) (O.univ 1)
+  | .w x => by
+    have dP : D O M.cval ρ (.forallE tNat tU false) _ := .pi .const (fun _ _ => .const) (np rfl)
+    exact ⟨mem_app' L dP (mem_ty M L H.ofNat dP) .const (natEnc_mem' (L := L) H ρ _) .const,
+      univ1 (L := L) H H.u64 ρ⟩
+  | .n k => ⟨natEnc_mem' (L := L) H ρ k, univ1 (L := L) H H.nat ρ⟩
+  | .l bs => by
+    have dP : D O M.cval ρ (.forallE tNat (.const "UInt8" []) false) _ := .pi .const (fun _ _ => .const) (np rfl)
+    have dL : D O M.cval ρ (.forallE (.sort 1) (.sort 1) false) (O.piR (regime false) (O.univ 1) fun _ => O.univ 1) :=
+      .pi .sort (fun _ _ => .sort) (np rfl)
+    exact ⟨listEnc_mem (L := L) H ρ (univ1 (L := L) H H.u8 ρ) _
+        (fun b => mem_app' L dP (mem_ty M L H.ofNat8 dP) .const (natEnc_mem' (L := L) H ρ _) .const) bs,
+      mem_app' L dL (mem_ty M L H.list dL) .sort (univ1 (L := L) H H.u8 ρ) .sort⟩
+  | .b ws => by
+    have dP : D O M.cval ρ (.forallE tNat tU false) _ := .pi .const (fun _ _ => .const) (np rfl)
+    refine ⟨?_, univ1 (L := L) H H.buf ρ⟩
+    show O.mem (listEnc M _ _ ws) (M.cval "Buf" [])
+    rw [buf_eq (L := L) H ρ]
+    exact listEnc_mem (L := L) H ρ (univ1 (L := L) H H.u64 ρ) _
+      (fun w => mem_app' L dP (mem_ty M L H.ofNat dP) .const (natEnc_mem' (L := L) H ρ _) .const) ws
+  | .p x y => by
+    obtain ⟨hx, hxT⟩ := encM_mem H ρ x
+    obtain ⟨hy, hyT⟩ := encM_mem H ρ y
+    have dP : D O M.cval ρ (.forallE (.sort 1) (.forallE (.sort 1) (.forallE (.bvar 1) (.forallE (.bvar 1)
+        (.app (.app (.const "Prod" [0, 0]) (.bvar 3)) (.bvar 2)) false) false) false) false)
+        (O.piR (regime false) (O.univ 1) fun a => O.piR (regime false) (O.univ 1) fun b =>
+          O.piR (regime false) a fun _ => O.piR (regime false) b fun _ =>
+            O.app (O.app (M.cval "Prod" [0, 0]) a) b) :=
+      .pi .sort (fun _ _ => .pi .sort (fun _ _ => .pi .bvar (fun _ _ => .pi .bvar
+        (fun _ _ => .app (.app .const .bvar) .bvar) (np rfl)) (np rfl)) (np rfl)) (np rfl)
+    have h1 := L.app_mem_piR (mem_ty M L H.pmk dP) hxT (np rfl)
+    have h2 := L.app_mem_piR h1 hyT (np rfl)
+    have h3 := L.app_mem_piR h2 hx (np rfl)
+    have h4 := L.app_mem_piR h3 hy (np rfl)
+    have dQ : D O M.cval ρ (.forallE (.sort 1) (.forallE (.sort 1) (.sort 1) false) false)
+        (O.piR (regime false) (O.univ 1) fun _ => O.piR (regime false) (O.univ 1) fun _ => O.univ 1) :=
+      .pi .sort (fun _ _ => .pi .sort (fun _ _ => .sort) (np rfl)) (np rfl)
+    have g1 := L.app_mem_piR (mem_ty M L H.prod dQ) hxT (np rfl)
+    exact ⟨h4, L.app_mem_piR g1 hyT (np rfl)⟩
+
+include L in
+/-- **`FactsM.letβ`, discharged**: beta (both regimes) + the typing lemma -/
+theorem letβ_field (H : EncEnv env) {ρ : Nat → S} {v b : X} {s : Sh} {a : ExprSpec.V} {R : S}
+    (hva : VSh s a) (ih : ∀ X, D O M.cval ρ (trM v) X → X = encM M a)
+    (hR : D O M.cval ρ (trM (.lt true (shTy s) v b)) R) : D O M.cval (push (encM M a) ρ) (trM b) R := by
+  have hR' := hR
+  obtain ⟨Lv, X, hL, hv, -⟩ := app_inv hR'
+  obtain rfl := ih X hv
+  exact beta L hR (shTy_denotes M hva) hv (encM_mem (L := L) H ρ a).1
+
+end Typing
 
 end Bridge.EvM
