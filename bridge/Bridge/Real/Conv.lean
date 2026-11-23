@@ -61,6 +61,24 @@ inductive ConvL (tab : Tab) (eqs : List (Expr × Expr)) (thms : List Thm) (Γ : 
       ConvL tab eqs thms Γ (a :: as) (b :: bs) (T :: Ts)
 end
 
+/-! ## monotonicity in the stored equations -/
+
+mutual
+theorem Conv.mono {tab : Tab} {eqs : List (Expr × Expr)} {thms thms' : List Thm} {Γ : List Expr}
+    (hs : ∀ t ∈ thms, t ∈ thms') : ∀ {a b T : Expr}, Conv tab eqs thms Γ a b T → Conv tab eqs thms' Γ a b T
+  | _, _, _, .refl h => .refl h
+  | _, _, _, .symm c => .symm (Conv.mono hs c)
+  | _, _, _, .trans c1 c2 => .trans (Conv.mono hs c1) (Conv.mono hs c2)
+  | _, _, _, .cong h cl => .cong h (ConvL.mono hs cl)
+  | _, _, _, .litS => .litS
+  | _, _, _, .lit0 => .lit0
+  | _, _, _, .inst hm ha => .inst (hs _ hm) ha
+theorem ConvL.mono {tab : Tab} {eqs : List (Expr × Expr)} {thms thms' : List Thm} {Γ : List Expr}
+    (hs : ∀ t ∈ thms, t ∈ thms') : ∀ {as bs Ts : List Expr}, ConvL tab eqs thms Γ as bs Ts → ConvL tab eqs thms' Γ as bs Ts
+  | _, _, _, .nil => .nil
+  | _, _, _, .cons c cl => .cons (Conv.mono hs c) (ConvL.mono hs cl)
+end
+
 /-! ## soundness -/
 
 theorem subst_nil : ∀ l : Level, Level.subst [] [] l = l

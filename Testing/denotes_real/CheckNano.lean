@@ -46,3 +46,16 @@ def mainL : IO Unit := do
   | .ok _ => IO.println "(L3) accepted"
   | .error _ => IO.println "(L3) REJECTED"
 #eval mainL
+
+/-! growth step `u64 ops` (Bridge.nano_arith) -/
+def mainA : IO Unit := do
+  IO.println s!"(A1) emitXs srcA = oA: {(ExprSpec.emitXs NanoA.srcA).toOption == some NanoA.oA}"
+  let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tinya.ndjson"
+  let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
+  let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
+  let ds := preparePrelude pre r.decls
+  IO.println s!"(A2) recsOkA = {NanoADen.recsOkA ds}, natPin = {Bridge.natPin ds}, blocksOk = {IndHeads.blocksOk ds NanoLDen.blocksL}"
+  match Cached.checkDecls .verified natOpPinSets ds with
+  | .ok _ => IO.println "(A3) accepted"
+  | .error _ => IO.println "(A3) REJECTED"
+#eval mainA

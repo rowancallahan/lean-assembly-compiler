@@ -59,7 +59,15 @@ def defHeadsL : List (Name × Head) :=
    (AddOne.hAddN, ⟨[AddOne.lu, AddOne.lv, AddOne.lw], AddOne.hAddTs, .bvar 3⟩),
    (AddOne.instHAddN, ⟨[AddOne.li], AddOne.instHAddTs, AddOne.instHAddB⟩),
    (nm "instAddNat", ⟨[], [], .app (.const (nm "Add") [.zero]) natC⟩),
-   (AddOne.outParamN, ⟨[AddOne.lu], [.sort AddOne.pu], .sort AddOne.pu⟩)]
+   (AddOne.outParamN, ⟨[AddOne.lu], [.sort AddOne.pu], .sort AddOne.pu⟩),
+   (nm2 "HMul" "hMul", ⟨[AddOne.lu, AddOne.lv, AddOne.lw], [.sort (.succ AddOne.pu), .sort (.succ AddOne.pv),
+      .app (.const AddOne.outParamN [.succ (.succ AddOne.pw)]) (.sort (.succ AddOne.pw)),
+      apps (.const (nm "HMul") [AddOne.pu, AddOne.pv, AddOne.pw]) [.bvar 2, .bvar 1, .bvar 0], .bvar 3, .bvar 3], .bvar 3⟩),
+   (nm "instHMul", ⟨[lw], [.sort (.succ (.param lw)), .app (.const (nm "Mul") [.param lw]) (.bvar 0)],
+      apps (.const (nm "HMul") [.param lw, .param lw, .param lw]) [.bvar 1, .bvar 1, .bvar 1]⟩),
+   (nm "instMulUInt64", ⟨[], [], .app (.const (nm "Mul") [.zero]) u64C⟩),
+   (nm "instAddUInt64", ⟨[], [], .app (.const (nm "Add") [.zero]) u64C⟩),
+   (nm "instMulNat", ⟨[], [], .app (.const (nm "Mul") [.zero]) natC⟩)]
 
 /-- the inductive blocks used: List, UInt8, UInt64, Bool -/
 def blocksL : List ((Name × Head) × List (Name × Head)) :=
@@ -101,8 +109,28 @@ def modSmall : Thm := ⟨nm "mod_small", [natC, natC], L1, natC, natModC (.bvar 
   .bvar 1⟩
 def putNil : Thm := ⟨nm "put_nil", [natC], L1, LU8c, putC nilC (u64ofC (.bvar 0)), consC (u8ofC (.bvar 0)) nilC⟩
 
-def thms : List Thm := [mEqL, rdNil0, rdCons0, u8u64, lit64, iteLt, condT, condF, bleZ, bleSZ, bleSS, zeroAdd,
-  succAdd, modSmall, NanoDen.brLitN, putNil]
+def natMulC (a b : Expr) : Expr := apps (.const (nm2 "HMul" "hMul") [.zero, .zero, .zero])
+  [natC, natC, natC, apps (.const (nm "instHMul") [.zero]) [natC, .const (nm "instMulNat") []], a, b]
+def add64C (a b : Expr) : Expr := apps (.const AddOne.hAddN [.zero, .zero, .zero])
+  [u64C, u64C, u64C, apps (.const (nm "instHAdd") [.zero]) [u64C, .const (nm "instAddUInt64") []], a, b]
+def mul64C (a b : Expr) : Expr := apps (.const (nm2 "HMul" "hMul") [.zero, .zero, .zero])
+  [u64C, u64C, u64C, apps (.const (nm "instHMul") [.zero]) [u64C, .const (nm "instMulUInt64") []], a, b]
+
+def brAdd64 : Thm := ⟨nm "br_add64", [natC, natC], L1, u64C, add64C (u64ofC (.bvar 1)) (u64ofC (.bvar 0)),
+  u64ofC (natAddC (.bvar 1) (.bvar 0))⟩
+def brMul64 : Thm := ⟨nm "br_mul64", [natC, natC], L1, u64C, mul64C (u64ofC (.bvar 1)) (u64ofC (.bvar 0)),
+  u64ofC (natMulC (.bvar 1) (.bvar 0))⟩
+def mulZero : Thm := ⟨nm "mul_zero'", [natC], L1, natC, natMulC (.bvar 0) zeroC, zeroC⟩
+def mulSucc : Thm := ⟨nm "mul_succ'", [natC, natC], L1, natC, natMulC (.bvar 1) (.app succC (.bvar 0)),
+  natAddC (natMulC (.bvar 1) (.bvar 0)) (.bvar 1)⟩
+def addModRight : Thm := ⟨nm "add_mod_right'", [natC, natC], L1, natC, natModC (natAddC (.bvar 1) (.bvar 0)) (.bvar 0),
+  natModC (.bvar 1) (.bvar 0)⟩
+def u8Mod : Thm := ⟨nm "u8_mod", [natC], L1, u8C, u8ofC (.bvar 0), u8ofC (natModC (.bvar 0) (ofNatNatC (litC 256)))⟩
+
+/-- the shared prelude's equations -/
+def thmsP : List Thm := [rdNil0, rdCons0, u8u64, lit64, iteLt, condT, condF, bleZ, bleSZ, bleSS, zeroAdd,
+  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod]
+def thms : List Thm := mEqL :: thmsP
 
 /-- the records the stream must hold (decidable) -/
 def recsOkL (ds : Array Declaration) : Bool :=
@@ -111,11 +139,9 @@ def recsOkL (ds : Array Declaration) : Bool :=
 
 /-! ## typing (generic in the literals) -/
 
-theorem thms_ok : ∀ t ∈ thms, t.ok tab eqs 40 = true := by
-  intro t ht
-  simp only [thms, List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-    decide +kernel
+theorem thms_ok_all : thms.all (fun t => t.ok tab eqs 40) = true := by decide +kernel
+
+theorem thms_ok : ∀ t ∈ thms, t.ok tab eqs 40 = true := fun t ht => List.all_eq_true.mp thms_ok_all t ht
 
 theorem ty0 {e T : Expr} (h : infer tab eqs [] 40 e = some T) : HasTy tab eqs [] e T := infer_sound 40 _ _ h
 
@@ -184,7 +210,7 @@ theorem hty_ofNatNat {e : Expr} (he : HasTy tab eqs [] e natC) : HasTy tab eqs [
 
 /-! ## congruence helpers -/
 
-abbrev C (a b T : Expr) : Prop := Conv tab eqs thms [] a b T
+abbrev C (a b T : Expr) : Prop := Conv tab eqs thmsP [] a b T
 
 def instAddE : Expr := apps (.const (nm "instHAdd") [.zero]) [natC, .const (nm "instAddNat") []]
 def instModE : Expr := apps (.const (nm "instHMod") [.zero]) [natC, .const (nm2 "Nat" "instMod") []]
@@ -223,13 +249,13 @@ theorem conv_add : ∀ a b : Nat, C (natAddC (litC a) (litC b)) (litC (a + b)) n
     have c1 : C (natAddC (litC 0) (litC b)) (natAddC zeroC (litC b)) natC :=
       cong_natAdd .lit .lit .lit0 (refl' .lit)
     have c2 : C (natAddC zeroC (litC b)) (litC b) natC :=
-      .inst (t := zeroAdd) (as := [litC b]) (by simp [thms]) (.cons .lit .nil)
+      .inst (t := zeroAdd) (as := [litC b]) (by simp [thmsP]) (.cons .lit .nil)
     simpa using Conv.trans c1 c2
   | a + 1, b => by
     have c1 : C (natAddC (litC (a + 1)) (litC b)) (natAddC (.app succC (litC a)) (litC b)) natC :=
       cong_natAdd .lit .lit .litS (refl' .lit)
     have c2 : C (natAddC (.app succC (litC a)) (litC b)) (.app succC (natAddC (litC a) (litC b))) natC :=
-      .inst (t := succAdd) (as := [litC a, litC b]) (by simp [thms]) (.cons .lit (.cons .lit .nil))
+      .inst (t := succAdd) (as := [litC a, litC b]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
     have c3 : C (.app succC (natAddC (litC a) (litC b))) (.app succC (litC (a + b))) natC :=
       cong_succ (hty_natAdd .lit .lit) (conv_add a b)
     have c4 : C (.app succC (litC (a + b))) (litC (a + b + 1)) natC := .symm .litS
@@ -240,30 +266,30 @@ theorem conv_ble : ∀ a b : Nat, C (bleC (litC a) (litC b)) (boolC (decide (a �
   | 0, b => by
     have c1 : C (bleC (litC 0) (litC b)) (bleC zeroC (litC b)) boolTy := cong_ble .lit .lit .lit0 (refl' .lit)
     have c2 : C (bleC zeroC (litC b)) (boolC true) boolTy :=
-      .inst (t := bleZ) (as := [litC b]) (by simp [thms]) (.cons .lit .nil)
+      .inst (t := bleZ) (as := [litC b]) (by simp [thmsP]) (.cons .lit .nil)
     simpa using Conv.trans c1 c2
   | a + 1, 0 => by
     have c1 : C (bleC (litC (a + 1)) (litC 0)) (bleC (.app succC (litC a)) zeroC) boolTy :=
       cong_ble .lit .lit .litS .lit0
     have c2 : C (bleC (.app succC (litC a)) zeroC) (boolC false) boolTy :=
-      .inst (t := bleSZ) (as := [litC a]) (by simp [thms]) (.cons .lit .nil)
+      .inst (t := bleSZ) (as := [litC a]) (by simp [thmsP]) (.cons .lit .nil)
     simpa using Conv.trans c1 c2
   | a + 1, b + 1 => by
     have c1 : C (bleC (litC (a + 1)) (litC (b + 1))) (bleC (.app succC (litC a)) (.app succC (litC b))) boolTy :=
       cong_ble .lit .lit .litS .litS
     have c2 : C (bleC (.app succC (litC a)) (.app succC (litC b))) (bleC (litC a) (litC b)) boolTy :=
-      .inst (t := bleSS) (as := [litC a, litC b]) (by simp [thms]) (.cons .lit (.cons .lit .nil))
+      .inst (t := bleSS) (as := [litC a, litC b]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
     have := Conv.trans c1 (Conv.trans c2 (conv_ble a b))
     simpa using this
 
 theorem conv_mod (k M : Nat) (h : k < M) : C (natModC (litC k) (ofNatNatC (litC M))) (litC k) natC := by
   obtain ⟨j, rfl⟩ : ∃ j, M = k + (j + 1) := ⟨M - k - 1, by omega⟩
   have c1 : C (ofNatNatC (litC (k + (j + 1)))) (litC (k + (j + 1))) natC :=
-    .inst (t := NanoDen.brLitN) (as := [litC (k + (j + 1))]) (by simp [thms]) (.cons .lit .nil)
+    .inst (t := NanoDen.brLitN) (as := [litC (k + (j + 1))]) (by simp [thmsP]) (.cons .lit .nil)
   have c2 : C (litC (k + (j + 1))) (natAddC (litC k) (.app succC (litC j))) natC :=
     .symm (.trans (cong_natAdd .lit (hty_succ .lit) (refl' .lit) (.symm .litS)) (conv_add k (j + 1)))
   have c3 : C (natModC (litC k) (natAddC (litC k) (.app succC (litC j)))) (litC k) natC :=
-    .inst (t := modSmall) (as := [litC k, litC j]) (by simp [thms]) (.cons .lit (.cons .lit .nil))
+    .inst (t := modSmall) (as := [litC k, litC j]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
   exact .trans (cong_natMod .lit (hty_ofNatNat .lit) (refl' .lit) (.trans c1 c2)) c3
 
 /-! ## more typing, and the run -/
@@ -329,19 +355,19 @@ theorem cong_put {o v v' : Expr} (ho : HasTy tab eqs [] o LU8c) (hv : HasTy tab 
 theorem conv_rd (inp : List UInt8) : C (rdC (encL inp)) (u64ofC (litC (inp.getD 0 0).toNat)) u64C := by
   cases inp with
   | nil =>
-    have c1 : C (rdC nilC) (u64ofC (ofNatNatC (litC 0))) u64C := .inst (t := rdNil0) (as := []) (by simp [thms]) .nil
+    have c1 : C (rdC nilC) (u64ofC (ofNatNatC (litC 0))) u64C := .inst (t := rdNil0) (as := []) (by simp [thmsP]) .nil
     have c3 : C (ofNatNatC (litC 0)) (litC 0) natC :=
-      .inst (t := NanoDen.brLitN) (as := [litC 0]) (by simp [thms]) (.cons .lit .nil)
+      .inst (t := NanoDen.brLitN) (as := [litC 0]) (by simp [thmsP]) (.cons .lit .nil)
     have c2 : C (u64ofC (ofNatNatC (litC 0))) (u64ofC (litC 0)) u64C := cong_u64of (hty_ofNatNat .lit) c3
     have e : (([] : List UInt8).getD 0 0).toNat = 0 := rfl
     rw [e]; exact Conv.trans c1 c2
   | cons b l =>
     have hb := b.toNat_lt
     have c1 : C (rdC (consC (u8ofC (litC b.toNat)) (encL l))) (toU64C (u8ofC (litC b.toNat))) u64C :=
-      .inst (t := rdCons0) (as := [u8ofC (litC b.toNat), encL l]) (by simp [thms])
+      .inst (t := rdCons0) (as := [u8ofC (litC b.toNat), encL l]) (by simp [thmsP])
         (.cons (hty_u8of .lit) (.cons (hty_encL l) .nil))
     have c2 : C (toU64C (u8ofC (litC b.toNat))) (u64ofC (natModC (litC b.toNat) (ofNatNatC (litC 256)))) u64C :=
-      .inst (t := u8u64) (as := [litC b.toNat]) (by simp [thms]) (.cons .lit .nil)
+      .inst (t := u8u64) (as := [litC b.toNat]) (by simp [thmsP]) (.cons .lit .nil)
     have c3 : C (u64ofC (natModC (litC b.toNat) (ofNatNatC (litC 256)))) (u64ofC (litC b.toNat)) u64C :=
       cong_u64of (hty_natMod .lit (hty_ofNatNat .lit)) (conv_mod b.toNat 256 hb)
     have e : (b :: l).getD 0 0 = b := rfl
@@ -355,7 +381,7 @@ theorem conv_ite (a : Nat) (ha : a < big) :
       (litUC (outV a)) u64C := by
   have c1 : C (iteC (ltC (u64ofC (litC a)) (u64ofC (litC 5))) (decC (u64ofC (litC a)) (u64ofC (litC 5))) (litUC 1) (litUC 2))
       (condC (bleC (natModC (litC 5) (ofNatNatC (litC big))) (natModC (litC a) (ofNatNatC (litC big)))) (litUC 2) (litUC 1)) u64C :=
-    .inst (t := iteLt) (as := [litC a, litC 5, litUC 1, litUC 2]) (by simp [thms])
+    .inst (t := iteLt) (as := [litC a, litC 5, litUC 1, litUC 2]) (by simp [thmsP])
       (.cons .lit (.cons .lit (.cons (hty_litU 1) (.cons (hty_litU 2) .nil))))
   have h5 : HasTy tab eqs [] (natModC (litC 5) (ofNatNatC (litC big))) natC := hty_natMod .lit (hty_ofNatNat .lit)
   have ha' : HasTy tab eqs [] (natModC (litC a) (ofNatNatC (litC big))) natC := hty_natMod .lit (hty_ofNatNat .lit)
@@ -366,9 +392,9 @@ theorem conv_ite (a : Nat) (ha : a < big) :
   unfold outV
   by_cases h : 5 ≤ a
   · simp only [h, decide_true, if_true]
-    exact .inst (t := condT) (as := [litUC 2, litUC 1]) (by simp [thms]) (.cons (hty_litU 2) (.cons (hty_litU 1) .nil))
+    exact .inst (t := condT) (as := [litUC 2, litUC 1]) (by simp [thmsP]) (.cons (hty_litU 2) (.cons (hty_litU 1) .nil))
   · simp only [h, decide_false, if_false]
-    exact .inst (t := condF) (as := [litUC 2, litUC 1]) (by simp [thms]) (.cons (hty_litU 2) (.cons (hty_litU 1) .nil))
+    exact .inst (t := condF) (as := [litUC 2, litUC 1]) (by simp [thmsP]) (.cons (hty_litU 2) (.cons (hty_litU 1) .nil))
 
 theorem outL_toNat (inp : List UInt8) : (NanoL.outL inp).toNat = outV (inp.getD 0 0).toNat := by
   unfold NanoL.outL outV
@@ -383,15 +409,16 @@ theorem outL_toNat (inp : List UInt8) : (NanoL.outL inp).toNat = outV (inp.getD 
     rw [if_pos this, if_neg h]; rfl
 
 /-- **the run of `m` on any input, as an equational derivation in the model** -/
-theorem run (inp : List UInt8) : C (.app (.const (nm "m") []) (encL inp)) (encL [NanoL.outL inp]) LU8c := by
+theorem run (inp : List UInt8) :
+    Conv tab eqs thms [] (.app (.const (nm "m") []) (encL inp)) (encL [NanoL.outL inp]) LU8c := by
   have hx := hty_encL inp
   have hR := hty_rd hx
   have h5 := hty_litU 5
   have ha : (inp.getD 0 0).toNat < big := by have := (inp.getD 0 0).toNat_lt; unfold big; omega
-  have c0 : C (.app (.const (nm "m") []) (encL inp)) (bodyL (encL inp)) LU8c :=
+  have c0 : Conv tab eqs thms [] (.app (.const (nm "m") []) (encL inp)) (bodyL (encL inp)) LU8c :=
     .inst (t := mEqL) (as := [encL inp]) (by simp [thms]) (.cons hx .nil)
   have cR := conv_rd inp
-  have c5 : C (litUC 5) (u64ofC (litC 5)) u64C := .inst (t := lit64) (as := [litC 5]) (by simp [thms]) (.cons .lit .nil)
+  have c5 : C (litUC 5) (u64ofC (litC 5)) u64C := .inst (t := lit64) (as := [litC 5]) (by simp [thmsP]) (.cons .lit .nil)
   have hinst : HasTy tab eqs [] (.const (nm "instLTUInt64") []) (.app (.const (nm "LT") [.zero]) u64C) :=
     ty0 (by decide +kernel)
   have cLt : C (ltC (rdC (encL inp)) (litUC 5)) (ltC (u64ofC (litC (inp.getD 0 0).toNat)) (u64ofC (litC 5))) (.sort .zero) :=
@@ -409,14 +436,101 @@ theorem run (inp : List UInt8) : C (.app (.const (nm "m") []) (encL inp)) (encL 
       (conv_ite _ ha)
   have cPut : C (bodyL (encL inp)) (putC nilC (litUC (outV (inp.getD 0 0).toNat))) LU8c := cong_put hty_nil hIte cIte
   have cL : C (putC nilC (litUC (outV (inp.getD 0 0).toNat))) (putC nilC (u64ofC (litC (outV (inp.getD 0 0).toNat)))) LU8c :=
-    cong_put hty_nil (hty_litU _) (.inst (t := lit64) (as := [litC _]) (by simp [thms]) (.cons .lit .nil))
+    cong_put hty_nil (hty_litU _) (.inst (t := lit64) (as := [litC _]) (by simp [thmsP]) (.cons .lit .nil))
   have cN : C (putC nilC (u64ofC (litC (outV (inp.getD 0 0).toNat))))
       (consC (u8ofC (litC (outV (inp.getD 0 0).toNat))) nilC) LU8c :=
-    .inst (t := putNil) (as := [litC _]) (by simp [thms]) (.cons .lit .nil)
+    .inst (t := putNil) (as := [litC _]) (by simp [thmsP]) (.cons .lit .nil)
   have e : encL [NanoL.outL inp] = consC (u8ofC (litC (outV (inp.getD 0 0).toNat))) nilC := by
     simp only [encL, byteC, u8ofC, litC, outL_toNat]
   rw [e]
-  exact .trans c0 (.trans cPut (.trans cL cN))
+  exact .trans c0 (Conv.mono (fun t ht => List.mem_cons_of_mem _ ht) (.trans cPut (.trans cL cN)))
+
+
+/-! ## arithmetic library (UInt64 `+`/`*`, Nat `*`, `% 256`) -/
+
+theorem hty_natMul {a b : Expr} (ha : HasTy tab eqs [] a natC) (hb : HasTy tab eqs [] b natC) :
+    HasTy tab eqs [] (natMulC a b) natC :=
+  HasTy.head (n := nm2 "HMul" "hMul") (us := [.zero, .zero, .zero])
+    (h := ((defHeadsL.lookup (nm2 "HMul" "hMul")).getD ⟨[], [], .bvar 0⟩))
+    (as := [natC, natC, natC, apps (.const (nm "instHMul") [.zero]) [natC, .const (nm "instMulNat") []], a, b])
+    (by decide +kernel) rfl
+    (.cons hty_natC (.cons hty_natC (.cons (.conv hty_natC (by simp [eqs, EngineAdd.opEq]; decide))
+      (.cons (ty0 (by decide +kernel)) (.cons ha (.cons hb .nil))))))
+
+theorem hty_add64 {a b : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C) :
+    HasTy tab eqs [] (add64C a b) u64C :=
+  HasTy.head (n := AddOne.hAddN) (us := [.zero, .zero, .zero]) (h := ⟨[AddOne.lu, AddOne.lv, AddOne.lw], AddOne.hAddTs, .bvar 3⟩)
+    (as := [u64C, u64C, u64C, apps (.const (nm "instHAdd") [.zero]) [u64C, .const (nm "instAddUInt64") []], a, b])
+    (by decide +kernel) rfl
+    (.cons hty_u64C (.cons hty_u64C (.cons (.conv hty_u64C (by simp [eqs, EngineAdd.opEq]; decide))
+      (.cons (ty0 (by decide +kernel)) (.cons ha (.cons hb .nil))))))
+
+theorem hty_mul64 {a b : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C) :
+    HasTy tab eqs [] (mul64C a b) u64C :=
+  HasTy.head (n := nm2 "HMul" "hMul") (us := [.zero, .zero, .zero])
+    (h := ((defHeadsL.lookup (nm2 "HMul" "hMul")).getD ⟨[], [], .bvar 0⟩))
+    (as := [u64C, u64C, u64C, apps (.const (nm "instHMul") [.zero]) [u64C, .const (nm "instMulUInt64") []], a, b])
+    (by decide +kernel) rfl
+    (.cons hty_u64C (.cons hty_u64C (.cons (.conv hty_u64C (by simp [eqs, EngineAdd.opEq]; decide))
+      (.cons (ty0 (by decide +kernel)) (.cons ha (.cons hb .nil))))))
+
+theorem cong_natMul {a b a' b' : Expr} (ha : HasTy tab eqs [] a natC) (hb : HasTy tab eqs [] b natC)
+    (c1 : C a a' natC) (c2 : C b b' natC) : C (natMulC a b) (natMulC a' b') natC :=
+  .cong (h := .const (nm2 "HMul" "hMul") [.zero, .zero, .zero])
+    (Ts := [.sort L1, .sort L1, .sort L1, apps (.const (nm "HMul") [.zero, .zero, .zero]) [natC, natC, natC], natC, natC])
+    (hty_natMul ha hb)
+    (.cons (refl' hty_natC) (.cons (refl' hty_natC) (.cons (refl' hty_natC) (.cons (refl' (ty0 (by decide +kernel)))
+      (.cons c1 (.cons c2 .nil))))))
+
+theorem cong_add64 {a b a' b' : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C)
+    (c1 : C a a' u64C) (c2 : C b b' u64C) : C (add64C a b) (add64C a' b') u64C :=
+  .cong (h := .const AddOne.hAddN [.zero, .zero, .zero])
+    (Ts := [.sort L1, .sort L1, .sort L1, apps (.const (nm "HAdd") [.zero, .zero, .zero]) [u64C, u64C, u64C], u64C, u64C])
+    (hty_add64 ha hb)
+    (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' (ty0 (by decide +kernel)))
+      (.cons c1 (.cons c2 .nil))))))
+
+theorem cong_mul64 {a b a' b' : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C)
+    (c1 : C a a' u64C) (c2 : C b b' u64C) : C (mul64C a b) (mul64C a' b') u64C :=
+  .cong (h := .const (nm2 "HMul" "hMul") [.zero, .zero, .zero])
+    (Ts := [.sort L1, .sort L1, .sort L1, apps (.const (nm "HMul") [.zero, .zero, .zero]) [u64C, u64C, u64C], u64C, u64C])
+    (hty_mul64 ha hb)
+    (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' (ty0 (by decide +kernel)))
+      (.cons c1 (.cons c2 .nil))))))
+
+theorem conv_mul (a : Nat) : ∀ b : Nat, C (natMulC (litC a) (litC b)) (litC (a * b)) natC
+  | 0 => by
+    have c1 : C (natMulC (litC a) (litC 0)) (natMulC (litC a) zeroC) natC := cong_natMul .lit .lit (refl' .lit) .lit0
+    have c2 : C (natMulC (litC a) zeroC) zeroC natC :=
+      .inst (t := mulZero) (as := [litC a]) (by simp [thmsP]) (.cons .lit .nil)
+    rw [Nat.mul_zero]; exact Conv.trans c1 (Conv.trans c2 (.symm .lit0))
+  | b + 1 => by
+    have c1 : C (natMulC (litC a) (litC (b + 1))) (natMulC (litC a) (.app succC (litC b))) natC :=
+      cong_natMul .lit .lit (refl' .lit) .litS
+    have c2 : C (natMulC (litC a) (.app succC (litC b))) (natAddC (natMulC (litC a) (litC b)) (litC a)) natC :=
+      .inst (t := mulSucc) (as := [litC a, litC b]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
+    have c3 : C (natAddC (natMulC (litC a) (litC b)) (litC a)) (natAddC (litC (a * b)) (litC a)) natC :=
+      cong_natAdd (hty_natMul .lit .lit) .lit (conv_mul a b) (refl' .lit)
+    rw [show a * (b + 1) = a * b + a by rw [Nat.mul_succ]]
+    exact .trans c1 (.trans c2 (.trans c3 (conv_add _ _)))
+
+theorem conv_modG : ∀ k : Nat, C (natModC (litC k) (ofNatNatC (litC 256))) (litC (k % 256)) natC
+  | k => by
+    by_cases h : k < 256
+    · rw [Nat.mod_eq_of_lt h]; exact conv_mod k 256 h
+    · obtain ⟨j, rfl⟩ : ∃ j, k = j + 256 := ⟨k - 256, by omega⟩
+      have cb : C (ofNatNatC (litC 256)) (litC 256) natC :=
+        .inst (t := NanoDen.brLitN) (as := [litC 256]) (by simp [thmsP]) (.cons .lit .nil)
+      have c1 : C (natModC (litC (j + 256)) (ofNatNatC (litC 256))) (natModC (natAddC (litC j) (litC 256)) (litC 256)) natC :=
+        cong_natMod .lit (hty_ofNatNat .lit) (.symm (conv_add j 256)) cb
+      have c2 : C (natModC (natAddC (litC j) (litC 256)) (litC 256)) (natModC (litC j) (litC 256)) natC :=
+        .inst (t := addModRight) (as := [litC j, litC 256]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
+      have c3 : C (natModC (litC j) (litC 256)) (natModC (litC j) (ofNatNatC (litC 256))) natC :=
+        cong_natMod .lit .lit (refl' .lit) (.symm cb)
+      rw [show (j + 256) % 256 = j % 256 by omega]
+      exact .trans c1 (.trans c2 (.trans c3 (conv_modG j)))
+termination_by k => k
+decreasing_by omega
 
 /-! ## the semantic side -/
 
@@ -440,9 +554,7 @@ theorem tabOk : TabOk M tab := by
         simp only [defHeads, List.mem_cons, List.not_mem_nil, or_false] at hd
         rcases hd with rfl | rfl | rfl | rfl | rfl | rfl <;> decide)
     · exact headSem_defn acc M (any_def (hrec.1 p (List.mem_append_right _ hr))) (by
-        simp only [defHeadsL, List.mem_cons, List.not_mem_nil, or_false] at hr
-        rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-          decide +kernel)
+        exact List.all_eq_true.mp (show defHeadsL.all (fun p => headSc p.2) = true by decide +kernel) p hr)
     · exact headSem_ind M (hind p hi) (by
         have : (IndHeads.blockHeads blocksL).all (fun p => headSc p.2) = true := by decide +kernel
         exact List.all_eq_true.mp this p hi)

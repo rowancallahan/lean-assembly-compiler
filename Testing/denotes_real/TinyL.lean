@@ -37,3 +37,13 @@ theorem outParam_eq : outParam.{2} Type = Type := rfl
 theorem put_nil : ∀ n : Nat, put [] (UInt64.ofNat n) = [UInt8.ofNat n] := by
   intro n; simp only [put, List.nil_append, List.cons.injEq, and_true]
   apply UInt8.toNat_inj.mp; simp
+-- arithmetic prelude (UInt64 `+`/`*` through `ofNat`, Nat `*`, `%` on bytes)
+theorem br_add64 : ∀ a b : Nat, UInt64.ofNat a + UInt64.ofNat b = UInt64.ofNat (a + b) := by
+  intro a b; apply UInt64.toNat_inj.mp; simp [UInt64.toNat_add, Nat.add_mod]
+theorem br_mul64 : ∀ a b : Nat, UInt64.ofNat a * UInt64.ofNat b = UInt64.ofNat (a * b) := by
+  intro a b; apply UInt64.toNat_inj.mp; simp [UInt64.toNat_mul, Nat.mul_mod]
+theorem mul_zero' : ∀ n : Nat, n * Nat.zero = Nat.zero := fun _ => rfl
+theorem mul_succ' : ∀ n m : Nat, n * Nat.succ m = n * m + n := fun _ _ => rfl
+theorem add_mod_right' : ∀ n m : Nat, (n + m) % m = n % m := Nat.add_mod_right
+theorem u8_mod : ∀ n : Nat, UInt8.ofNat n = UInt8.ofNat (n % 256) := by
+  intro n; apply UInt8.toNat_inj.mp; simp
