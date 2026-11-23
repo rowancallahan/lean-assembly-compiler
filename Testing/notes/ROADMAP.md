@@ -29,6 +29,20 @@ and the first kernel check of the bootstrap. Steps:
 - syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
   end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
 
+## THE HOLY GRAIL (owner, 2026-11-23): meaning = con-leche's Denotes, computed by self-hosted, proven code
+1. Meaning: con-leche's `Denotes` (ConLeche/Denotes.lean), copied verbatim or imported once nano moves to its
+   Lean version (4.35). Check the copy's elaborated Expr is identical to con-leche's (C_lean-style tooling).
+   Denotes is a definition, not a program, so it stays in Lean, not in nano.
+2. Proof: machine code → Sem (have) → Ev of the Expr (eval_emit; for ANY Expr via the entry point) → Denotes of
+   the Expr (new: Ev agrees with Denotes on the slice). Needs the slice-to-con-leche-term map, the set encoding of
+   UInt64/Bool/Nat/lists/pairs, the ~50 constants via their definitional equations in con-leche's model, and an
+   induction over the slice. The boundary: the output bytes = the byte list that Denotes assigns to f(input).
+3. Self-hosting: the compiler is an Expr in the slice, so (2) applies to itself; the binary identity comes from the
+   fixpoint, later from kernel evaluation.
+This replaces the "standard meaning" route. Keep the per-program certificates Ev(e) = f as a cross-check.
+Trust at the end: one initial kernel check (bootstrap), then re-checks with nano-compiled con-leche; the ISA models
+(Sail RV, Sail ARM, DeepMind ARM) + hardware; propext/Choice/Quot.sound + ZFC with inaccessibles; the Spec I/O boundary.
+
 ## MAIN THEOREM PLAN (owner, 2026-11-23): Expr is the central IR
 Theorem A, the main theorem: for every Expr e in nano's slice and every input, the compiled machine code (RISC-V
 Sail, ARM DeepMind, ARM Sail) writes the encoding of Lean's value of e to the output location.
