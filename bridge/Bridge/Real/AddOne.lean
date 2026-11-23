@@ -23,7 +23,9 @@ def nm2 (a b : String) : Name := .str (.str .anonymous a) b
 def lu : Name := nm "u"
 def lv : Name := nm "v"
 def lw : Name := nm "w"
+def li : Name := nm "u_1"
 def pu : Level := .param lu
+def pi1 : Level := .param li
 def pv : Level := .param lv
 def pw : Level := .param lw
 def L1 : Level := .succ .zero
@@ -51,8 +53,8 @@ def outParamN : Name := nm "outParam"
 def hAddTs : List Expr := [.sort (.succ pu), .sort (.succ pv),
   .app (.const outParamN [.succ (.succ pw)]) (.sort (.succ pw)),
   apps (.const hAddC [pu, pv, pw]) [.bvar 2, .bvar 1, .bvar 0], .bvar 3, .bvar 3]
-def instHAddTs : List Expr := [.sort (.succ pu), .app (.const addC [pu]) (.bvar 0)]
-def instHAddB : Expr := apps (.const hAddC [pu, pu, pu]) [.bvar 1, .bvar 1, .bvar 1]
+def instHAddTs : List Expr := [.sort (.succ pi1), .app (.const addC [pi1]) (.bvar 0)]
+def instHAddB : Expr := apps (.const hAddC [pi1, pi1, pi1]) [.bvar 1, .bvar 1, .bvar 1]
 def instAddNatB : Expr := .app (.const addC [.zero]) natC
 def ofNatTs : List Expr := [.sort (.succ pu), natC, apps (.const ofNatC [pu]) [.bvar 1, .bvar 0]]
 def instOfNatNatB : Expr := apps (.const ofNatC [.zero]) [natC, .bvar 0]
@@ -70,7 +72,7 @@ def e3B : Expr := eqE L3 (.sort L2) (.app (.const outParamN [L2]) (.sort L1)) (.
 structure Recs (ds : Array Declaration) (fN e1 e2 e3 : Name) : Prop where
   f : ∃ v h, Declaration.defnDecl ⟨fN, [], piV [natC] natC⟩ v h ∈ ds
   hAdd : ∃ v h, Declaration.defnDecl ⟨hAddN, [lu, lv, lw], piV hAddTs (.bvar 3)⟩ v h ∈ ds
-  instHAdd : ∃ v h, Declaration.defnDecl ⟨instHAddN, [lu], piV instHAddTs instHAddB⟩ v h ∈ ds
+  instHAdd : ∃ v h, Declaration.defnDecl ⟨instHAddN, [li], piV instHAddTs instHAddB⟩ v h ∈ ds
   instAddNat : ∃ v h, Declaration.defnDecl ⟨instAddNatN, [], piV [] instAddNatB⟩ v h ∈ ds
   ofNat : ∃ v h, Declaration.defnDecl ⟨ofNatN, [lu], piV ofNatTs (.bvar 2)⟩ v h ∈ ds
   instOfNatNat : ∃ v h, Declaration.defnDecl ⟨instOfNatNatN, [], piV [natC] instOfNatNatB⟩ v h ∈ ds
@@ -170,19 +172,21 @@ theorem plus_mem (φ : LevelParam → Nat) (ρ : BVarIdx → V) {e : Expr} {x : 
   -- instHAdd.{0} Nat instAddNat : HAdd Nat Nat Nat  (gives HAdd's find?)
   have u2 : M.cval natName φ ∈ˢ univ (Level.eval (Level.substFn φ [lu] [.zero]) (.succ pu)) := by
     simpa [pu, Level.substFn, Level.eval] using N1
-  have hlA' : [pu].length = ciA.toConstantVal.levelParams.length := by simpa using hlA
-  have dAdd : Denotes M.cval env (Level.substFn φ [lu] [.zero]) (push (M.cval natName φ) ρ)
-      (.app (.const addC [pu]) (.bvar 0))
-      (app (M.cval addC (Level.substFn (Level.substFn φ [lu] [.zero]) ciA.toConstantVal.levelParams [pu]))
+  have u2i : M.cval natName φ ∈ˢ univ (Level.eval (Level.substFn φ [li] [.zero]) (.succ pi1)) := by
+    simpa [pi1, Level.substFn, Level.eval] using N1
+  have hlA' : [pi1].length = ciA.toConstantVal.levelParams.length := by simpa using hlA
+  have dAdd : Denotes M.cval env (Level.substFn φ [li] [.zero]) (push (M.cval natName φ) ρ)
+      (.app (.const addC [pi1]) (.bvar 0))
+      (app (M.cval addC (Level.substFn (Level.substFn φ [li] [.zero]) ciA.toConstantVal.levelParams [pi1]))
         (M.cval natName φ)) := .app (.const hfA hlA') .bvar
-  have eA : M.cval addC (Level.substFn (Level.substFn φ [lu] [.zero]) ciA.toConstantVal.levelParams [pu]) =
+  have eA : M.cval addC (Level.substFn (Level.substFn φ [li] [.zero]) ciA.toConstantVal.levelParams [pi1]) =
       M.cval addC (Level.substFn φ ciA.toConstantVal.levelParams [.zero]) :=
-    hP addC ciA hfA _ _ (substFn_agree _ _ _ [pu] [.zero] (by simp [pu, Level.substFn, Level.eval]) hlA')
+    hP addC ciA hfA _ _ (substFn_agree _ _ _ [pi1] [.zero] (by simp [pi1, Level.substFn, Level.eval]) hlA')
   have hA' := hA
   rw [← eA] at hA'
-  obtain ⟨BH, hBH, hI⟩ := dspine acc R.instHAdd (by simp [instHAddTs, BF, pu, addC])
-    (by simp [instHAddB, apps, BF]) M (Level.substFn φ [lu] [.zero]) ρ _ _ (.cons .sort u2 (.cons dAdd hA' .nil))
-  change Denotes _ _ _ _ (.app (.app (.app (.const hAddC [pu, pu, pu]) (.bvar 1)) (.bvar 1)) (.bvar 1)) _ at hBH
+  obtain ⟨BH, hBH, hI⟩ := dspine acc R.instHAdd (by simp [instHAddTs, BF, pi1, addC])
+    (by simp [instHAddB, apps, BF]) M (Level.substFn φ [li] [.zero]) ρ _ _ (.cons .sort u2i (.cons dAdd hA' .nil))
+  change Denotes _ _ _ _ (.app (.app (.app (.const hAddC [pi1, pi1, pi1]) (.bvar 1)) (.bvar 1)) (.bvar 1)) _ at hBH
   obtain ⟨F2, X3, hF2, hX3, rfl⟩ := app_inv hBH
   obtain ⟨F1, X2, hF1, hX2, rfl⟩ := app_inv hF2
   obtain ⟨H, X1, hH, hX1, rfl⟩ := app_inv hF1
@@ -192,9 +196,9 @@ theorem plus_mem (φ : LevelParam → Nat) (ρ : BVarIdx → V) {e : Expr} {x : 
   have hlH' : [pu, pv, pw].length = ciH.toConstantVal.levelParams.length := by simpa using hlH
   have eH : M.cval hAddC (Level.substFn (Level.substFn φ [lu, lv, lw] [.zero, .zero, .zero])
         ciH.toConstantVal.levelParams [pu, pv, pw]) =
-      M.cval hAddC (Level.substFn (Level.substFn φ [lu] [.zero]) ciH.toConstantVal.levelParams [pu, pu, pu]) :=
+      M.cval hAddC (Level.substFn (Level.substFn φ [li] [.zero]) ciH.toConstantVal.levelParams [pi1, pi1, pi1]) :=
     hP hAddC ciH hfH _ _ (substFn_agree _ _ _ _ _
-      (by simp [pu, pv, pw, lu, lv, lw, nm, Level.substFn, Level.eval]) hlH')
+      (by simp [pu, pv, pw, pi1, li, lu, lv, lw, nm, Level.substFn, Level.eval]) hlH')
   -- One : Nat
   have nv1 := natV_mem M hnat φ ρ 1
   obtain ⟨BO, hBO, hJ⟩ := dspine acc R.instOfNatNat (by simp [BF, natC])
@@ -237,13 +241,13 @@ theorem plus_mem (φ : LevelParam → Nat) (ρ : BVarIdx → V) {e : Expr} {x : 
     rw [eop, e1, outParam_univ acc hnat R M hP _ ρ]
     exact N1
   have hT1 : ∀ T ∈ hAddTs, BF T := by simp [hAddTs, BF, apps]
-  have hI' : appN (M.cval instHAddN (Level.substFn φ [lu] [.zero])) [M.cval natName φ, M.cval instAddNatN φ] ∈ˢ
+  have hI' : appN (M.cval instHAddN (Level.substFn φ [li] [.zero])) [M.cval natName φ, M.cval instAddNatN φ] ∈ˢ
       app (app (app (M.cval hAddC (Level.substFn (Level.substFn φ [lu, lv, lw] [.zero, .zero, .zero])
         ciH.toConstantVal.levelParams [pu, pv, pw])) (M.cval natName φ)) (M.cval natName φ)) (M.cval natName φ) := by
     rw [eH]; exact hI
   obtain ⟨BP, hBP, hPm⟩ := dspine acc R.hAdd hT1 trivial M (Level.substFn φ [lu, lv, lw] [.zero, .zero, .zero]) ρ _
     [M.cval natName φ, M.cval natName φ, M.cval natName φ,
-      appN (M.cval instHAddN (Level.substFn φ [lu] [.zero])) [M.cval natName φ, M.cval instAddNatN φ], x,
+      appN (M.cval instHAddN (Level.substFn φ [li] [.zero])) [M.cval natName φ, M.cval instAddNatN φ], x,
       appN (M.cval ofNatN (Level.substFn φ [lu] [.zero]))
         [M.cval natName φ, natV M φ 1, appN (M.cval instOfNatNatN φ) [natV M φ 1]]]
     (.cons .sort (u1 lu (Or.inl rfl)) (.cons .sort (u1 lv (Or.inr rfl))
@@ -251,7 +255,7 @@ theorem plus_mem (φ : LevelParam → Nat) (ρ : BVarIdx → V) {e : Expr} {x : 
       (.cons (.app (.app (.app (.const hfH hlH') .bvar) .bvar) .bvar) hI'
       (.cons .bvar hx (.cons .bvar hOne .nil))))))
   cases hBP
-  have dI := den_apps (dden acc R.instHAdd (by simp [instHAddTs, BF, pu, addC]) (by simp [instHAddB, apps, BF])
+  have dI := den_apps (dden acc R.instHAdd (by simp [instHAddTs, BF, pi1, addC]) (by simp [instHAddB, apps, BF])
     M φ ρ [.zero] rfl) (.cons (dN ρ) (.cons (dden acc R.instAddNat (by simp) (by simp [BF, instAddNatB, natC])
       M φ ρ [] rfl) .nil))
   have dOne := den_apps (dden acc R.ofNat (by simp [ofNatTs, BF, apps, natC]) trivial M φ ρ [.zero] rfl)
