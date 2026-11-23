@@ -200,3 +200,15 @@ con-leche checks every `kᵢ_eq`/`n_eq` by `rfl` (δβ). The λ engine pieces (`
 
 Next: the normalizer `N : X → Expr` with the aux-def list, the generic `R` over `substB`/`N`, and the `Cases` from
 the library lemmas.
+
+### 5.3 Normalizer notes (for the next session)
+* Make `N` a pure function so the proof can unfold it:
+  - aux-def names come from (def name, path in the body), not a counter;
+  - `N` matches `Prod.casesOn`/`let` by nested patterns on `X` (structural).
+* **Value-type agreement** is needed. `Conv.inst` types each argument against the aux def's *static* telescope
+  (from `let` annotations `tr t`, the λ binder types and def params). So the invariant needs
+  `Ev P env e r → tyV r = static type of e`, i.e. evaluation respects the shapes `emit` checks (`ExprSpec.emit`
+  rejects ill-shaped programs). Look first for a shape lemma next to `eval_emit` (`Nano/Expr/Correct.lean`); else
+  prove it by induction on `Ev` alongside `R`.
+* Typing of `N e` instances: `HasTy` of `substB (env.map encV) (N e)` from a per-def Bool `infer` on `N e` in the
+  static context (inside `GenOk`), plus `TySubst.hasTy_subst` (binder-free case).
