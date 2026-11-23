@@ -103,3 +103,112 @@ theorem u64_lit_denotes (cval : String → V) (ρ : Nat → V) (x : UInt64) :
     Denotes app cval ρ (lit64 x.toNat) (encU app cval x) :=
   .app .const (.app .const (.app (.app (.app .const (lit_denotes app cval ρ U)) (lit_denotes app cval ρ x.toNat)) .const))
 
+/-! ## 2. binary UInt64 ops -/
+theorem lift2 (f : V) (g : Nat → Nat → Nat) (op : UInt64 → UInt64 → UInt64) (cval : String → V)
+    (hbr : ∀ a b, op (UInt64.ofNat a) (UInt64.ofNat b) = UInt64.ofNat (g a b))
+    (hnat : ∀ a b, app (app f (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (g a b))) :
+    ∀ x y, app (app f (encU app cval x)) (encU app cval y) = encU app cval (op x y) := by
+  intro x y
+  obtain ⟨a, rfl⟩ := u_surj x
+  obtain ⟨b, rfl⟩ := u_surj y
+  rw [hbr]; exact hnat a b
+
+theorem binop_denotes (cval : String → V) (ρ : Nat → V) (name : String) (op : UInt64 → UInt64 → UInt64)
+    (hop : ∀ x y, app (app (cval name) (encU app cval x)) (encU app cval y) = encU app cval (op x y))
+    {ta tb : Expr} {x y : UInt64}
+    (ha : Denotes app cval ρ ta (encU app cval x)) (hb : Denotes app cval ρ tb (encU app cval y)) :
+    Denotes app cval ρ (.app (.app (.const name) ta) tb) (encU app cval (op x y)) := by
+  have := Denotes.app (Denotes.app (Denotes.const (n := name)) ha) hb
+  rwa [hop] at this
+
+section ops
+variable (cval : String → V) (ρ : Nat → V) {ta tb : Expr} {x y : UInt64}
+  (ha : Denotes app cval ρ ta (encU app cval x)) (hb : Denotes app cval ρ tb (encU app cval y))
+include ha hb
+
+theorem u64_add_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.add") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a + b))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.add") ta) tb) (encU app cval (x + y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_add h) ha hb
+
+theorem u64_sub_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.sub") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a + (U * b - b)))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.sub") ta) tb) (encU app cval (x - y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_sub h) ha hb
+
+theorem u64_mul_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.mul") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a * b))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.mul") ta) tb) (encU app cval (x * y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_mul h) ha hb
+
+theorem u64_and_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.land") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a &&& b))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.land") ta) tb) (encU app cval (x &&& y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_and h) ha hb
+
+theorem u64_or_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.lor") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a ||| b))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.lor") ta) tb) (encU app cval (x ||| y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_or h) ha hb
+
+theorem u64_xor_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.xor") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a ^^^ b))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.xor") ta) tb) (encU app cval (x ^^^ y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_xor h) ha hb
+
+theorem u64_shl_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.shiftLeft") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat (a <<< (b % 64)))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.shiftLeft") ta) tb) (encU app cval (x <<< y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_shl h) ha hb
+
+theorem u64_shr_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.shiftRight") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encU app cval (UInt64.ofNat ((a % U) >>> (b % 64)))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.shiftRight") ta) tb) (encU app cval (x >>> y)) :=
+  binop_denotes app cval ρ _ _ (lift2 app _ _ _ cval br_shr h) ha hb
+
+/-! ## 3. `==` as a Bool-valued term -/
+def encB (cval : String → V) (b : Bool) : V := cval (if b then "Bool.true" else "Bool.false")
+
+theorem u64_beq_denotes
+    (h : ∀ a b : Nat, app (app (cval "UInt64.beq") (encU app cval (UInt64.ofNat a))) (encU app cval (UInt64.ofNat b)) =
+      encB cval (Nat.beq (a % U) (b % U))) :
+    Denotes app cval ρ (.app (.app (.const "UInt64.beq") ta) tb) (encB cval (x == y)) := by
+  have := Denotes.app (Denotes.app (Denotes.const (n := "UInt64.beq")) ha) hb
+  obtain ⟨a, rfl⟩ := u_surj x
+  obtain ⟨b, rfl⟩ := u_surj y
+  rwa [h, ← br_beq64] at this
+
+/-! ## 4. `ite` on `==` and on `<` (one head applied to `a b t e`) -/
+theorem u64_ite_beq_denotes {tt te : Expr} {T E : V}
+    (h : ∀ (a b : Nat) (t e : V), app (app (app (app (cval "iteBeq64") (encU app cval (UInt64.ofNat a)))
+      (encU app cval (UInt64.ofNat b))) t) e = cond (Nat.beq (a % U) (b % U)) t e)
+    (ht : Denotes app cval ρ tt T) (he : Denotes app cval ρ te E) :
+    Denotes app cval ρ (.app (.app (.app (.app (.const "iteBeq64") ta) tb) tt) te)
+      (if (x == y) = true then T else E) := by
+  have := Denotes.app (Denotes.app (Denotes.app (Denotes.app (Denotes.const (n := "iteBeq64")) ha) hb) ht) he
+  obtain ⟨a, rfl⟩ := u_surj x
+  obtain ⟨b, rfl⟩ := u_surj y
+  rw [h, ← br_beq64] at this
+  cases hc : (UInt64.ofNat a == UInt64.ofNat b) <;> simp only [hc, cond, Bool.false_eq_true, ite_false, ite_true] at this ⊢ <;> exact this
+
+theorem u64_ite_lt_denotes {tt te : Expr} {T E : V}
+    (h : ∀ (a b : Nat) (t e : V), app (app (app (app (cval "iteLt64") (encU app cval (UInt64.ofNat a)))
+      (encU app cval (UInt64.ofNat b))) t) e = cond (Nat.ble (a % U + 1) (b % U)) t e)
+    (ht : Denotes app cval ρ tt T) (he : Denotes app cval ρ te E) :
+    Denotes app cval ρ (.app (.app (.app (.app (.const "iteLt64") ta) tb) tt) te)
+      (if x < y then T else E) := by
+  have := Denotes.app (Denotes.app (Denotes.app (Denotes.app (Denotes.const (n := "iteLt64")) ha) hb) ht) he
+  obtain ⟨a, rfl⟩ := u_surj x
+  obtain ⟨b, rfl⟩ := u_surj y
+  rw [h, ← br_lt64] at this
+  exact this
+end ops
