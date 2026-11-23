@@ -69,6 +69,14 @@ def defHeadsL : List (Name × Head) :=
    (nm "instAddUInt64", ⟨[], [], .app (.const (nm "Add") [.zero]) u64C⟩),
    (nm "instMulNat", ⟨[], [], .app (.const (nm "Mul") [.zero]) natC⟩),
    (nm "f", ⟨[], [u64C], u64C⟩), (nm "len", ⟨[], [LU8c], u64C⟩),
+   -- growth step `-`: `HSub.hSub` as `HMul.hMul`, `Nat.sub` for the 2^64 complement
+   (nm2 "HSub" "hSub", ⟨[AddOne.lu, AddOne.lv, AddOne.lw], [.sort (.succ AddOne.pu), .sort (.succ AddOne.pv),
+      .app (.const AddOne.outParamN [.succ (.succ AddOne.pw)]) (.sort (.succ AddOne.pw)),
+      apps (.const (nm "HSub") [AddOne.pu, AddOne.pv, AddOne.pw]) [.bvar 2, .bvar 1, .bvar 0], .bvar 3, .bvar 3], .bvar 3⟩),
+   (nm "instHSub", ⟨[lw], [.sort (.succ (.param lw)), .app (.const (nm "Sub") [.param lw]) (.bvar 0)],
+      apps (.const (nm "HSub") [.param lw, .param lw, .param lw]) [.bvar 1, .bvar 1, .bvar 1]⟩),
+   (nm "instSubUInt64", ⟨[], [], .app (.const (nm "Sub") [.zero]) u64C⟩),
+   (nm2 "Nat" "sub", ⟨[], [natC, natC], natC⟩),
    (nm "lp", ⟨[], [natC, LU8c, u64C], u64C⟩)]
 
 /-- the inductive blocks used: List, UInt8, UInt64, Bool -/
@@ -129,6 +137,17 @@ def addModRight : Thm := ⟨nm "add_mod_right'", [natC, natC], L1, natC, natModC
   natModC (.bvar 1) (.bvar 0)⟩
 def u8Mod : Thm := ⟨nm "u8_mod", [natC], L1, u8C, u8ofC (.bvar 0), u8ofC (natModC (.bvar 0) (ofNatNatC (litC 256)))⟩
 
+def natSubC (a b : Expr) : Expr := apps (.const (nm2 "Nat" "sub") []) [a, b]
+def sub64C (a b : Expr) : Expr := apps (.const (nm2 "HSub" "hSub") [.zero, .zero, .zero])
+  [u64C, u64C, u64C, apps (.const (nm "instHSub") [.zero]) [u64C, .const (nm "instSubUInt64") []], a, b]
+/-- `UInt64.ofNat a - UInt64.ofNat b = UInt64.ofNat (a + (2^64 - b % 2^64))` -/
+def brSub64 : Thm := ⟨nm "br_sub64", [natC, natC], L1, u64C, sub64C (u64ofC (.bvar 1)) (u64ofC (.bvar 0)),
+  u64ofC (natAddC (.bvar 1) (natSubC (ofNatNatC (litC big)) (natModC (.bvar 0) (ofNatNatC (litC big)))))⟩
+def nsubN0 : Thm := ⟨nm "nsub_n0", [natC], L1, natC, natSubC (.bvar 0) zeroC, .bvar 0⟩
+def nsubSS : Thm := ⟨nm "nsub_ss", [natC, natC], L1, natC, natSubC (.app succC (.bvar 1)) (.app succC (.bvar 0)),
+  natSubC (.bvar 1) (.bvar 0)⟩
+def nsubZS : Thm := ⟨nm "nsub_zs", [natC], L1, natC, natSubC zeroC (.app succC (.bvar 0)), zeroC⟩
+
 def lenC (x : Expr) : Expr := .app (.const (nm "len") []) x
 def lenNil : Thm := ⟨nm "len_nil", [], L1, u64C, lenC nilC, u64ofC (ofNatNatC (litC 0))⟩
 def lenCons : Thm := ⟨nm "len_cons", [u8C, LU8c], L1, u64C, lenC (consC (.bvar 1) (.bvar 0)), add64C (lenC (.bvar 0)) (litUC 1)⟩
@@ -140,7 +159,8 @@ def lpZero : Thm := ⟨nm "lp_zero", [LU8c, u64C], L1, u64C, lpC zeroC (.bvar 1)
 def lpSucc : Thm := ⟨nm "lp_succ", [natC, LU8c, u64C], L1, u64C, lpC (.app succC (.bvar 2)) (.bvar 1) (.bvar 0),
   lpC (.bvar 2) (.bvar 1) (add64C (.bvar 0) (litUC 1))⟩
 def thmsP : List Thm := [rdNil0, rdCons0, u8u64, lit64, iteLt, condT, condF, bleZ, bleSZ, bleSS, zeroAdd,
-  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod, fEq, lenNil, lenCons, lpZero, lpSucc]
+  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod, fEq, lenNil, lenCons,
+  lpZero, lpSucc, brSub64, nsubN0, nsubSS, nsubZS]
 def thms : List Thm := mEqL :: thmsP
 
 /-- the records the stream must hold (decidable) -/
@@ -508,6 +528,53 @@ theorem cong_mul64 {a b a' b' : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy
     (hty_mul64 ha hb)
     (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' (ty0 (by decide +kernel)))
       (.cons c1 (.cons c2 .nil))))))
+
+/-! ## `-` (growth step): typing, congruence and `Nat.sub` on literals -/
+
+theorem hty_natSub {a b : Expr} (ha : HasTy tab eqs [] a natC) (hb : HasTy tab eqs [] b natC) :
+    HasTy tab eqs [] (natSubC a b) natC :=
+  HasTy.head (n := nm2 "Nat" "sub") (us := []) (h := ⟨[], [natC, natC], natC⟩) (as := [a, b])
+    (by decide +kernel) rfl (.cons ha (.cons hb .nil))
+
+theorem hty_sub64 {a b : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C) :
+    HasTy tab eqs [] (sub64C a b) u64C :=
+  HasTy.head (n := nm2 "HSub" "hSub") (us := [.zero, .zero, .zero])
+    (h := ((defHeadsL.lookup (nm2 "HSub" "hSub")).getD ⟨[], [], .bvar 0⟩))
+    (as := [u64C, u64C, u64C, apps (.const (nm "instHSub") [.zero]) [u64C, .const (nm "instSubUInt64") []], a, b])
+    (by decide +kernel) rfl
+    (.cons hty_u64C (.cons hty_u64C (.cons (.conv hty_u64C (by simp [eqs, EngineAdd.opEq]; decide))
+      (.cons (ty0 (by decide +kernel)) (.cons ha (.cons hb .nil))))))
+
+theorem cong_natSub {a b a' b' : Expr} (ha : HasTy tab eqs [] a natC) (hb : HasTy tab eqs [] b natC)
+    (c1 : C a a' natC) (c2 : C b b' natC) : C (natSubC a b) (natSubC a' b') natC :=
+  .cong (h := .const (nm2 "Nat" "sub") []) (Ts := [natC, natC]) (hty_natSub ha hb) (.cons c1 (.cons c2 .nil))
+
+theorem cong_sub64 {a b a' b' : Expr} (ha : HasTy tab eqs [] a u64C) (hb : HasTy tab eqs [] b u64C)
+    (c1 : C a a' u64C) (c2 : C b b' u64C) : C (sub64C a b) (sub64C a' b') u64C :=
+  .cong (h := .const (nm2 "HSub" "hSub") [.zero, .zero, .zero])
+    (Ts := [.sort L1, .sort L1, .sort L1, apps (.const (nm "HSub") [.zero, .zero, .zero]) [u64C, u64C, u64C], u64C, u64C])
+    (hty_sub64 ha hb)
+    (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' hty_u64C) (.cons (refl' (ty0 (by decide +kernel)))
+      (.cons c1 (.cons c2 .nil))))))
+
+theorem conv_nsub : ∀ b a : Nat, C (natSubC (litC a) (litC b)) (litC (a - b)) natC
+  | 0, a => by
+    have c1 : C (natSubC (litC a) (litC 0)) (natSubC (litC a) zeroC) natC := cong_natSub .lit .lit (refl' .lit) .lit0
+    have c2 : C (natSubC (litC a) zeroC) (litC a) natC :=
+      .inst (t := nsubN0) (as := [litC a]) (by simp [thmsP]) (.cons .lit .nil)
+    rw [Nat.sub_zero]; exact Conv.trans c1 c2
+  | b + 1, 0 => by
+    have c1 : C (natSubC (litC 0) (litC (b + 1))) (natSubC zeroC (.app succC (litC b))) natC :=
+      cong_natSub .lit .lit .lit0 .litS
+    have c2 : C (natSubC zeroC (.app succC (litC b))) zeroC natC :=
+      .inst (t := nsubZS) (as := [litC b]) (by simp [thmsP]) (.cons .lit .nil)
+    rw [Nat.zero_sub]; exact Conv.trans c1 (Conv.trans c2 (.symm .lit0))
+  | b + 1, a + 1 => by
+    have c1 : C (natSubC (litC (a + 1)) (litC (b + 1))) (natSubC (.app succC (litC a)) (.app succC (litC b))) natC :=
+      cong_natSub .lit .lit .litS .litS
+    have c2 : C (natSubC (.app succC (litC a)) (.app succC (litC b))) (natSubC (litC a) (litC b)) natC :=
+      .inst (t := nsubSS) (as := [litC a, litC b]) (by simp [thmsP]) (.cons .lit (.cons .lit .nil))
+    rw [Nat.succ_sub_succ]; exact Conv.trans c1 (Conv.trans c2 (conv_nsub b a))
 
 theorem conv_mul (a : Nat) : ∀ b : Nat, C (natMulC (litC a) (litC b)) (litC (a * b)) natC
   | 0 => by

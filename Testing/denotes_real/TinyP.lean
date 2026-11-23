@@ -58,3 +58,12 @@ theorem mul_succ' : ∀ n m : Nat, n * Nat.succ m = n * m + n := fun _ _ => rfl
 theorem add_mod_right' : ∀ n m : Nat, (n + m) % m = n % m := Nat.add_mod_right
 theorem u8_mod : ∀ n : Nat, UInt8.ofNat n = UInt8.ofNat (n % 256) := by
   intro n; apply UInt8.toNat_inj.mp; simp
+-- subtraction prelude (UInt64 `-` through `ofNat` and the 2^64 complement, `Nat.sub` recursion)
+theorem br_sub64 : ∀ a b : Nat, UInt64.ofNat a - UInt64.ofNat b
+    = UInt64.ofNat (a + Nat.sub 18446744073709551616 (b % 18446744073709551616)) := by
+  intro a b; apply UInt64.toNat_inj.mp
+  simp [UInt64.toNat_sub, Nat.sub_eq]
+  omega
+theorem nsub_n0 : ∀ n : Nat, Nat.sub n Nat.zero = n := fun _ => rfl
+theorem nsub_ss : ∀ n m : Nat, Nat.sub (Nat.succ n) (Nat.succ m) = Nat.sub n m := fun n m => Nat.succ_sub_succ n m
+theorem nsub_zs : ∀ m : Nat, Nat.sub Nat.zero (Nat.succ m) = Nat.zero := fun m => Nat.zero_sub (Nat.succ m)
