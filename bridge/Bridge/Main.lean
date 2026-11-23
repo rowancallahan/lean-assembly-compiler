@@ -52,6 +52,7 @@ import Bridge.Real.NanoLDen
 import Bridge.Real.NanoADen
 import Bridge.Real.NanoCDen
 import Bridge.Real.NanoNDen
+import Bridge.Real.NanoSDen
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
@@ -199,5 +200,27 @@ theorem nano_len (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Arra
   have hout : out = [NanoN.outN inp] := by have := NanoN.ev_mainN hev; cases this; rfl
   subst hout
   exact NanoNDen.den_mN accepted H_natLit H_ind hrec M hP φ ρ inp
+
+/-- **Growth step `-`**: `def m (x : List UInt8) : List UInt8 := put [] (rd x 0 - 3)`, same prelude as `nano_arith`
+plus `br_sub64` and the `Nat.sub` recursion equations (`NanoLDen.thmsP`); UInt64 `-` is computed in the model (`br_sub64`,
+then `Nat.sub`, `+` and `% 256` on literals by induction). -/
+theorem nano_sub (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Array Declaration} {env : Env}
+    (accepted : Cached.checkDecls .verified pins ds = .ok env)
+    (hrec : NanoSDen.recsOkS ds = true) (hpin : natPin ds = true)
+    (hind : IndHeads.blocksOk ds NanoLDen.blocksL = true) :
+    ∃ M : Model V env, CvalParams M ∧
+      ∀ (inp out : List UInt8), Ev (progOf NanoS.oS) [.l inp] NanoTiny.mainX (.l out) →
+        ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
+          Denotes M.cval env φ ρ (encL inp) x ∧
+          ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
+  obtain ⟨b, nP, hb, hpin'⟩ := natPin_of hpin
+  have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin'
+  have H_ind := IndHeads.indStored_blocks V accepted hind (by decide +kernel)
+  obtain ⟨M, hP⟩ := model_exists' V pins ds env accepted
+  refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
+  have hout : out = [NanoS.outS inp] := by have := NanoS.ev_mainS hev; cases this; rfl
+  subst hout
+  exact NanoSDen.den_mS accepted H_natLit H_ind hrec M hP φ ρ inp
+
 
 end Bridge
