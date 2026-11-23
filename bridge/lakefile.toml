@@ -35,3 +35,8 @@ globs = ["Nano.Expr.CExpr", "Nano.Expr.CData", "Nano.SelfHost.Cert.PC"]
 [[lean_lib]]
 name = "BridgeC"
 roots = ["Bridge.CheckC", "Bridge.CheckForm", "Bridge.TopC"]
+
+# the lemmas ported to the REAL con-leche definitions (DENOTES_SPIKE.md §13); builds con-leche's SetModel
+[[lean_lib]]
+name = "BridgeReal"
+roots = ["Bridge.Transfer", "Bridge.Real"]
