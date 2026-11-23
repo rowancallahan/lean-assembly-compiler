@@ -54,6 +54,10 @@ structure SetLaws {V : Type} (O : SetOps V) : Prop where
   lamR_congr : ∀ {v A} {F F' : V → V}, (∀ x, O.mem x A → F x = F' x) → O.lamR v A F = O.lamR v A F'
   /-- SetModel/Ops.lean:134 -/
   lamR_mem : ∀ {v A} {F B : V → V}, (∀ x, O.mem x A → O.mem (F x) (B x)) → O.mem (O.lamR v A F) (O.piR v A B)
+  /-- graph-regime products stay in a positive universe: SetModel/Ops.lean:69 (`piR_pos`) +
+  SetTheory/Derive/Univ.lean:40 (`univ_isTGUniverse`) + SetTheory/Derive/Graphs.lean:131 (`IsTGUniverse.piSet_mem`) -/
+  piR_mem_univ : ∀ {n A} {B : V → V}, n ≠ 0 → O.mem A (O.univ n) → (∀ x, O.mem x A → O.mem (B x) (O.univ n)) →
+    O.mem (O.piR 1 A B) (O.univ n)
   /-- SetModel/Ops.lean:79 -/
   piR_congr : ∀ {v A} {B B' : V → V}, (∀ x, O.mem x A → B x = B' x) → O.piR v A B = O.piR v A B'
 
@@ -186,6 +190,18 @@ theorem Inhab.eq {M : Model O env} {ρ : Nat → V} {u : Nat} {S a b : E} {Sv av
   obtain rfl := D_functional L hS hS'
   obtain rfl := D_functional L ha ha'
   obtain rfl := D_functional L hb hb'
+  rw [M.eq_equality u ρ _ _ _ _ hE hSu hav hbv] at hy
+  exact L.eq_of_mem_eqv hy
+
+/-- `Inhab.eq` with the denotations read off the type (existence) -/
+theorem Inhab.eq_ex {M : Model O env} {ρ : Nat → V} {u : Nat} {S a b : E} (h : Inhab M ρ (eqE u S a b)) :
+    ∃ Sv av bv, D O M.cval ρ S Sv ∧ D O M.cval ρ a av ∧ D O M.cval ρ b bv ∧
+      (O.mem Sv (O.univ u) → O.mem av Sv → O.mem bv Sv → av = bv) := by
+  obtain ⟨P, hP, y, hy⟩ := h
+  obtain ⟨F2, bv, h3, hb, rfl⟩ := app_inv hP
+  obtain ⟨F1, av, h2, ha, rfl⟩ := app_inv h3
+  obtain ⟨Ev, Sv, hE, hS, rfl⟩ := app_inv h2
+  refine ⟨Sv, av, bv, hS, ha, hb, fun hSu hav hbv => ?_⟩
   rw [M.eq_equality u ρ _ _ _ _ hE hSu hav hbv] at hy
   exact L.eq_of_mem_eqv hy
 
