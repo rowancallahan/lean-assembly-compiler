@@ -67,7 +67,8 @@ def defHeadsL : List (Name × Head) :=
       apps (.const (nm "HMul") [.param lw, .param lw, .param lw]) [.bvar 1, .bvar 1, .bvar 1]⟩),
    (nm "instMulUInt64", ⟨[], [], .app (.const (nm "Mul") [.zero]) u64C⟩),
    (nm "instAddUInt64", ⟨[], [], .app (.const (nm "Add") [.zero]) u64C⟩),
-   (nm "instMulNat", ⟨[], [], .app (.const (nm "Mul") [.zero]) natC⟩)]
+   (nm "instMulNat", ⟨[], [], .app (.const (nm "Mul") [.zero]) natC⟩),
+   (nm "f", ⟨[], [u64C], u64C⟩)]
 
 /-- the inductive blocks used: List, UInt8, UInt64, Bool -/
 def blocksL : List ((Name × Head) × List (Name × Head)) :=
@@ -127,9 +128,11 @@ def addModRight : Thm := ⟨nm "add_mod_right'", [natC, natC], L1, natC, natModC
   natModC (.bvar 1) (.bvar 0)⟩
 def u8Mod : Thm := ⟨nm "u8_mod", [natC], L1, u8C, u8ofC (.bvar 0), u8ofC (natModC (.bvar 0) (ofNatNatC (litC 256)))⟩
 
+def fEq : Thm := ⟨nm "f_eq", [u64C], L1, u64C, .app (.const (nm "f") []) (.bvar 0), add64C (.bvar 0) (litUC 1)⟩
+
 /-- the shared prelude's equations -/
 def thmsP : List Thm := [rdNil0, rdCons0, u8u64, lit64, iteLt, condT, condF, bleZ, bleSZ, bleSS, zeroAdd,
-  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod]
+  succAdd, modSmall, NanoDen.brLitN, putNil, brAdd64, brMul64, mulZero, mulSucc, addModRight, u8Mod, fEq]
 def thms : List Thm := mEqL :: thmsP
 
 /-- the records the stream must hold (decidable) -/

@@ -2,6 +2,8 @@
 -- with nano's prelude `rd`, `put` and the (structural, `rfl`/core) equations the bridge reads.
 def rd (xs : List UInt8) (i : UInt64) : UInt64 := (xs.getD i.toNat 0).toUInt64
 def put (o : List UInt8) (b : UInt64) : List UInt8 := o ++ [b.toUInt8]
+def f (a : UInt64) : UInt64 := a + 1
+theorem f_eq : ∀ a : UInt64, f a = a + 1 := fun _ => rfl
 def m (x : List UInt8) : List UInt8 := put [] (if rd x 0 < 5 then 1 else 2)
 theorem m_eq : ∀ x : List UInt8, m x = put [] (if rd x 0 < 5 then 1 else 2) := fun _ => rfl
 theorem rd_nil0 : rd [] 0 = UInt64.ofNat 0 := rfl

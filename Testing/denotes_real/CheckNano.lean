@@ -59,3 +59,16 @@ def mainA : IO Unit := do
   | .ok _ => IO.println "(A3) accepted"
   | .error _ => IO.println "(A3) REJECTED"
 #eval mainA
+
+/-! growth step `calls` (Bridge.nano_calls) -/
+def mainC : IO Unit := do
+  IO.println s!"(C1) emitXs srcC = oC: {(ExprSpec.emitXs NanoC.srcC).toOption == some NanoC.oC}"
+  let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tinyc.ndjson"
+  let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
+  let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
+  let ds := preparePrelude pre r.decls
+  IO.println s!"(C2) recsOkC = {NanoCDen.recsOkC ds}, natPin = {Bridge.natPin ds}, blocksOk = {IndHeads.blocksOk ds NanoLDen.blocksL}"
+  match Cached.checkDecls .verified natOpPinSets ds with
+  | .ok _ => IO.println "(C3) accepted"
+  | .error _ => IO.println "(C3) REJECTED"
+#eval mainC
