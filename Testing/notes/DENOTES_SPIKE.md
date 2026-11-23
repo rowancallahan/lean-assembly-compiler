@@ -243,6 +243,17 @@ its con-leche checkout (cdc2cf8, merged). Everything listed below is sorry-free;
   Merged S1 (§9, BridgeU64). It did run, but late; I never received its messages. Its `br_*` statements differ in form
   from the bridge's (e.g. `br_sub` without a guard), so the bridge does not use them directly. They are independent
   confirmation that the arithmetic facts hold.
+* Late merges (the lead's 09:00–10:00 messages reached me at 11:13). S3 `MiniU64.lean` (UInt64 ops and ites),
+  S4 `MiniBind.lean` (bvar, lam/beta, let, pairs, casesOn) and FABLE-MINI's `FableMini`, `Universe`, `MiniTyping` and
+  `HeadTyping` are now in `Testing/denotes_spike/`. All are standalone over their own trimmed copies, and each one
+  compiles with plain `lean` 4.35.0-rc3 here: 0 errors, no sorry. They overlap with the bridge (which already
+  covers those features over the emitted Expr) and are NOT wired into it. Their value is FABLE-MINI's level results:
+  `HeadTyping.head_has` and `Denotes.shift` under `CvalParams`.
+* Finding (a), the way out: `bridge/Bridge/ModelExists2.lean` (DRAFT, NOT BUILT) proves `model_exists'`, which is
+  `model_exists` plus `CvalParams M`. It is `congrArg` of con-leche's internal `EnvModel.acval_params` through
+  `Model.ofEnvModelM`'s `cval := cvalOf m.base2.acval`, so no upstream change is needed, unless the Model/* def does
+  not unfold from outside (the alternatives are in the file header). The **con-leche build was DENIED** by the
+  session's permission classifier at ~11:15, so neither the draft nor the real-model swap could be checked.
 **Findings.**
 (a) LEVEL ASSIGNMENTS. Real con-leche has this problem; the trimmed copy hides it.
 `Denotes.const` reads `cval n (Level.substFn φ ps us)`. `substFn` falls back to `φ` outside `ps`. So inside a
