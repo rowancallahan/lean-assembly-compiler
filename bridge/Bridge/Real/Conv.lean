@@ -48,6 +48,8 @@ inductive Conv (tab : Tab) (eqs : List (Expr × Expr)) (thms : List Thm) (Γ : L
       HasTy tab eqs Γ (apps h as) T → ConvL tab eqs thms Γ as bs Ts → Conv tab eqs thms Γ (apps h as) (apps h bs) T
   /-- con-leche reads a literal `k+1` as `Nat.succ k` (`Denotes.natLit`) -/
   | litS {k : Nat} : Conv tab eqs thms Γ (.lit (.natVal (k + 1))) (.app Tiny.succC (.lit (.natVal k))) Tiny.natC
+  /-- con-leche reads the literal `0` as `Nat.zero` (`Denotes.natLit`) -/
+  | lit0 : Conv tab eqs thms Γ (.lit (.natVal 0)) (.const natZeroName []) Tiny.natC
   /-- an instance of a stored equation at typed arguments (outermost binder first) -/
   | inst {t : Thm} {as : List Expr} : t ∈ thms → ArgsC tab eqs Γ t.Ts as →
       Conv tab eqs thms Γ (substB as.reverse t.lhs) (substB as.reverse t.rhs) t.S
@@ -139,6 +141,10 @@ theorem conv_sound : ∀ {a b T : Expr}, Conv tab eqs thms Γ a b T →
   | _, _, _, .litS (k := k) => by
     have hd := Tiny.lit_den M hnat φ ρ (k + 1)
     refine ⟨_, _, hd, ?_, Tiny.nat_den M hnat φ ρ, Tiny.natV_mem M hnat φ ρ (k + 1)⟩
+    cases hd with | natLit h => exact h
+  | _, _, _, .lit0 => by
+    have hd := Tiny.lit_den M hnat φ ρ 0
+    refine ⟨_, _, hd, ?_, Tiny.nat_den M hnat φ ρ, Tiny.natV_mem M hnat φ ρ 0⟩
     cases hd with | natLit h => exact h
   | _, _, _, .inst (t := t) (as := as) hmem hargs => by
     obtain ⟨hrec, k, hok⟩ := hthms t hmem

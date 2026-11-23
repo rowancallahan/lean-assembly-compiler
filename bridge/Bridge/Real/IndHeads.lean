@@ -48,4 +48,25 @@ theorem indStored_of (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : 
   · exact entry (by decide) (s2 _ (by simp))
   · exact entry (by decide) (s3 _ (by simp))
 
+/-- generic: several one-member blocks, each a former with listed constructors -/
+def blocksOk (ds : Array Declaration) (bs : List ((Name × Head) × List (Name × Head))) : Bool :=
+  bs.all fun b => Ind.blockHas ds (cvOf b.1) (b.2.map cvOf)
+
+def blockHeads (bs : List ((Name × Head) × List (Name × Head))) : List (Name × Head) :=
+  bs.flatMap fun b => b.1 :: b.2
+
+theorem indStored_blocks (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Array Declaration} {env : Env}
+    (accepted : Cached.checkDecls .verified pins ds = .ok env) {bs : List ((Name × Head) × List (Name × Head))}
+    (h : blocksOk ds bs = true) (hsc : (blockHeads bs).all (fun p => headSc p.2) = true) :
+    IndStored env (blockHeads bs) := by
+  intro p hp
+  have hsc' := List.all_eq_true.mp hsc p hp
+  simp only [blockHeads, List.mem_flatMap] at hp
+  obtain ⟨b, hb, hpb⟩ := hp
+  have hb' := List.all_eq_true.mp h b hb
+  have s := Ind.blockHas_stored V accepted hb'
+  rcases List.mem_cons.mp hpb with rfl | hp2
+  · exact entry hsc' (s _ List.mem_cons_self)
+  · exact entry hsc' (s _ (List.mem_cons_of_mem _ (List.mem_map_of_mem hp2)))
+
 end Bridge.Real.IndHeads

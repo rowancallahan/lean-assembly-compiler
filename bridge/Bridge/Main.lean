@@ -48,6 +48,7 @@ import Bridge.Real.Data.DsM
 import Bridge.Real.NatLit
 import Bridge.Real.NanoRDen
 import Bridge.Real.IndHeads
+import Bridge.Real.NanoLDen
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
@@ -112,5 +113,26 @@ theorem nano_input (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Ar
   have hout : out = [NanoR.outR inp] := by have := NanoR.ev_mainR hev; cases this; rfl
   subst hout
   exact NanoRDen.den_mR accepted H_natLit H_indTypes hrec M hP φ ρ inp
+
+/-- **Growth step `ite` (UInt64 `<`)**: `def m (x : List UInt8) : List UInt8 := put [] (if rd x 0 < 5 then 1 else 2)`,
+same shape. The condition is evaluated IN THE MODEL: `Nat.ble`, small `%` and `+` on literals by induction on the
+literal from the stored recursion equations (`NanoLDen.conv_ble`, `conv_mod`, `conv_add`). -/
+theorem nano_ite (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Array Declaration} {env : Env}
+    (accepted : Cached.checkDecls .verified pins ds = .ok env)
+    (hrec : NanoLDen.recsOkL ds = true) (hpin : natPin ds = true)
+    (hind : IndHeads.blocksOk ds NanoLDen.blocksL = true) :
+    ∃ M : Model V env, CvalParams M ∧
+      ∀ (inp out : List UInt8), Ev (progOf NanoL.oL) [.l inp] NanoTiny.mainX (.l out) →
+        ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
+          Denotes M.cval env φ ρ (encL inp) x ∧
+          ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
+  obtain ⟨b, nP, hb, hpin'⟩ := natPin_of hpin
+  have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin'
+  have H_ind := IndHeads.indStored_blocks V accepted hind (by decide +kernel)
+  obtain ⟨M, hP⟩ := model_exists' V pins ds env accepted
+  refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
+  have hout : out = [NanoL.outL inp] := by have := NanoL.ev_mainL hev; cases this; rfl
+  subst hout
+  exact NanoLDen.den_mL accepted H_natLit H_ind hrec M hP φ ρ inp
 
 end Bridge

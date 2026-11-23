@@ -33,3 +33,16 @@ def mainR : IO Unit := do
   | .ok env => IO.println s!"(R3) accepted; IndStored = {indOk env}"
   | .error _ => IO.println "(R3) REJECTED"
 #eval mainR
+
+/-! growth step `ite` (Bridge.nano_ite) -/
+def mainL : IO Unit := do
+  IO.println s!"(L1) emitXs srcL = oL: {(ExprSpec.emitXs NanoL.srcL).toOption == some NanoL.oL}"
+  let bytes ← IO.FS.readBinFile "../Testing/denotes_real/tinyl.ndjson"
+  let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
+  let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
+  let ds := preparePrelude pre r.decls
+  IO.println s!"(L2) recsOkL = {NanoLDen.recsOkL ds}, natPin = {Bridge.natPin ds}, blocksOk = {IndHeads.blocksOk ds NanoLDen.blocksL}"
+  match Cached.checkDecls .verified natOpPinSets ds with
+  | .ok _ => IO.println "(L3) accepted"
+  | .error _ => IO.println "(L3) REJECTED"
+#eval mainL
