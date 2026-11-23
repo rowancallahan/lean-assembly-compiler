@@ -136,13 +136,125 @@ theorem br_shlsucc : ∀ n m : Nat, n <<< Nat.succ m = 2 * (n <<< m) := Nat.shif
 theorem br_shr0 : ∀ n : Nat, n >>> 0 = n := fun _ => rfl
 theorem br_shrsucc : ∀ n m : Nat, n >>> Nat.succ m = (n >>> m) / 2 := Nat.shiftRight_succ
 
-#print axioms br_sub
-#print axioms br_shl
-#print axioms br_shr
-#print axioms br_beq64
-#print axioms br_lt64
-#print axioms br_ltN
-#print axioms br_mod
-#print axioms br_div
-#print axioms br_land_rec
-#print axioms br_lor_rec
+
+/-! # Set-level lemmas (style of `add_u64`), abstract over an application operation `app : V → V → V`.
+They need no con-leche import: every field of `NatEqs` is the set-level image of one theorem above, i.e. exactly
+what `transfer` yields from it (restricted to canonical numerals `nat k`, which are in `⟦Nat⟧`).  `ite`/`cond`
+fields quantify over all `t e` (they are `⟦R⟧`-members in use). -/
+namespace SetLevel
+universe w
+structure NatEqs (V : Type w) where
+  app : V → V → V
+  Z : V
+  S : V
+  ADD : V
+  SUB : V
+  PRED : V
+  MUL : V
+  BEQ : V
+  BLE : V
+  MOD : V
+  DIV : V
+  BT : V
+  BF : V
+  COND : V → V → V → V           -- cond applied to its type argument `Nat`: COND c t e
+  pred0 : app PRED Z = Z
+  predS : ∀ x, app PRED (app S x) = x
+  condT : ∀ t e, COND BT t e = t
+  condF : ∀ t e, COND BF t e = e
+
+variable {V : Type w} (N : NatEqs V)
+
+def NatEqs.nat (N : NatEqs V) : Nat → V
+  | 0 => N.Z
+  | k + 1 => N.app N.S (N.nat k)
+def NatEqs.bl (N : NatEqs V) (c : Bool) : V := if c then N.BT else N.BF
+
+theorem NatEqs.cond_bl (N : NatEqs V) (c : Bool) (t e : V) : N.COND (N.bl c) t e = if c then t else e := by
+  cases c
+  · exact N.condF t e
+  · exact N.condT t e
+
+/-- the set-level `Nat` equations, one per theorem `br_add0 … br_ble0`, at canonical numerals -/
+structure NatRec (N : NatEqs V) : Prop where
+  add0 : ∀ a, N.app (N.app N.ADD (N.nat a)) N.Z = N.nat a
+  addS : ∀ a b, N.app (N.app N.ADD (N.nat a)) (N.app N.S (N.nat b)) = N.app N.S (N.app (N.app N.ADD (N.nat a)) (N.nat b))
+  sub0 : ∀ a, N.app (N.app N.SUB (N.nat a)) N.Z = N.nat a
+  subS : ∀ a b, N.app (N.app N.SUB (N.nat a)) (N.app N.S (N.nat b)) = N.app N.PRED (N.app (N.app N.SUB (N.nat a)) (N.nat b))
+  mul0 : ∀ a, N.app (N.app N.MUL (N.nat a)) N.Z = N.Z
+  mulS : ∀ a b, N.app (N.app N.MUL (N.nat a)) (N.app N.S (N.nat b)) = N.app (N.app N.ADD (N.app (N.app N.MUL (N.nat a)) (N.nat b))) (N.nat a)
+  beq00 : N.app (N.app N.BEQ N.Z) N.Z = N.BT
+  beq0S : ∀ b, N.app (N.app N.BEQ N.Z) (N.app N.S (N.nat b)) = N.BF
+  beqS0 : ∀ a, N.app (N.app N.BEQ (N.app N.S (N.nat a))) N.Z = N.BF
+  beqSS : ∀ a b, N.app (N.app N.BEQ (N.app N.S (N.nat a))) (N.app N.S (N.nat b)) = N.app (N.app N.BEQ (N.nat a)) (N.nat b)
+  ble0 : ∀ b, N.app (N.app N.BLE N.Z) (N.nat b) = N.BT
+  bleS0 : ∀ a, N.app (N.app N.BLE (N.app N.S (N.nat a))) N.Z = N.BF
+  bleSS : ∀ a b, N.app (N.app N.BLE (N.app N.S (N.nat a))) (N.app N.S (N.nat b)) = N.app (N.app N.BLE (N.nat a)) (N.nat b)
+  mod_ : ∀ n m, N.app (N.app N.MOD (N.nat n)) (N.nat m) =
+    N.COND (N.app (N.app N.BLE (N.nat m)) (N.nat n))
+      (N.COND (N.app (N.app N.BEQ (N.nat m)) N.Z) (N.nat n) (N.app (N.app N.MOD (N.app (N.app N.SUB (N.nat n)) (N.nat m))) (N.nat m)))
+      (N.nat n)
+  div_ : ∀ n m, N.app (N.app N.DIV (N.nat n)) (N.nat m) =
+    N.COND (N.app (N.app N.BLE (N.nat m)) (N.nat n))
+      (N.COND (N.app (N.app N.BEQ (N.nat m)) N.Z) N.Z (N.app N.S (N.app (N.app N.DIV (N.app (N.app N.SUB (N.nat n)) (N.nat m))) (N.nat m))))
+      N.Z
+
+variable {N} (R : NatRec N)
+include R
+
+theorem nat_add : ∀ a b, N.app (N.app N.ADD (N.nat a)) (N.nat b) = N.nat (a + b) := by
+  intro a b
+  induction b with
+  | zero => exact R.add0 a
+  | succ b ih => rw [NatEqs.nat, R.addS, ih]; rfl
+
+theorem nat_mul : ∀ a b, N.app (N.app N.MUL (N.nat a)) (N.nat b) = N.nat (a * b) := by
+  intro a b
+  induction b with
+  | zero => exact R.mul0 a
+  | succ b ih => rw [NatEqs.nat, R.mulS, ih, nat_add R]; rfl
+
+theorem nat_sub : ∀ a b, N.app (N.app N.SUB (N.nat a)) (N.nat b) = N.nat (a - b) := by
+  intro a b
+  induction b with
+  | zero => exact R.sub0 a
+  | succ b ih =>
+    rw [NatEqs.nat, R.subS, ih]
+    show N.app N.PRED (N.nat (a - b)) = N.nat (Nat.pred (a - b))
+    cases a - b
+    · exact N.pred0
+    · exact N.predS _
+
+theorem nat_beq : ∀ a b, N.app (N.app N.BEQ (N.nat a)) (N.nat b) = N.bl (Nat.beq a b) := by
+  intro a
+  induction a with
+  | zero => intro b; cases b <;> simp [NatEqs.nat, NatEqs.bl, R.beq00, R.beq0S, Nat.beq]
+  | succ a ih => intro b; cases b <;> simp_all [NatEqs.nat, NatEqs.bl, R.beqS0, R.beqSS, Nat.beq]
+
+theorem nat_ble : ∀ a b, N.app (N.app N.BLE (N.nat a)) (N.nat b) = N.bl (Nat.ble a b) := by
+  intro a
+  induction a with
+  | zero => intro b; rw [NatEqs.nat, R.ble0, br_ble0]; rfl
+  | succ a ih => intro b; cases b <;> simp_all [NatEqs.nat, NatEqs.bl, R.bleS0, R.bleSS, Nat.ble]
+
+theorem nat_mod : ∀ n m, N.app (N.app N.MOD (N.nat n)) (N.nat m) = N.nat (n % m) := by
+  intro n m
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+    rw [R.mod_, nat_sub R, nat_ble R, show N.Z = N.nat 0 from rfl, nat_beq R, NatEqs.cond_bl, NatEqs.cond_bl, br_mod n m]
+    cases h1 : Nat.ble m n <;> cases h2 : Nat.beq m 0 <;> simp
+    have hm : m ≠ 0 := fun h => by simp [h] at h2
+    have hle : m ≤ n := by simpa [Nat.ble_eq] using h1
+    exact ih (n - m) (by omega)
+
+theorem nat_div : ∀ n m, N.app (N.app N.DIV (N.nat n)) (N.nat m) = N.nat (n / m) := by
+  intro n m
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+    rw [R.div_, nat_sub R, nat_ble R, show N.Z = N.nat 0 from rfl, nat_beq R, NatEqs.cond_bl, NatEqs.cond_bl, br_div n m]
+    cases h1 : Nat.ble m n <;> cases h2 : Nat.beq m 0 <;> simp
+    have hm : m ≠ 0 := fun h => by simp [h] at h2
+    have hle : m ≤ n := by simpa [Nat.ble_eq] using h1
+    rw [ih (n - m) (by omega)]; rfl
+
+end SetLevel
