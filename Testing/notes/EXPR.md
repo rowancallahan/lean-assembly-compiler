@@ -4,7 +4,22 @@ Goal: tie nano's meaning to Lean's. For every def, nano emits the Lean `Expr` it
 with Lean's elaborated `Expr`; a proof (`eval (emit a) = Sem a`) plus the compiler theorem then says: the machine code
 computes the meaning of the matched Lean `Expr`.
 
-## 0. Final report (round 1)
+## 0. What is proved (endpoint: SYNTAX-EXP cd63793c, C = 341 defs)
+| claim | for | theorem (file) | status |
+|---|---|---|---|
+| machine code = `Sem` = `Ev`(emitted Expr): the code writes `f a`, and `f a` is the value `Ev` of the program's emitted Expr of `m` on the input | **every accepted program** (a text that `pOf` parses, an `emitAll` output of its AST) | `expr_rv` RISC-V/Sail (Nano/Expr/RvExpr.lean); `expr_armDM` native ARM/DeepMind (Arm/apc/Blocks/ExprDM.lean); `expr_armSail` native ARM/Sail (Arm/sail/ArmSail/ExprSail.lean); generic `correct_expr`, `computes_expr` (Nano/Expr/MachExpr.lean) on `eval_emit` (Correct.lean) | proved |
+| the same for C's own text (inputs `SelfInE`: no capacity stop): the code writes `mC a` = `Ev`(C's emitted Expr) | **C** | `self_expr_rv` (also `NanoMain.self_expr_C`), `self_expr_armDM`, `self_expr_armSail` (generic `self_expr`, Nano/Expr/SelfSrc.lean) | proved |
+| emitted Expr = Lean's elaborated Expr, every def, nothing exempt | **C** | `C_lean_all` / `C_lean : oC = ExprLeanC.defs` (CLean.lean, kernel) | proved; TRUSTED step: reading Lean's environment (`lean_expr.lean` + `gen_leanc.py`, §3) |
+| `Ev`(Lean's own Expr of C) = `mC`, the Lean function | **C** | `C_lean_expr` (CLeanExpr.lean) | proved |
+| the emitter's Nat classes are NumSpec's | C | `natC_ok`, `emitC_spec` (CNat.lean) | proved |
+| `Ev`(emitted Expr) = Lean's value of the program | **other programs** | — | needs a per-program certificate (as `Cert.sem_C` + `C_lean` for C) or the general `Ev` = Lean-evaluation proof (ROADMAP) |
+| E (the emitter in nano) = emitSpec | all programs | — | tested only (check_E: byte-equal on C, E, examples, fuzz); a proof is ROADMAP |
+
+`Ev` reads each fragment constant with its Lean meaning (UInt64 and Nat `==`/`<`, `ite`, `Prod`, `Nat.casesOn`, the
+prelude); it is the trusted semantics of the Expr fragment. All theorems: standard axioms (`propext`,
+`Classical.choice`, `Quot.sound`).
+
+## 0a. Round 1 report (history; numbers before Nat step 1)
 **What exists**
 * `emitSpec` (`Nano/Expr/ExprSpec.lean`): a reference emitter from the parsed AST (ParSpec `DefA`) plus token side info
   (`let` form, `[]`/`bnew`) to the Lean `Expr` fragment `X`, serialized as `S`. It is pure and total, and it
