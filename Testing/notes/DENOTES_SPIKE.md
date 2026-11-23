@@ -119,3 +119,27 @@ performance/acceptance on the generated `f = body` theorems for C (236 defs) and
   run with the full `~/.elan/bin/lake` path was allowed. Nothing else was blocked.
 * Option worth asking con-leche for: a `Model` field `defn : ∀ stored definition c, cval c = ⟦c.value⟧` (the proof
   already has it as `defn_reads`). It would remove all per-def `f = body` theorems.
+
+## 10. S2 overnight (DENOTES-S2, branch `keep_round1_denotes-s2`)
+Files: `Testing/denotes_spike/BridgeOps.lean` (core Lean only, exported) and `BridgeOpsSet.lean` (set-level lemmas,
+`lake env lean` inside con-leche @3b37939, 4.35.0-rc3). Toolchain had to be installed from scratch in the container
+(elan + lean 4.35.0-rc3 from GitHub releases, con-leche and lean4export @v4.35.0-rc3 built); nothing was denied.
+* **Equations (34 theorems, sorry-free, axioms ⊆ propext/Quot.sound/Classical.choice)**: `bo_ite_t/f`, `bo_prod`
+  (Prod.casesOn iota, motive `fun _ => R`, `R : Type`), `bo_nat_z/s` (Nat.casesOn iota), one unfolding equation per
+  prelude op (`bo_rd bo_len bo_put bo_len' bo_bnew bo_bsize bo_bget bo_bset bo_bpush`, pointwise, all `rfl`), and building
+  blocks: List.length/++/getD/set recursion on constructors, `Nat.toUInt64 = ofNat`, `toNat_ofNat` (`% 2^64`),
+  `(UInt8.ofNat n).toUInt64 = UInt64.ofNat (n % 256)`, `(UInt64.ofNat n).toUInt8 = UInt8.ofNat n`, `bo_wrap8`,
+  `bo_mod_lt` + `Nat.ble` recursion. Prelude = the LIST variant (B1L); the Array variant (BootPrelude) is NOT covered.
+* **Export**: lean4export (v4.35.0-rc3) of all 34 theorems + 9 defs → 4.8 MB ndjson, `con-leche` → `accepted 1575
+  declarations (--verified)`. (Note: lean4export needs `lean` on PATH.)
+* **Set-level lemmas (sorry-free)**: `ite_bool`, `nat_cases` (iota for `nat k`, zero/succ), `prod_cases`, `wrap_mod`
+  (`ofNat k = ofNat (k % N)` from the `+N` wrap theorem, strong induction; serves UInt8 and UInt64), `length_nat`,
+  `len'_set`, `len64_set` (len and bsize, no size bound needed), `getD_set`, `set_set`, `append_set`, `idx_set`, and the ops
+  `rd_set`, `bget_set`, `bset_set`, `bpush_set`, `put_set`. `bnew` needs none (`bnew = []`, constructor encoding).
+  Each takes as hypotheses exactly what `transfer` yields from the named equation, over heads applied to type args.
+* **OPEN (the one real gap)**: every u64-indexed op (rd, bget, bset) needs `hmod : k < 2^64 → ⟦k % 2^64⟧ = nat k`
+  at canonical numerals (and `% 256` for the byte widening in `rd`). It is a hypothesis in the lemmas, NOT derived.
+  Derivable from `bo_mod_lt` (Bool-guarded `Nat.blt n m = true → n % m = n`) + `Nat.ble` recursion by induction at the set
+  level, but that needs a transfer with a Prop-typed binder (`Eq Bool (blt ..) true`, proof element = `pt`), i.e. an n-binder
+  transfer that DENOTES-2 is supplying; not attempted. Alternative: make the index encoding avoid `toNat` (no).
+* Not done: `Denotes`-level (transfer-instantiated) versions; the per-def `f = body` theorems; Array prelude.
