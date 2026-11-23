@@ -155,3 +155,27 @@ Next, in order:
    generalize `head` to `substD`/`wfk`, or use per-result-type iota equations with closed binder types
    (`∀ (z : R) (s : Nat → R) (n : Nat), Nat.casesOn (fun _ => R) (succ n) z s = s n`). The motive λ needs a
    `Reg1` fact (`⟦R⟧ ≠ pt`, one-point `lam_regime`).
+
+### 5.1 Simpler generator normal form (decided)
+Tested: con-leche accepts `h_eq : h p = Prod.fst p * Prod.snd p + Prod.fst p` for
+`h p := Prod.casesOn (motive := fun _ => UInt64) p (fun a b => a * b + a)` by `rfl`. That needs structure η, and
+con-leche accepts it (`TinyEta.lean`, 229 decls). So the generator emits λ-free or *redex-only* stored equations:
+* `let x := v; b` ↦ the redex `(λ x. b) v` (kept, so nested lets do not blow up);
+* `Prod.casesOn v (λ a b. body)` ↦ `(λ a. (λ b. body) (Prod.snd v)) (Prod.fst v)`: every λ is directly applied.
+  `Prod.fst/snd (Prod.mk a b)` iota equations go in the prelude (by `rfl`);
+* fuel loops (`Nat.casesOn` at the def's top) ↦ two equations `f 0 xs = z`, `f (n+1) xs = s[n]` (by `rfl`), as
+  `lp_zero`/`lp_succ`.
+
+Consequences:
+* no `casesOn` head with binder telescopes;
+* no motive or minor λ;
+* no regime facts (`Reg1`) at all. A directly applied λ denotes the body at the argument whatever its binder data
+  (`beta_den`), so the stored redex and its `.never` form have the same value when the argument is in the domain
+  (by typing).
+
+Remaining (2) becomes `instL` for redex-only equations. Its soundness is `transferN` on the stored statement, with
+the rhs value moved from the `.never` form by that meta-independence. (3) is replaced by the generator's loop
+splitting.
+
+Done for (1): `TySubst.hasTy_subst` (typing under substitution of typed closed values) and `GenLet.conv_let` +
+`substD_comp` (the `let` step: congruence into the argument, `Conv.beta`, the env-extended substitution).
