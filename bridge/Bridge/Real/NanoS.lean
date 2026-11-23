@@ -4,7 +4,8 @@ Source `srcS` = "def m (x : List UInt8) : List UInt8 :=\n  put [] (rd x 0 - 3)\n
 import Bridge.Real.NanoA
 
 namespace Bridge.Real.NanoS
-open ExprSpec Bridge.Real.NanoTiny Bridge.Real.NanoR Bridge.Real.NanoL Bridge.Real.NanoA (ev_bin6)
+open ExprSpec Bridge.Real.NanoTiny Bridge.Real.NanoR Bridge.Real.NanoL
+open Bridge.Real.NanoA (ev_bin6)
 
 def srcS : List UInt8 := "def m (x : List UInt8) : List UInt8 :=\n  put [] (rd x 0 - 3)\n".toUTF8.toList
 def instSubX : X := apps (.c "instHSub" [0]) [ExprSpec.U, .c "instSubUInt64" []]
@@ -23,7 +24,7 @@ theorem ev_sub {inp : List UInt8} {r : V} (h : Ev (progOf oS) [.l inp] subX r) :
   obtain ⟨x, y, z, hb, ha, hc, rfl⟩ := ev_bin6 (by simp) h
   have e1 := ev_rdG lookup_rd ha; have e2 := ev_litU 3 hc
   simp only [V.w.injEq] at e1 e2; subst e1 e2
-  simp [binV] at hb; rw [← hb]
+  simp [binV] at hb; rw [← hb]; simp
 
 theorem ev_bodyS {inp : List UInt8} {r : V} (h : Ev (progOf oS) [.l inp] bodyS r) : r = .l [outS inp] := by
   generalize he : bodyS = e at h
@@ -90,7 +91,9 @@ theorem outS_toNat (inp : List UInt8) :
   unfold outS
   generalize inp.getD 0 0 = b
   have hb := b.toNat_lt
-  simp [UInt64.toNat_sub]
+  have hc : b.toUInt64.toNat = b.toNat := by simp
+  have h3 : (3 : UInt64).toNat = 3 := rfl
+  rw [UInt64.toNat_toUInt8, UInt64.toNat_sub, hc, h3]
   omega
 
 end Bridge.Real.NanoS
