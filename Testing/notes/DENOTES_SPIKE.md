@@ -216,17 +216,30 @@ its con-leche checkout (cdc2cf8, merged). Everything listed below is sorry-free;
 * Typing (task 3): `EvMini.encM_mem` (`enc v ∈ ⟦ty v⟧` for every value, `Buf` via a stored `Buf = List UInt64`).
   `TermTyping.wf_mem` gives typing soundness for well-formed TERMS (λ branches typed at all arguments, by `lamR_mem`).
   Per-head typings come through the declared Lean types (`HeadTyping`, `Iota2`, `Add`, `Call`), including `outParam`.
-* Discharged fields, each by transfer from ONE named stored theorem plus typing: `litU` (`br_lit`), `litN` (`br_litN`),
-  `nil`/`pair` (constructors), `letβ` (beta), `natZ`/`natS` (`nat_z`/`nat_s`), `cases` (`prod_c`), `call` (stored `f =
-  <emitted λ-value>`), and `.bin` for `+` (`br_add`, `br_wrap`, `add0`, `addS`, `outParam_eq`; the spike's wrap algebra).
-* Assembled: `Assembly.ev_denotes_assembled`. Only `Asm.Open` remains: `.bin` for −,×,&,|,<<,>>; `ite` conditions
-  (value and head typing); the 9 prelude ops.
-  `Top.sem_denotes`: `Sem κ p inp = .ok out → ⟦m⟧ (enc inp) = enc out` for any emitted program.
-  **`TopC.C_denotes`: for the compiler itself, `Sem κC C inp = .ok (mC inp) → ⟦m⟧ (enc inp) = enc (mC inp)`.**
-  With `self_expr_C` (CExprTop, needs Sail) this reaches C's RISC-V code. In the trimmed model, modulo `Open`.
-* Task 4: merged S2 twice (its 34 equations + set lemmas; Transfer.lean compiled vs real con-leche). S1 never
-  started: its setup script failed (apt 504). Reported to the lead.
-
+* Discharged fields: ALL of them. Each comes by transfer from named stored theorems plus typing:
+  `litU`, `litN` (`br_litN`), `nil`/`pair`, `letβ` (beta), `natZ`/`natS`, `cases` (`prod_c`), `call` (stored `f =
+  <emitted λ-value>`). All 7 `.bin` ops: `+` (Add), `-`/`*` (Arith: `sub_*`, `mul_*`, `br_sub` guarded, `br_mul`),
+  `<<<`/`>>>` (Shift: `pow_*`, guarded `mod_char`/`div_char`, `br_shl`, `br_shr`), and `&&&`/`|||` (Bits: `land_z/r`,
+  `lor_z/r` bit recursions by strong induction, `br_and`, `br_or`). Ites: UInt64 `==` (Ite), UInt64 `<` (IteLt,
+  guarded `ite_lt_t/f`), Nat `==` (IteNat, `br_nbeq`). All 9 prelude ops: Len, Push, Index, Bytes.
+* `Wf.ite` now requires `iteOk n cmp a b` (any `==`, or `<` on UInt64 operands with `dropHead = id`). The kernel check
+  of C (`cPWf`) re-ran and passes, so every ite in C has this form. Finding (e) is thereby avoided rather than
+  solved: Nat `<` and the `dropHead`-affected `<` are rejected by `Wf` (they occur in 0 places in C).
+* **Headline: `TopC.C_denotes_full`, NO open fields.** For every model (trimmed `Model` + `SetLaws`) of an `env` with
+  `Final9.Env9` (prelude typings + the ~70 stored equations + C's 341 `f = value` defs) and `br_litN`:
+  `Sem κC C inp = .ok (mC inp) → inp.length < 2^64 → ⟦m⟧ (enc inp) = enc (mC inp)`.
+  Axioms: propext, Classical.choice, Quot.sound. The chain is `C_denotes_final{,3..9}`, each dropping fields of the
+  previous `Open`. `Final9.open9_all` shows the last `Open9` holds outright. `Top.sem_denotes` gives the same for any
+  emitted program under its `Open`. With `self_expr_C` (CExprTop, needs Sail) this reaches C's RISC-V code.
+* Stored-statement sanity check (`Bridge/StoredFacts.lean`): STOREDFACTS
+* Task 4: merged S2 three times. Its 34 equations and set lemmas came in; Transfer.lean compiled against real
+  con-leche. §10.1 (BridgeStored): the 10 stored theorems I requested (nat_z/s, prod_c, br_litN, add0/S, outParam_eq,
+  buf_eq, …) exported and ACCEPTED by con-leche (441 declarations, --verified). Their elaborated shapes and level-param
+  order match the `HasTy` types the bridge assumes (checked by eye: `Prod.casesOn.{1,0,0}` motive first,
+  `instDecidableEqBool : DecidableEq.{1} Bool` not unfolded, `Nat.zero`/`Nat.succ` kept).
+  Merged S1 (§9, BridgeU64). It did run, but late; I never received its messages. Its `br_*` statements differ in form
+  from the bridge's (e.g. `br_sub` without a guard), so the bridge does not use them directly. They are independent
+  confirmation that the arithmetic facts hold.
 **Findings.**
 (a) LEVEL ASSIGNMENTS. Real con-leche has this problem; the trimmed copy hides it.
 `Denotes.const` reads `cval n (Level.substFn φ ps us)`. `substFn` falls back to `φ` outside `ps`. So inside a
@@ -243,18 +256,25 @@ of all heads, including `outParam` and instances. It is routine but voluminous (
 (d) `emit ⇒ Wf` is FALSE in general. `emit` accepts a CONTINUE inside a `let` value (as an `ite` branch); Sem rejects
 it at run time (`ev_let` needs `.inl`) and Lean would not typecheck it. So `Wf` is checked PER PROGRAM (`pwfChk`, done
 for C).
-(e) `iteX` gives `<`'s `decLt` the operands with leading unused `have`s dropped (`dropHead`). Typing it needs a
-weakening lemma for Denotes.
+(e) `iteX` gives `<`'s `decLt` the operands with leading unused `have`s dropped (`dropHead`). Typing that needs a
+weakening lemma for Denotes. C has no such ite, and `Wf` now excludes them (see above). A program that has one needs the lemma.
 (f) Facts for the exported prelude: iota and add theorems must be stated with `Nat.zero`/`Nat.succ`, not `0`/`n+1`.
 `OfNat` literals need `br_litN`. Asked S2 to export the exact shapes and check acceptance (pending at the time of writing).
 
-**Next steps.** 1. The remaining `Open` facts: S1's arithmetic for −,×,&,|,<<,>> and comparisons (`Nat.beq/ble`
-recursion), then ite (condition value + head typing, finding e), then the 9 prelude ops (port S2's `BridgeOpsSet` to
-the transfer kit). 2. Swap the trimmed model for real con-leche: `Mini.*` → `ConLeche.*` is mechanical
-(Transfer.lean already compiles there). Settle finding (a) with the con-leche owner first. 3. Export the bridge prelude
-+ C's `f = value` theorems (341, `rfl`/`funext`) and check con-leche acceptance and performance. 4. Instantiate
-`Env` from the accepted env (`HasTy` facts by `decide` on the stored types).
-**Revised estimate.** Remaining: `Open` arithmetic + ite + ops 4-6 days; real-model swap 1-2 days plus finding (a)
-(depends on con-leche's answer, 1-3 days); export/acceptance at scale 1-2 days, with performance risk. Total about
-**1.5-2 weeks**. Spike §7 estimated 2-3 weeks; the Ev induction, transfer kit, typing (values and terms), iota/call and
-the per-program Wf check are done, in the trimmed model.
+**What is open.** Everything below lies outside the trimmed-model theorem:
+1. Real-model swap: `Mini.*` → `ConLeche.*`. It is mechanical (Transfer.lean already compiles there), but con-leche
+   was not built tonight (owner's call). The blocker is finding (a), the level-assignment φ, which needs a con-leche
+   `Model` field or the alias trick. It must be settled with the con-leche owner.
+2. Export: the bridge prelude (types of ~40 heads), the ~70 stored equations and C's 341 `f = value` theorems must be
+   written as a Lean file, exported, and ACCEPTED by con-leche (acceptance and performance are untested). Then
+   `Env9` must be instantiated from the accepted env (`HasTy` by `decide` on the stored types). The stored statements'
+   truth is checked in plain Lean (StoredFacts), not their acceptance.
+3. `Sem` totality is a hypothesis (`hs`), as in the C pipeline.
+**Next steps.** (1) Agree on finding (a) with the con-leche owner. (2) Build con-leche once and port the bridge:
+replace `Mini.SetLaws` with the cited lemmas, keep the `HasTy` interface. (3) Generate the export file from the
+`Env*` structures (the statements are already in E form) and run acceptance. (4) Instantiate `Env9` and state
+`C_denotes` against con-leche's `Denotes`.
+**Revised estimate.** About **1 week**: real-model swap 1-2 days plus finding (a) (1-3 days, depends on the owner's
+answer); export, acceptance and `Env9` instantiation 2-3 days, with performance risk on 341 defs. The trimmed-model
+side (induction, typing, all ops, ites, prelude, the per-program Wf check on C) is done. Spike §7 estimated 2-3 weeks
+in total.
