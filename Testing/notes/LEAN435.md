@@ -23,3 +23,18 @@ Setup: `lean-toolchain` = `leanprover/lean4:v4.35.0-rc3`; RISC-V model = orphan 
   `if_pos/if_neg/...` renames already seen in DENOTES_SPIKE §5 H2). No renamed-lemma errors appeared in nano.
 * Not measured: `ArmSail.ExprSail` (Arm/sail); the root (the model it needs) was not reached, and the 4.35 Arm model was not built. Also not measured:
   whether the model's own non-`instruction` parts compile (lake stopped at `Defs`).
+
+## ARM side on 4.35.0-rc3 (second measurement; `LEAN_NUM_THREADS=1`, trusted models unedited)
+* **DeepMind** (`google-deepmind/code-verification` @ b0f729a, sparse checkout at `/home/user/deps/code-verification`, their files untouched; only OUR
+  `Arm/apc/lean-toolchain` set to 4.35.0-rc3, `stage.sh` run): `lake build Blocks.ExprDM` does **NOT** build, 1 root cause, in nano, not in the model.
+  * Their `arm64` package built (`Arm64.Trusted.*` etc.), as did `Blocks.ArmDM`, `Blocks.ArmDMTop`, `Blocks.A64DMN` (221 s, with warnings), `Blocks.ArmDMNanoTop`. 520 jobs OK.
+  * Failure: `Nano/Run/JArmStepA.lean:128:16: (kernel) deterministic timeout` (the `private theorem e40_2 ... := rfl` after e37_22), then
+    `JArmStepA.lean:234:8: (kernel) unknown constant '_private.Nano.Run.JArmStepA.0.JT.e40_2'` (consequence). Everything importing `Nano.Run.JArmStepA`, hence
+    `Blocks.ExprDM`, is not built. A kernel `rfl` that 4.34.1 finishes is now over the kernel's deterministic-timeout limit (kernel unfolding/defeq cost change
+    in rc3, or a heartbeat-like default). Not attempted: raising the limit or splitting the lemma (nano source, small fix to try next).
+* **Sail ARM**: `Arm/model` (committed, hash 8f79d6b2... 35 files, matches MODEL_PROVENANCE) partitioned with `Arm/gen/partition.py` into `/home/user/armv9-lean`
+  (only that copy's `lean-toolchain` set to 4.35.0-rc3; text of the model unchanged; lean-sail `v10` via lake). `lake build Armv9Core`: **builds**, 32 jobs, 0 errors.
+  The full `Armv9` parts (V8Base.P00-P11 etc.) and `ArmSail.ExprSail` were NOT built, so "ArmSail.ExprSail builds" is unmeasured; it also imports `Nano.Expr.SelfSrc`
+  (built fine in the RISC-V run) and `ArmSail.TopN`, whose chain may hit the same `JArmStepA` problem (not checked).
+* Net for the one-theorem composition: the ARM side is closer than RISC-V. DeepMind's semantics and the Sail ARM core both compile on 4.35.0-rc3; what blocks is one
+  nano lemma (JArmStepA e40_2 kernel timeout). RISC-V (Sail) is blocked by the model's `instruction` constructor-tag limit (section above).
