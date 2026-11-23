@@ -340,3 +340,15 @@ lean4export v4.35.0-rc3 built. All results below: no sorry, axioms propext/Class
   two kernel functions' outputs (annotation of the declared types). Not attempted; estimate several hours.
 * Not composed with `expr_rv` into one term: toolchains differ (nano 4.34.1 + Sail vs bridge 4.35.0-rc3). The Ev
   premise has exactly `ExprCorrect`'s conclusion shape (`mainX` copied verbatim from MachExpr on keep_round1_armfix).
+
+### 12.2 Both env hypotheses discharged (DENOTES-3)
+* `Real.IndStored.blockHas_stored`: for a non-pinned ONE-MEMBER inductive block of an accepted stream, the former
+  (declared as a Π-telescope ending in a sort) and every constructor are stored as the annotation of their declared
+  types. Proof: con-leche's install walk (generalised to a predicate, `installRun_step_ex`) + `DeclBlockRun`
+  inverted with con-leche's `checkBlockInds_shape`, `checkBlockCtors_inv`, `constantValRun_of`, `annotateCore_annotOf`;
+  `checkSumTele`'s syntactic branch; the later pushes (`consBlockRecsT`, `checkBlockTables`) only add.
+* `Real.IndHeads.indStored_of`: `IndStored env indHeads` from acceptance + the Bool check `indOkBlocks ds`.
+* **`Bridge.nano_tiny` now has acceptance as its ONLY hypothesis** (record presence, Nat pin, blocks: kernel
+  `decide` on `dsM`). `Bridge.nano_input` (input-dependent `put [] (rd x 0 + 1)`): acceptance + three Bool checks
+  on the stream (`recsOkR`, `natPin`, `indOkBlocks`), true of tinyr.ndjson by `#eval`.
+* Std axioms only, no sorry. Not covered: multi-member (mutual) blocks; types not syntactically Π-telescopes.

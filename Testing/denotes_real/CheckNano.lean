@@ -28,7 +28,7 @@ def mainR : IO Unit := do
   let .ok r := parseChunks [bytes] | throw (IO.userError "parse failed")
   let .ok pre := builtinPreludeE | throw (IO.userError "prelude failed")
   let ds := preparePrelude pre r.decls
-  IO.println s!"(R2) recsOkR = {NanoRDen.recsOkR ds}, natPin = {Bridge.natPin ds}"
+  IO.println s!"(R2) recsOkR = {NanoRDen.recsOkR ds}, natPin = {Bridge.natPin ds}, indOkBlocks = {IndHeads.indOkBlocks ds}"
   match Cached.checkDecls .verified natOpPinSets ds with
   | .ok env => IO.println s!"(R3) accepted; IndStored = {indOk env}"
   | .error _ => IO.println "(R3) REJECTED"

@@ -17,18 +17,20 @@ con-leche's `Denotes` gives the same answer: the con-leche term `tr mainX` (`m` 
 with the input variable bound to the denotation of the input bytes `encL inp`, denotes what `encL out` denotes.
 `Ev`, `Denotes`, `Model`, `checkDecls` are imported unchanged from nano and con-leche.
 
-`natLitSupported env` (the checker's guard that `Nat`, `Nat.zero`, `Nat.succ` are stored with their usual
-types) is PROVED from acceptance (`NatLit.natLit_of_accepted`: the stream's Nat block is the pinned one).
-One NAMED hypothesis on `env` remains (no Lean `axiom`; true of the env by `#eval`,
-Testing/denotes_real/CheckNano.lean):
-* `H_indTypes : IndStored env indHeads` — `List`, `List.nil`, `List.cons`, `UInt8`, `UInt64` are stored with
-  their declared types. (con-leche proves this for defs and theorems, `checkDecls_consts`, not for inductives.)
+The ONLY hypothesis is acceptance. Everything about the env is derived from it with con-leche's own lemmas:
+* defs/theorems stored as declared: con-leche's `checkDecls_consts`;
+* `natLitSupported env` (`Nat`, `Nat.zero`, `Nat.succ` stored with their usual types): `NatLit.natLit_of_accepted`
+  — the stream's Nat block is the pinned one (`DeclBasisRun`), walked with con-leche's install-run lemmas;
+* `IndStored env indHeads` (`List`, `List.nil`, `List.cons`, `UInt8`, `UInt64` stored as declared):
+  `IndHeads.indStored_of` — the one-member block install (`DeclBlockRun`) inverted with con-leche's
+  `checkBlockInds_shape`, `checkBlockCtors_inv`, `constantValRun_of`, `annotateCore_annotOf`;
+* the records' presence in `dsM`: kernel `decide` (`recs_dsM`, `natPin_dsM`, `ind_dsM`).
 
 **`nano_input`.** The same for an INPUT-DEPENDENT program, `def m (x : List UInt8) : List UInt8 := put [] (rd x 0 + 1)`
 (output: the first input byte plus one, wrapping; `[1]` on the empty input), stated for ANY accepted stream that
-holds its records (`recsOkR`, a Bool check) and a Nat-pin record. The actual export
-(Testing/denotes_real/tinyr.ndjson, accepted, 755 declarations) satisfies both by `#eval` (CheckNano.lean); its
-parsed literal (30 MB unshared) is too large to keep as a Lean term.
+holds its records (`recsOkR`), a Nat-pin record (`natPin`) and the three blocks (`indOkBlocks`) — Bool checks.
+The actual export (Testing/denotes_real/tinyr.ndjson, accepted, 755 declarations) satisfies all three by `#eval`
+(CheckNano.lean); its parsed literal (30 MB unshared) is too large to keep as a Lean term.
 
 The machine end: `expr_rv` (Nano/Expr/RvExpr.lean, branch keep_round1_armfix, nano's 4.34.1 package) says the
 RISC-V code writes `f a` and `Ev (progOf o) [.l (encodeInput a)] mainX (.l (f a))` for the emitted `o`. With
@@ -45,6 +47,7 @@ import Bridge.Real.NanoDen
 import Bridge.Real.Data.DsM
 import Bridge.Real.NatLit
 import Bridge.Real.NanoRDen
+import Bridge.Real.IndHeads
 
 namespace Bridge
 open ConLeche ExprSpec Bridge.Real Bridge.Real.NanoDen Bridge.ModelExists2
@@ -53,6 +56,9 @@ universe w
 
 /-- the program's records (defs with their declared types, the three equations) are in the parsed stream -/
 theorem recs_dsM : recsOk dsM = true := by decide +kernel
+
+/-- the parsed stream holds the List, UInt8, UInt64 blocks with their declared members -/
+theorem ind_dsM : IndHeads.indOkBlocks dsM = true := by decide +kernel
 
 /-- the parsed stream holds a record con-leche recognises as its pinned `Nat` block -/
 theorem natPin_dsM : (dsM.any fun | .indDecl b _ => basisPinHit b == some .natK | _ => false) = true := by
@@ -65,8 +71,7 @@ theorem natPin_mem : ∃ b nP, Declaration.indDecl b nP ∈ dsM ∧ basisPinHit 
 
 /-- **The tiny nano program, end to end at the Expr level, in con-leche's model.** -/
 theorem nano_tiny (V : Type w) [SetTheory V] {env : Env}
-    (accepted : Cached.checkDecls .verified natOpPinSets dsM = .ok env)
-    (H_indTypes : IndStored env indHeads) :
+    (accepted : Cached.checkDecls .verified natOpPinSets dsM = .ok env) :
     ∃ M : Model V env, CvalParams M ∧
       ∀ (inp out : List UInt8), Ev (progOf NanoTiny.oM) [.l inp] NanoTiny.mainX (.l out) →
         ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
@@ -74,6 +79,7 @@ theorem nano_tiny (V : Type w) [SetTheory V] {env : Env}
           ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
   obtain ⟨b, nP, hb, hpin⟩ := natPin_mem
   have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin
+  have H_indTypes : IndStored env indHeads := IndHeads.indStored_of V accepted ind_dsM
   obtain ⟨M, hP⟩ := model_exists' V natOpPinSets dsM env accepted
   refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
   have hout : out = [1] := by have := NanoTiny.ev_main hev; cases this; rfl
@@ -92,8 +98,7 @@ theorem natPin_of {ds : Array Declaration} (h : natPin ds = true) :
 /-- **An input-dependent nano program (first byte + 1), end to end at the Expr level, in con-leche's model.** -/
 theorem nano_input (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Array Declaration} {env : Env}
     (accepted : Cached.checkDecls .verified pins ds = .ok env)
-    (hrec : NanoRDen.recsOkR ds = true) (hpin : natPin ds = true)
-    (H_indTypes : IndStored env indHeads) :
+    (hrec : NanoRDen.recsOkR ds = true) (hpin : natPin ds = true) (hind : IndHeads.indOkBlocks ds = true) :
     ∃ M : Model V env, CvalParams M ∧
       ∀ (inp out : List UInt8), Ev (progOf NanoR.oR) [.l inp] NanoTiny.mainX (.l out) →
         ∀ (φ : LevelParam → Nat) (ρ : BVarIdx → V), ∃ x,
@@ -101,6 +106,7 @@ theorem nano_input (V : Type w) [SetTheory V] {pins : List NatOpPinSet} {ds : Ar
           ∀ Y, Denotes M.cval env φ ρ (encL out) Y → Denotes M.cval env φ (push x ρ) (tr NanoTiny.mainX) Y := by
   obtain ⟨b, nP, hb, hpin'⟩ := natPin_of hpin
   have H_natLit : natLitSupported env = true := NatLit.natLit_of_accepted V accepted hb hpin'
+  have H_indTypes : IndStored env indHeads := IndHeads.indStored_of V accepted hind
   obtain ⟨M, hP⟩ := model_exists' V pins ds env accepted
   refine ⟨M, hP, fun inp out hev φ ρ => ?_⟩
   have hout : out = [NanoR.outR inp] := by have := NanoR.ev_mainR hev; cases this; rfl
