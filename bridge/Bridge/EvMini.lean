@@ -95,6 +95,19 @@ end
 
 variable {S : Type} {O : SetOps S} {cval : String → List Nat → S}
 
+/-- the comparison an `ite` condition computes (`==` for cmp = 1, `<` otherwise) on Ev values -/
+def cmpV (cmp : Nat) : ExprSpec.V → ExprSpec.V → Bool
+  | .w x, .w y => if cmp = 1 then x == y else decide (x < y)
+  | .n x, .n y => if cmp = 1 then x == y else decide (x < y)
+  | _, _ => false
+
+theorem condX_fst (n : Bool) (cmp : Nat) (a b : X) : (condX n cmp a b).1 = if cmp = 1 then
+    apps (.c "Eq" [1]) [.c "Bool" [], apps (.c "BEq.beq" [0]) [if n then X.c "Nat" [] else U,
+      apps (.c "instBEqOfDecidableEq" [0]) [if n then X.c "Nat" [] else U,
+        .c (if n then "instDecidableEqNat" else "instDecidableEqUInt64") []], a, b], .c "Bool.true" []]
+    else apps (.c "LT.lt" [0]) [if n then X.c "Nat" [] else U, .c (if n then "instLTNat" else "instLTUInt64") [], a, b] := by
+  unfold condX; by_cases h : cmp = 1 <;> simp [h]
+
 /-- the open per-constant lemmas, canonical arguments only.  `ρ` is any variable environment; `ρE env` the one
 of an Ev environment. -/
 structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (P : Prog) (enc : ExprSpec.V → S) (junk : S)
@@ -114,10 +127,13 @@ structure FactsM (O : SetOps S) (cval : String → List Nat → S) (sig : Sig) (
     D O cval ρ (trM (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     O.app (O.app H (enc (.w x))) (enc (.w y)) = enc (.w z)
   /-- `ite` with the emitted condition/instance; the condition's truth value comes from its `EvB` -/
-  ite : ∀ {env r n cmp a b c d bc H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) → EvB P env c bc →
+  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+    VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
+    (∀ A, D O cval (ρE enc junk env) (trM a) A → A = enc va) →
+    (∀ B, D O cval (ρE enc junk env) (trM b) B → B = enc vb) →
     D O cval (ρE enc junk env) (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
     O.mem Xt (tyS' r) → O.mem Xe (tyS' r) →
-    O.app (O.app H Xt) Xe = if bc then Xt else Xe
+    O.app (O.app H Xt) Xe = if cmpV cmp va vb then Xt else Xe
   pair : ∀ {ρ A B H x y}, VSh A x → VSh B y →
     D O cval ρ (trM (apps (.c "Prod.mk" [0, 0]) [shTy A, shTy B])) H →
     O.app (O.app H (enc x)) (enc y) = enc (.p x y)
@@ -180,12 +196,14 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S} {t
   refine Ev.rec
     (motive_1 := fun env e v _ => ∀ {Γ s}, Wf sig Γ e s → Typed.Fa2 VSh Γ env →
       ∀ R, D O cval (ρE enc junk env) (trM e) R → R = enc v)
-    (motive_2 := fun _ _ _ _ => True)
+    (motive_2 := fun env c bc _ => ∀ {n cmp a b d}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+      ∃ va vb, Ev P env a va ∧ Ev P env b vb ∧ bc = cmpV cmp va vb ∧
+        (∀ {Γ s}, Wf sig Γ a s → Typed.Fa2 VSh Γ env → ∀ R, D O cval (ρE enc junk env) (trM a) R → R = enc va) ∧
+        (∀ {Γ s}, Wf sig Γ b s → Typed.Fa2 VSh Γ env → ∀ R, D O cval (ρE enc junk env) (trM b) R → R = enc vb))
     (motive_3 := fun env as vs _ => ∀ {Γ ss}, WfL sig Γ as ss → Typed.Fa2 VSh Γ env →
       ∀ Xs, Fa2D (fun a X => D O cval (ρE enc junk env) (trM a) X) as Xs → Xs = vs.map enc)
     ?bv ?lt ?litU ?litN ?bin ?iteT ?iteF ?mk ?cases ?natZ ?natS ?nil ?prim ?call
-    (fun _ _ _ _ => trivial) (fun _ _ _ _ => trivial) (fun _ _ _ _ => trivial) (fun _ _ _ _ => trivial)
-    ?lnil ?lcons h
+    ?beq ?blt ?beqN ?bltN ?lnil ?lcons h
   case bv =>
     intro env i v hi Γ s _ _ R hR
     cases hR; simp [ρE, hi]
@@ -217,21 +235,25 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S} {t
       rw [iha h5 he A hA, ihb h6 he B hB]; exact F.bin h2 h3 h4 hz hH
     | _ => kill
   case iteT =>
-    intro env ls T c d t e r hc _ _ iht Γ s hw he R hR
+    intro env ls T c d t e r hc _ ihc iht Γ s hw he R hR
     cases hw with
-    | ite h1 h2 h3 _ _ h5 _ =>
+    | ite h1 h2 h3 h4 h4' h5 h6 =>
       unif
+      obtain ⟨va, vb, hva, hvb, hbc, iha, ihb⟩ := ihc h2 h3
       obtain ⟨H, A, B, hH, hA, hB, rfl⟩ := two_args (l := [_, _, _]) hR
-      rw [F.ite h2 h3 hc hH (T.wt h5 (tenv_of T.encTy he) A hA) (T.wt ‹_› (tenv_of T.encTy he) B hB)]
+      rw [F.ite h2 h3 (ev_shape hP hva h4 he) (ev_shape hP hvb h4' he) (iha h4 he) (ihb h4' he) hH
+        (T.wt h5 (tenv_of T.encTy he) A hA) (T.wt h6 (tenv_of T.encTy he) B hB), ← hbc]
       exact iht h5 he A hA
     | _ => kill
   case iteF =>
-    intro env ls T c d t e r hc _ _ ihe Γ s hw he R hR
+    intro env ls T c d t e r hc _ ihc ihe Γ s hw he R hR
     cases hw with
-    | ite h1 h2 h3 _ _ _ h6 =>
+    | ite h1 h2 h3 h4 h4' h5 h6 =>
       unif
+      obtain ⟨va, vb, hva, hvb, hbc, iha, ihb⟩ := ihc h2 h3
       obtain ⟨H, A, B, hH, hA, hB, rfl⟩ := two_args (l := [_, _, _]) hR
-      rw [F.ite h2 h3 hc hH (T.wt ‹_› (tenv_of T.encTy he) A hA) (T.wt h6 (tenv_of T.encTy he) B hB)]
+      rw [F.ite h2 h3 (ev_shape hP hva h4 he) (ev_shape hP hvb h4' he) (iha h4 he) (ihb h4' he) hH
+        (T.wt h5 (tenv_of T.encTy he) A hA) (T.wt h6 (tenv_of T.encTy he) B hB), ← hbc]
       exact ihe h6 he B hB
     | _ => kill
   case mk =>
@@ -335,6 +357,56 @@ theorem ev_denotes {sig : Sig} {P : Prog} {enc : ExprSpec.V → S} {junk : S} {t
       rw [fa2_len hvs, hstrip] at hst; cases hst
       exact F.call hs hvs hlook hstrip (ihb hwb (fa2_reverse hvs))
     | _ => kill
+  case beq =>
+    intro env ls ls' B T I a b tr x y ha hb iha ihb n cmp a' b' d hcd hcmp
+    have h1 := congrArg Prod.fst hcd
+    rw [condX_fst] at h1
+    split at h1
+    · rename_i hc1
+      have e := congrArg spine h1
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e
+      obtain ⟨-, -, he2, -⟩ := e
+      have e2 := congrArg spine he2
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e2
+      obtain ⟨-, -, -, rfl, rfl, -⟩ := e2
+      exact ⟨_, _, ha, hb, by simp [cmpV, hc1], iha, ihb⟩
+    · have e := congrArg spine h1; simp [spine_apps] at e
+  case blt =>
+    intro env ls T I a b x y ha hb iha ihb n cmp a' b' d hcd hcmp
+    have h1 := congrArg Prod.fst hcd
+    rw [condX_fst] at h1
+    split at h1
+    · have e := congrArg spine h1; simp [spine_apps] at e
+    · rename_i hc1
+      have e := congrArg spine h1
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e
+      obtain ⟨-, -, -, rfl, rfl, -⟩ := e
+      exact ⟨_, _, ha, hb, by simp [cmpV, hc1], iha, ihb⟩
+  case beqN =>
+    intro env ls ls' B T I a b tr x y ha hb iha ihb n cmp a' b' d hcd hcmp
+    have h1 := congrArg Prod.fst hcd
+    rw [condX_fst] at h1
+    split at h1
+    · rename_i hc1
+      have e := congrArg spine h1
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e
+      obtain ⟨-, -, he2, -⟩ := e
+      have e2 := congrArg spine he2
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e2
+      obtain ⟨-, -, -, rfl, rfl, -⟩ := e2
+      exact ⟨_, _, ha, hb, by simp [cmpV, hc1], iha, ihb⟩
+    · have e := congrArg spine h1; simp [spine_apps] at e
+  case bltN =>
+    intro env ls T I a b x y ha hb iha ihb n cmp a' b' d hcd hcmp
+    have h1 := congrArg Prod.fst hcd
+    rw [condX_fst] at h1
+    split at h1
+    · have e := congrArg spine h1; simp [spine_apps] at e
+    · rename_i hc1
+      have e := congrArg spine h1
+      simp only [spine_apps, Prod.mk.injEq, List.cons.injEq] at e
+      obtain ⟨-, -, -, rfl, rfl, -⟩ := e
+      exact ⟨_, _, ha, hb, by simp [cmpV, hc1], iha, ihb⟩
   case lnil =>
     intro env Γ ss hw he Xs hXs
     cases hXs; rfl

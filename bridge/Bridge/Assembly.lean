@@ -45,10 +45,13 @@ structure Open (M : Model O env) (sig : Sig) (P : Prog) (junk : S) : Prop where
   bin : ∀ {ρ op n i H x y z}, binHead op = (n, i) → 1 ≤ op → op ≤ 7 → binV n x y = some z →
     D O M.cval ρ (trM (apps (.c n [0, 0, 0]) [U, U, U, i])) H →
     O.app (O.app H (encM M (.w x))) (encM M (.w y)) = encM M (.w z)
-  ite : ∀ {env r n cmp a b c d bc H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) → EvB P env c bc →
+  ite : ∀ {env r n cmp a b c d va vb H Xt Xe}, condX n cmp a b = (c, d) → (cmp = 1 ∨ cmp = 2) →
+    VSh (if n then .nt else .uw) va → VSh (if n then .nt else .uw) vb →
+    (∀ A, D O M.cval (ρE (encM M) junk env) (trM a) A → A = encM M va) →
+    (∀ B, D O M.cval (ρE (encM M) junk env) (trM b) B → B = encM M vb) →
     D O M.cval (ρE (encM M) junk env) (trM (apps (.c "ite" [1]) [shTy r, c, d])) H →
     O.mem Xt (tyS M r) → O.mem Xe (tyS M r) →
-    O.app (O.app H Xt) Xe = if bc then Xt else Xe
+    O.app (O.app H Xt) Xe = if cmpV cmp va vb then Xt else Xe
   prim : PrimFactsM O M.cval (encM M)
 
 variable (L : SetLaws O)
