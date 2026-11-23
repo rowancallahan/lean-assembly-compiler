@@ -44,6 +44,13 @@ the size of u10: days); Ev = Denotes using con-leche's lemmas (several days; spi
 List.cons); the Denotes copy + Expr-identity check (days; Lean 4.35 vs 4.34.1 toolchain gap); restating the top
 theorems around Expr (days).
 
+## SIMPLIFICATIONS (owner, 2026-11-23)
+- Reuse con-leche maximally: emit con-leche's own term type (a subset of it) as nano's Expr, so no translation step.
+- Ev is internal, so rewrite it to mirror Denotes rule by rule (same environment / bvar / app / lam / let structure;
+  constants through the same table). The Ev = Denotes bridge is then an induction whose cases are con-leche's own
+  lemmas (WellDenotedV_inst, beta, app, literals) plus the value-to-set encoding.
+- LATER: reduce the IRs to Expr → one pre-assembly layer (J) → thin per-target encoders (RISC-V, ARM, x86).
+
 ## THE HOLY GRAIL (owner, 2026-11-23): meaning = con-leche's Denotes, computed by self-hosted, proven code
 1. Meaning: con-leche's `Denotes` (ConLeche/Denotes.lean), copied verbatim or imported once nano moves to its
    Lean version (4.35). Check the copy's elaborated Expr is identical to con-leche's (C_lean-style tooling).
