@@ -293,3 +293,11 @@ replace `Mini.SetLaws` with the cited lemmas, keep the `HasTy` interface. (3) Ge
 answer); export, acceptance and `Env9` instantiation 2-3 days, with performance risk on 341 defs. The trimmed-model
 side (induction, typing, all ops, ites, prelude, the per-program Wf check on C) is done. Spike §7 estimated 2-3 weeks
 in total.
+
+## 12. S5: export + acceptance pipeline (DENOTES-S5, branch `keep_round1_denotes-s5`)
+* `Testing/denotes_spike/accept.sh File.lean` written (lean → lean4export → `con-leche --verified`; prints ACCEPTED/REJECTED, export/check seconds,
+  ndjson bytes, maxrss). Needs env `LEAN4EXPORT`, `CONLECHE`. `bash -n` only; NEVER RUN. `Acc_a.lean` = size step (a) input.
+* **BLOCKED**: con-leche is not on this container, and `add_repo dwijayuda/con-leche` was DENIED by the auto-mode classifier
+  ("Unauthorized Access"), same as S1 (§9). No other con-leche route used (no direct git clone / lake fetch), per instructions.
+  No size step (a)–(f) and no discrimination test were run; no results to report. Needs the owner to allow `add_repo` for con-leche
+  (or attach a checkout), then steps (a)–(f) can proceed.
