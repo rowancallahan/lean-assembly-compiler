@@ -27,7 +27,7 @@ moreLeanArgs = ["-Dweak.backward.isDefEq.respectTransparency=false"]
 [[lean_lib]]
 name = "Nano"
 srcDir = "../.."
-roots = ["Nano.Lexer", "Nano.Parser", "Nano.Ownership", "Nano.Codegen", "Nano.Run", "Nano.SelfHost", "Nano.Main", "Nano.Tests", "Nano.Base.V2", "Nano.Base.Riscv"]
+roots = ["Nano.Lexer", "Nano.Parser", "Nano.Ownership", "Nano.Codegen", "Nano.Run", "Nano.SelfHost", "Nano.Main", "Nano.Tests", "Nano.Base.V2", "Nano.Base.Riscv", "Nano.Expr"]
 
 # the Sail step lemmas (Arm/proofs/Arm, built by check.sh there; here as a lake library)
 [[lean_lib]]
