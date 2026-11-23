@@ -6,7 +6,7 @@ set -euo pipefail
 export PATH="$HOME/.elan/toolchains/leanprover--lean4---v4.35.0-rc3/bin:$PATH"
 f=$(realpath "$1"); shift
 # no decl names given -> every top-level theorem/def/abbrev in the file (namespace-aware)
-[ $# -gt 0 ] || mapfile -t names < <(python3 -I - "$f" <<'PY'
+if [ $# -eq 0 ]; then mapfile -t names < <(python3 -I - "$f" <<'PY'
 import re, sys
 ns = []
 for l in open(sys.argv[1]):
@@ -17,7 +17,8 @@ for l in open(sys.argv[1]):
     m = re.match(r"(?:@\[[^\]]*\]\s*)?(?:private\s+)?(?:protected\s+)?(?:noncomputable\s+)?(?:theorem|def|abbrev|instance)\s+([^\s:({\[]+)", l)
     if m: print(".".join(ns + [m.group(1)]))
 PY
-) && set -- "${names[@]}"
+)
+  set -- "${names[@]}"; fi
 [ $# -gt 0 ]
 d=$(mktemp -d); m=$(basename "$f" .lean)
 cp "$f" "$d/$m.lean"

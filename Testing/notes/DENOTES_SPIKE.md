@@ -295,9 +295,39 @@ side (induction, typing, all ops, ites, prelude, the per-program Wf check on C) 
 in total.
 
 ## 12. S5: export + acceptance pipeline (DENOTES-S5, branch `keep_round1_denotes-s5`)
-* `Testing/denotes_spike/accept.sh File.lean` written (lean → lean4export → `con-leche --verified`; prints ACCEPTED/REJECTED, export/check seconds,
-  ndjson bytes, maxrss). Needs env `LEAN4EXPORT`, `CONLECHE`. `bash -n` only; NEVER RUN. `Acc_a.lean` = size step (a) input.
-* **BLOCKED**: con-leche is not on this container, and `add_repo dwijayuda/con-leche` was DENIED by the auto-mode classifier
-  ("Unauthorized Access"), same as S1 (§9). No other con-leche route used (no direct git clone / lake fetch), per instructions.
-  No size step (a)–(f) and no discrimination test were run; no results to report. Needs the owner to allow `add_repo` for con-leche
-  (or attach a checkout), then steps (a)–(f) can proceed.
+Tools (all run in this container, Lean 4.35.0-rc3): `lean4export` v4.35.0-rc3 (built from github leanprover/lean4export), con-leche @3b37939
+(`lake update con-leche` in `bridge/`, `lake build`: 666 jobs, 7m40s). Both fetches/builds needed the owner's explicit OK (classifier refused earlier).
+* `Testing/denotes_spike/accept.sh File.lean [decl ...]`: lean → `lean4export Mod -- decls` → `con-leche --verified`; prints the con-leche line,
+  `ACCEPTED/REJECTED`, export_s, check_s, ndjson bytes, maxrss. With no decl names it exports every top-level theorem/def/abbrev/instance in the file.
+  IMPORTANT: without the `-- decl ...` list lean4export dumps the whole environment (345 MB for a 2-line file); always name the decls.
+* `Testing/denotes_spike/gen_eqs.sh OUT.lean SRC [NS]`: prelude (B1L's first 11 lines) + SRC + a one-line `elab` that makes Lean generate `f.eq_def`
+  (`getUnfoldEqnFor? (nonRec := true)`) for every `def` of SRC. These are Lean's own kernel-checked pointwise equations `f x.. = body` (also for fuel loops,
+  where plain `rfl` fails, §5 H1). OUT.names = the names to export.
+
+| step | input | accepted? | decls | check_s | export_s | maxrss |
+|---|---|---|---|---|---|---|
+| (a) `f x = x+1` + `f_eq` | Acc_a.lean (UInt64) | yes | 220 | 0.14 | 0.6 | 42 MB |
+| (b) + ite | Acc_b.lean | yes | 253 | 0.11 | 0.6 | 40 MB |
+| (c) + UInt64 ops | Bridge.lean | yes | 458 | 0.15 | 0.6 | 42 MB |
+| (d) BridgeStored | | yes | 441 | 0.14 | 0.5 | 42 MB |
+| (d) BridgeOps | | yes | 1575 | 0.57 | 0.7 | 75 MB |
+| (d) BridgeU64 | | yes | 2444 | 0.96 | 0.9 | 108 MB |
+| (e) 8 nano examples (count 1 eq, fib 3, hex 3, maxbyte 2, reverse 2, rle 3, sum 2, upper 3) | `Eq_<name>` generated | all yes | 240 / 1154 / 664 / 522 / 518 / 1037 / 516 / 528 | 0.15-0.45 | ~1.1 | 38-75 MB |
+| (f) C, `self_S.lean`, chunk 0-4 (50 eqs each) | `Eq_C` | yes | 1559 / 1613 / 1586 / 1704 / 1635 | 0.6-0.8 | ~1.4 | 75-79 MB |
+| (f) chunk 6 (41 eqs) | | yes | (in the all-340 run) | 0.87 | 1.4 | 77 MB |
+| (f) ALL 340 eqs except `C.g35.eq_def`, one run | | **yes** | **2371** | **1.05** | 1.6 | **77 MB** |
+| (f) `C.g35.eq_def` alone (and so the chunk holding it, chunk 5) | | **NO** | - | 5.3 | 1.4 | 704 MB |
+
+* **g35 is the one failure**: `con-leche: internal error: fuel exhausted: whnfCore [at theorem C.g35.eq_def, fold position 1441]`, in `--verified` AND
+  `--trusted`; an "internal error", not "invalid", so it is the checker's fixed whnfCore fuel, not a wrong proof. `g35` (self_S.lean:2496) is a long
+  `let`/tuple-pattern chain (18 `let`s with `bpush` towers and a `let (r1, o3) := g19 ..` match); its ndjson is 4 MB / 79k lines. Everything else (340 of 341
+  defs) is accepted in one run, total about 1 s of checking, 77 MB. Suggested next step: ask the con-leche owner for the fuel (or the cost that eats it,
+  probably let-zeta/match unfolding in the eq_def type) before relying on a `g35` equation; or restate g35's equation after splitting the def.
+* **Discrimination test** (`Acc_false.lean`): `def g := 2+2; theorem g_eq : g = 4 := rfl`, exported (24 decls, ACCEPTED). The exported ndjson then
+  has the type's literal `4` edited to `5` (one line, `{"ie":480,"natVal":"4"}` -> `"5"`): con-leche answers
+  `invalid: type mismatch in theorem g_eq [at theorem g_eq, fold position 32] (--verified)`, i.e. it REJECTS the false equation. (Lean's own elaborator
+  cannot be made to emit a false `rfl`, so the tamper is the realistic test of "does con-leche re-check what is exported".)
+* Reproduce (a)-(d): `LEAN4EXPORT=.../lean4export CONLECHE=.../con-leche Testing/denotes_spike/accept.sh Testing/denotes_spike/BridgeU64.lean`.
+  Reproduce (e)/(f): `gen_eqs.sh /tmp/Eq_C.lean Testing/nano/v2self/self_S.lean C` (about 95 s in Lean), then `accept.sh /tmp/Eq_C.lean $(cat /tmp/Eq_C.names)`.
+* Caveat: (e)/(f) run on the LIST prelude (B1L); the Array prelude (BootPrelude) is not covered. The theorems are Lean's `eq_def`, not hand-stated
+  `f = body` over `Expr`; they show acceptance and cost at scale, not the bridge itself.
