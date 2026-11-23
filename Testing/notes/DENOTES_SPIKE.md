@@ -293,3 +293,36 @@ replace `Mini.SetLaws` with the cited lemmas, keep the `HasTy` interface. (3) Ge
 answer); export, acceptance and `Env9` instantiation 2-3 days, with performance risk on 341 defs. The trimmed-model
 side (induction, typing, all ops, ites, prelude, the per-program Wf check on C) is done. Spike §7 estimated 2-3 weeks
 in total.
+
+## 13. S6: port to the REAL con-leche definitions (DENOTES-S6, branch `keep_round1_denotes-s6`)
+**Setup.** `~/.elan/bin/lake` did not exist in the S6 container; elan was installed there (default toolchain none; the
+package's 4.35.0-rc3 is fetched on demand). `cd bridge && ~/.elan/bin/lake build BridgeReal` (new lib: `Bridge.Transfer`,
+`Bridge.Real`) builds con-leche's `ConLeche.Denotes`/`SetModel.Ops` (≈40 jobs, ~2 min) and the ported file. No build command was refused.
+Axioms of everything below: propext, Classical.choice, Quot.sound; no sorry.
+
+| trimmed (`Mini.*`) | real | statement change |
+|---|---|---|
+| `D O cval ρ e v` | `Denotes cval env φ ρ e v` | gains `env` and the level assignment `φ` |
+| `E.lit k` | `.lit (.natVal k)` | none |
+| `natEnc M k` | `Real.natEnc M φ k` | takes `φ`; reads `cval natZeroName φ`/`natSuccName` (levelParams `[]`, so `substFn φ [] [] = φ` by `rfl`) |
+| `lit_denotes` (no hypotheses) | `Real.lit_denotes M (H : NatConsts env) φ ρ k` | needs `NatConsts`: `Nat.zero`, `Nat.succ` found in `env` with `levelParams = []` (Mini had them free) |
+| `mem_closed` (name+type list membership) | `Real.mem_closed M (h : env.find? n = some ci) (hT : Denotes … ci.toConstantVal.type Tv)` | `find?` instead of list membership; no `SetLaws` argument (real laws are theorems) |
+| `natEnc_mem` (`LitEnv`) | `Real.natEnc_mem M (H : NatTypes env) φ ρ k` | `NatTypes` = `NatConsts` + `Nat` found, `Nat.zero : Nat`, `Nat.succ : Nat → Nat` with a binder meta `m` such that `regime φ m.pw ≠ 0` for all `φ` (Mini's `pw=false`) |
+| `const` rule (`D.const`) | `Bridge.Denotes_const'` (Transfer, existing) | needs `find?`, `levelParams = ps`, `us.length = ps.length` |
+| `app_inv`, `lam_inv`, `pi_inv` | `Bridge.app_inv/lam_inv/pi_inv` (Transfer) | none |
+| `beta` (both regimes) | `Bridge.beta` (Transfer; uses `app_lam_any`, `Denotes_functional`) | `L : SetLaws` argument dropped; `m : BinderMeta` for `pw` |
+| `mem_app`, `mem_app'` | `Bridge.mem_app` (Transfer) | `mem_app'` not ported (not needed: `Denotes_functional` + `mem_app`) |
+| `D_functional` | `ConLeche.Denotes_functional` | none |
+| `Inhab`, `Inhab.pi/eq/eq_ex`, `transferN` | `Bridge.Inhab…` (Transfer, existing) | `Inhab.eq` returns the existential form; `transferN` not in Transfer yet (only `Inhab.eq`) |
+
+**Done:** lit/natLit, const, app, beta (the last three were already in Transfer.lean, compiled), `mem_closed`, `natEnc_mem`.
+
+**Handed to DENOTES-3 (not mechanical): the u64 cases, starting with `litU_fact`.** Reason: finding (a), seen concretely.
+In `OfNat.ofNat.{u}`'s stored type `∀ {α : Type u} (n : Nat) [OfNat α n], α` the constant `Nat` is denoted at
+`φ' = substFn φ [u] [0] = φ[u↦0]`, while the program's `.const Nat []` is denoted at `φ`. `Denotes.const` yields
+`cval Nat φ'` and `cval Nat φ`, and an arbitrary `Model` does not equate them. `OfNat` itself is fine
+(`substFn φ' [u] [param u] = φ[u↦0]`). So `litU_fact` cannot be ported without the level-insensitivity fact (a)(i)
+(`model_exists'`/`CvalParams`: `cval c φ` depends only on `φ` restricted to `c`'s level params). Once that is a hypothesis
+`hφ : ∀ n ci φ₁ φ₂, env.find? n = some ci → (∀ p ∈ ci.toConstantVal.levelParams, φ₁ p = φ₂ p) → M.cval n φ₁ = M.cval n φ₂`,
+the port is the Mini proof with `substFn` rewriting at each `const` and `Level.eval` in the `sort` cases. No other
+obstacle seen. The remaining u64 ops (`+ - * <<< >>> &&& |||`, ites) all go through the same `OfNat`/instance typings.
