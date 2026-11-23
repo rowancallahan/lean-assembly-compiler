@@ -58,6 +58,9 @@ structure SetLaws {V : Type} (O : SetOps V) : Prop where
   SetTheory/Derive/Univ.lean:40 (`univ_isTGUniverse`) + SetTheory/Derive/Graphs.lean:131 (`IsTGUniverse.piSet_mem`) -/
   piR_mem_univ : ∀ {n A} {B : V → V}, n ≠ 0 → O.mem A (O.univ n) → (∀ x, O.mem x A → O.mem (B x) (O.univ n)) →
     O.mem (O.piR 1 A B) (O.univ n)
+  /-- the canonical proof inhabits a true equation: SetTheory/Derive/Pt.lean:163 (`eqv x y = truthVal (x = y)`)
+  + :132 (`pt_mem_truthVal`) -/
+  pt_mem_eqv : ∀ {x y : V}, x = y → O.mem O.pt (O.eqv x y)
   /-- SetModel/Ops.lean:79 -/
   piR_congr : ∀ {v A} {B B' : V → V}, (∀ x, O.mem x A → B x = B' x) → O.piR v A B = O.piR v A B'
 
