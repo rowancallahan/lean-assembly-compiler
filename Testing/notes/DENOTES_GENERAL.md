@@ -232,3 +232,15 @@ the library lemmas.
   exist and lie in the type. That means a `Denotes.lam` derivation for each binder at its stored annotation,
   i.e. `regime ≠ 0` for each data λ (`LamRegime` + separators, or `den_reset`/`Reg1`). It is not needed for the
   `Ev ↔ Denotes (tr mainX)` statement.
+
+## 6. Where I stopped / next steps (DENOTES-3, paused on the owner's request)
+Stopped at: `keep_round1_denotes-3` builds. 11 per-feature theorems (`Bridge.Main`) and the `General` skeleton,
+std axioms only, no sorry. The con-leche self-check of the bridge is accepted (32137 decls). The λ engine pieces
+are proved (`Scope`, `EngineLam`, `TySubst`, `GenLet`, `Conv.beta`, `HasTy.lam/app`). Design decided: λ-lift at
+export (§5.2, justified in §5.4).
+Next, in order:
+1. A pure normalizer `N : X → Expr` plus the aux-def list (§5.3).
+2. The value-type agreement lemma for `Ev`.
+3. `R` over `substB`/`N`, and `Cases` from the library lemmas (lit, + * -, <, rd 0, len, ite, call, let, cases, loops).
+4. The generator `gen o` + `GenOk`, and `TabOk`/`ThmsOk` from it.
+5. New ops: `==` ite, `&&&`/`|||`, shifts, `rd x i`, `put o`, buffers.
